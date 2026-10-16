@@ -53,18 +53,22 @@ async function accessToken(): Promise<string> {
   return cachedToken.value;
 }
 
-/** Every money-moving call gets a PayPal-Request-Id so retries are idempotent. */
+/**
+ * Every money-moving call gets a PayPal-Request-Id so retries are idempotent.
+ * FormData bodies are sent as multipart (fetch sets the boundary), everything else as JSON.
+ */
 async function call<T>(method: string, path: string, body?: unknown, requestId?: string): Promise<T> {
   const { baseUrl } = config();
+  const multipart = body instanceof FormData;
   const res = await fetch(`${baseUrl}${path}`, {
     method,
     headers: {
       Authorization: `Bearer ${await accessToken()}`,
-      "Content-Type": "application/json",
+      ...(multipart ? {} : { "Content-Type": "application/json" }),
       Prefer: "return=representation",
       ...(method === "POST" ? { "PayPal-Request-Id": requestId ?? randomUUID() } : {}),
     },
-    body: body === undefined ? undefined : JSON.stringify(body),
+    body: body === undefined ? undefined : multipart ? body : JSON.stringify(body),
   });
   const text = await res.text();
   const json = text ? JSON.parse(text) : {};
@@ -117,6 +121,62 @@ export const paypal = {
       ...(note ? { note_to_payer: note } : {}),
     }),
 };
+
+export type Dispute = {
+  dispute_id: string;
+  reason: string;
+  status: string;
+  dispute_state?: string;
+  dispute_life_cycle_stage?: string;
+  dispute_amount?: Money;
+  dispute_outcome?: { outcome_code: string };
+  disputed_transactions?: { seller_transaction_id?: string; buyer_transaction_id?: string }[];
+  links: Link[];
+};
+
+export type Evidence = {
+  evidence_type: "PROOF_OF_FULFILLMENT" | "PROOF_OF_REFUND" | "OTHER";
+  evidence_info?: { tracking_info?: { carrier_name: string; tracking_number: string }[]; refund_ids?: string[] };
+  notes?: string;
+};
+
+/** Multipart body with the JSON payload in the `input` part, as the Disputes API expects. */
+function inputPart(payload: unknown, files: { name: string; data: Blob; filename: string }[] = []) {
+  const form = new FormData();
+  form.append("input", new Blob([JSON.stringify(payload)], { type: "application/json" }), "input.json");
+  for (const f of files) form.append(f.name, f.data, f.filename);
+  return form;
+}
+
+export const disputes = {
+  list: (params: Record<string, string> = {}) =>
+    call<{ items?: Dispute[] }>("GET", `/v1/customer/disputes?${new URLSearchParams(params)}`),
+  get: (id: string) => call<Dispute>("GET", `/v1/customer/disputes/${id}`),
+  provideEvidence: (id: string, evidences: Evidence[], files?: { data: Blob; filename: string }[]) =>
+    call<unknown>(
+      "POST",
+      `/v1/customer/disputes/${id}/provide-evidence`,
+      inputPart({ evidences }, (files ?? []).map((f) => ({ name: "evidence_file", ...f }))),
+    ),
+  makeOffer: (id: string, offerAmount: Money, note: string) =>
+    call<unknown>("POST", `/v1/customer/disputes/${id}/make-offer`, {
+      note,
+      offer_amount: offerAmount,
+      offer_type: "REFUND",
+    }),
+  escalate: (id: string, note: string) => call<unknown>("POST", `/v1/customer/disputes/${id}/escalate`, { note }),
+  /** Sandbox only. */
+  requireEvidence: (id: string, action: "SELLER_EVIDENCE" | "BUYER_EVIDENCE") =>
+    call<unknown>("POST", `/v1/customer/disputes/${id}/require-evidence`, { action }),
+  /** Sandbox only. */
+  adjudicate: (id: string, outcome: "BUYER_FAVOR" | "SELLER_FAVOR") =>
+    call<unknown>("POST", `/v1/customer/disputes/${id}/adjudicate`, { adjudication_outcome: outcome }),
+};
+
+/** HATEOAS rels the API currently offers on a dispute, e.g. "provide_evidence", "escalate". */
+export function disputeActions(d: Dispute): string[] {
+  return d.links.map((l) => l.rel.replace(/-/g, "_"));
+}
 
 export function approveLink(order: Order): string | undefined {
   return order.links.find((l) => l.rel === "payer-action" || l.rel === "approve")?.href;

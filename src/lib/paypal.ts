@@ -173,6 +173,29 @@ export const disputes = {
     call<unknown>("POST", `/v1/customer/disputes/${id}/adjudicate`, { adjudication_outcome: outcome }),
 };
 
+export type CatalogProduct = { id: string; name: string; type: string; image_url?: string; home_url?: string };
+
+export const catalog = {
+  /** Pass a stable requestId (e.g. the source product id) so re-running an import doesn't duplicate products. */
+  createProduct: (
+    p: { name: string; description?: string; image_url?: string; home_url?: string },
+    requestId: string,
+  ) =>
+    call<CatalogProduct>(
+      "POST",
+      "/v1/catalogs/products",
+      {
+        name: p.name.slice(0, 127),
+        type: "PHYSICAL",
+        ...(p.description ? { description: p.description.slice(0, 256) } : {}),
+        ...(p.image_url?.startsWith("https://") ? { image_url: p.image_url } : {}),
+        ...(p.home_url?.startsWith("https://") ? { home_url: p.home_url } : {}),
+      },
+      requestId,
+    ),
+  get: (id: string) => call<CatalogProduct>("GET", `/v1/catalogs/products/${id}`),
+};
+
 /** HATEOAS rels the API currently offers on a dispute, e.g. "provide_evidence", "escalate". */
 export function disputeActions(d: Dispute): string[] {
   return d.links.map((l) => l.rel.replace(/-/g, "_"));

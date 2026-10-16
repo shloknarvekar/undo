@@ -9,7 +9,8 @@
     "lint": "eslint",
     "spike:paypal": "tsx scripts/spike-paypal.ts",
     "spike:disputes": "tsx scripts/spike-disputes.ts",
-    "spike:channel3": "tsx scripts/spike-channel3.ts"
+    "spike:channel3": "tsx scripts/spike-channel3.ts",
+    "spike:dispute-create": "tsx scripts/spike-dispute-create.ts"
   },
   "dependencies": {
     "@channel3/sdk": "^4.2.0",

@@ -54,10 +54,25 @@ async function accessToken(): Promise<string> {
 }
 
 /**
+ * PayPal-Auth-Assertion lets the app act on behalf of another PayPal account (e.g. the sandbox buyer
+ * opening a dispute). It is an unsigned JWT: {"alg":"none"} . {iss: client id, payer_id} . (empty signature).
+ */
+export function authAssertion(payerId: string): string {
+  const b64url = (o: unknown) => Buffer.from(JSON.stringify(o)).toString("base64url");
+  return `${b64url({ alg: "none" })}.${b64url({ iss: config().clientId, payer_id: payerId })}.`;
+}
+
+/**
  * Every money-moving call gets a PayPal-Request-Id so retries are idempotent.
  * FormData bodies are sent as multipart (fetch sets the boundary), everything else as JSON.
  */
-async function call<T>(method: string, path: string, body?: unknown, requestId?: string): Promise<T> {
+async function call<T>(
+  method: string,
+  path: string,
+  body?: unknown,
+  requestId?: string,
+  extraHeaders: Record<string, string> = {},
+): Promise<T> {
   const { baseUrl } = config();
   const multipart = body instanceof FormData;
   const res = await fetch(`${baseUrl}${path}`, {
@@ -67,6 +82,7 @@ async function call<T>(method: string, path: string, body?: unknown, requestId?:
       ...(multipart ? {} : { "Content-Type": "application/json" }),
       Prefer: "return=representation",
       ...(method === "POST" ? { "PayPal-Request-Id": requestId ?? randomUUID() } : {}),
+      ...extraHeaders,
     },
     body: body === undefined ? undefined : multipart ? body : JSON.stringify(body),
   });
@@ -88,6 +104,7 @@ export type Refund = { id: string; status: string; amount: Money };
 export type Order = {
   id: string;
   status: string;
+  payer?: { payer_id?: string; email_address?: string; address?: { country_code?: string } };
   links: Link[];
   purchase_units?: { payments?: { authorizations?: Authorization[]; captures?: Capture[] } }[];
 };
@@ -148,7 +165,45 @@ function inputPart(payload: unknown, files: { name: string; data: Blob; filename
   return form;
 }
 
+export type DisputeReason =
+  | "MERCHANDISE_OR_SERVICE_NOT_AS_DESCRIBED"
+  | "MERCHANDISE_OR_SERVICE_NOT_RECEIVED"
+  | "UNAUTHORISED";
+
 export const disputes = {
+  /**
+   * Buyer-side: open a dispute as the buyer (sandbox testing guide flow). Needs the app's disputes/create
+   * scope and a PayPal-Auth-Assertion for the buyer's payer_id. `transaction` is the disputed transaction
+   * reference, e.g. { buyer_transaction_id } or { seller_transaction_id }.
+   * Status: a standard sandbox app gets "No permissions to set target_client_id" (partner permission from
+   * PayPal required). Until granted, buyers open disputes in the Resolution Center.
+   */
+  createAsBuyer: (
+    buyerPayerId: string,
+    transaction: { buyer_transaction_id?: string; seller_transaction_id?: string },
+    reason: DisputeReason,
+    amount: Money,
+    note: string,
+  ) =>
+    call<{ links?: Link[] }>(
+      "POST",
+      "/v1/customer/disputes",
+      inputPart({
+        disputed_transactions: [transaction],
+        reason,
+        dispute_amount: amount,
+        note,
+        extensions: {
+          merchant_contacted: true,
+          merchant_contacted_outcome: "NO_RESPONSE",
+          ...(reason === "MERCHANDISE_OR_SERVICE_NOT_AS_DESCRIBED"
+            ? { merchandize_dispute_properties: { issue_type: "PRODUCT" } }
+            : {}),
+        },
+      }),
+      undefined,
+      { "PayPal-Auth-Assertion": authAssertion(buyerPayerId) },
+    ),
   list: (params: Record<string, string> = {}) =>
     call<{ items?: Dispute[] }>("GET", `/v1/customer/disputes?${new URLSearchParams(params)}`),
   get: (id: string) => call<Dispute>("GET", `/v1/customer/disputes/${id}`),

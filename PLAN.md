@@ -96,9 +96,11 @@ A shopper tells an AI agent what to buy. Undo turns that into a **signed intent 
 2. **Disputes in sandbox**: buyer-side create-dispute API needs extra scopes from PayPal (account manager). Fallback that is fine: open the dispute as the sandbox personal account in the sandbox Resolution Center, then drive everything else (list, `provide-evidence`, `make-offer`, `adjudicate`) via API. Ask in the hackathon Discord whether scopes can be granted.
    - **Result (Oct 16):** API create is blocked. With `PayPal-Auth-Assertion` → `No permissions to set target_client_id` (partner permission); without it → `INVALID_BUYER_TRANSACTION_ID` (needs the buyer-side txn id). Disputes opened in the Resolution Center work: visible via list/get by buyer *and* seller txn id after a few minutes of sandbox lag, auto-escalated INQUIRY → CHARGEBACK, and `provide-supporting-info` accepted the Undo evidence pack. `adjudicate` was still not offered at last check.
    - **Product framing:** the shopper opens the dispute in PayPal (as in real life); Undo prepares the evidence pack and the merchant console pushes it via the Disputes API. For the demo video, pre-open disputes the day before so they have progressed.
-3. **Channel3 key** + import 30 products into PayPal Catalog.
-4. **Render deploy** of a hello-world Next.js + Postgres.
-5. **Webhook** delivery to Render URL with signature verification.
+3. **Channel3 key** + import 30 products into PayPal Catalog. ✅ 30/30 via `@channel3/sdk` (category slugs + color hex filters).
+4. **Render deploy** of a hello-world Next.js + Postgres. ✅ Free web service at https://undo-1c56.onrender.com. Postgres moves to Neon free (Render's free DB is deleted after 30 days).
+5. **Webhook** delivery to Render URL with signature verification. ✅ Webhook `4K746543RE256751T` (9 event types); real `CATALOG.PRODUCT.CREATED` delivered and verified via verify-webhook-signature; forged request rejected with 400.
+
+Spike 1 ✅ (Oct 16): authorize→void and authorize→capture→refund all COMPLETED in sandbox.
 
 If spike 2 fails completely, merchant-fault path becomes "Undo claim" handled inside Undo + refund — still demoable.
 

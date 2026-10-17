@@ -12,9 +12,14 @@ import * as schema from "./schema";
  */
 let db: NeonDatabase<typeof schema> | null = null;
 
+/** DATABASE_URL as given, minus whitespace and wrapping quotes (`neon env pull` writes it quoted, and that gets pasted into hosts). */
+export function databaseUrl(): string | undefined {
+  return process.env.DATABASE_URL?.trim().replace(/^(['"])(.*)\1$/, "$2") || undefined;
+}
+
 export function getDb(): NeonDatabase<typeof schema> {
   if (!db) {
-    const url = process.env.DATABASE_URL;
+    const url = databaseUrl();
     if (!url) throw new Error("DATABASE_URL missing in .env (Neon pooled connection string)");
     const pool = new Pool({ connectionString: url, max: 5, idleTimeoutMillis: 30_000 });
     pool.on("error", (err: Error) => console.error("neon pool error", err.message));

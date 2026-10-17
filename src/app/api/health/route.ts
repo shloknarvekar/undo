@@ -1,6 +1,6 @@
 import { sql } from "drizzle-orm";
 import { NextResponse } from "next/server";
-import { getDb } from "@/db";
+import { databaseUrl, getDb } from "@/db";
 import { catalog } from "@/lib/paypal";
 
 /**
@@ -48,10 +48,10 @@ export async function GET(req: Request) {
 
 /** Shape of the configured URL (never the credentials) plus a live `select 1` through the app's own pool. */
 async function checkDatabase() {
-  const raw = process.env.DATABASE_URL ?? "";
+  const raw = databaseUrl() ?? "";
   let url: { host: string; pooled: boolean; db: string; params: string } | string;
   try {
-    const u = new URL(raw.trim());
+    const u = new URL(raw);
     url = { host: u.hostname, pooled: u.hostname.includes("-pooler"), db: u.pathname.slice(1), params: [...u.searchParams.keys()].join(",") };
   } catch {
     url = `unparseable (length ${raw.length}, starts "${raw.slice(0, 11)}", quoted: ${/^["']/.test(raw)})`;

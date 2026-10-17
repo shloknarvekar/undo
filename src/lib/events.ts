@@ -3,7 +3,7 @@
  * authorized, undo requested, refund issued…) is appended here; `chain()` re-verifies the whole history.
  */
 import { asc, desc, eq } from "drizzle-orm";
-import { getDb, schema } from "@/db";
+import { getDb, pgError, schema } from "@/db";
 import { chainNext, verifyChain, type ChainedEvent } from "./crypto";
 
 const toChained = (r: typeof schema.events.$inferSelect): ChainedEvent => ({
@@ -36,7 +36,8 @@ export async function appendEvent(subjectId: string, type: string, payload: unkn
       return next;
     } catch (err) {
       // Lost a race for this seq (unique index) — re-read the tip and try again.
-      if (attempt === 2 || !String(err).includes("events_subject_seq_uq")) throw err;
+      const { code, constraint } = pgError(err);
+      if (attempt === 2 || code !== "23505" || constraint !== "events_subject_seq_uq") throw err;
     }
   }
   throw new Error("unreachable");

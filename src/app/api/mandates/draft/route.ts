@@ -14,6 +14,7 @@ export async function POST(req: Request) {
     return NextResponse.json({ draft, ready: readyToSign(draft) });
   } catch (err) {
     if (err instanceof ParseError) return NextResponse.json({ error: "parser_unavailable", detail: err.message }, { status: 503 });
+    console.error("mandate draft parse failed:", err instanceof Error ? err.message : err);
     return NextResponse.json({ error: "parse_failed" }, { status: 502 });
   }
 }

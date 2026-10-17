@@ -7,7 +7,9 @@ import { google } from "@ai-sdk/google";
 import { generateText, Output } from "ai";
 import { IntentDraft } from "./mandate";
 
-const MODEL = process.env.GEMINI_MODEL ?? "gemini-2.5-flash";
+// A "-latest" alias survives model retirements (gemini-2.5-flash is closed to new keys). Lite = fastest and
+// the most generous free-tier quota; override with GEMINI_MODEL if a heavier model is needed.
+const MODEL = process.env.GEMINI_MODEL ?? "gemini-flash-lite-latest";
 
 const INSTRUCTIONS = `You turn a shopper's request into a purchase mandate for an AI shopping agent.
 Rules:

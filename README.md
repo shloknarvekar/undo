@@ -1,36 +1,51 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Undo — Ctrl+Z for AI agent purchases
 
-## Getting Started
+> Every company built how AI agents buy. Nobody built how they undo.
 
-First, run the development server:
+Undo turns a shopper's request into a signed intent mandate, lets an AI agent buy real products with
+PayPal in **authorize-only** mode, and gives every purchase a risk-based undo window. When the agent gets it
+wrong, a fault engine compares mandate → cart → delivered item and routes the money through the right PayPal
+rail: void, refund, dispute evidence, or a partial-refund offer.
+
+Built for the [PayPal AI Hackathon](https://paypalaihackathon.devpost.com/). Work in progress.
+
+**Live demo:** https://undo-1c56.onrender.com (health: [`/api/health?deep=1`](https://undo-1c56.onrender.com/api/health?deep=1))
+
+## Stack
+
+| Layer | Tool |
+|---|---|
+| App | Next.js 16 (App Router) + TypeScript + Tailwind |
+| Payments | PayPal REST sandbox: Orders v2, Payments v2 (authorize / void / capture / refund), Catalog, Disputes v1 |
+| Products | [Channel3](https://trychannel3.com) product catalog via `@channel3/sdk` |
+| Hosting | Render (free web service) |
+
+## Run locally
 
 ```bash
+npm install
+cp .env.example .env   # fill in PayPal sandbox app credentials and a Channel3 API key
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Sandbox checks:
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+```bash
+npm run spike:paypal      # authorize → void, and authorize → capture → refund
+npm run spike:channel3    # Channel3 search → PayPal Catalog import
+npm run spike:disputes    # drive a sandbox dispute from the merchant side
+```
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+Use **US** sandbox accounts for the buyer and merchant.
 
-## Learn More
+## API
 
-To learn more about Next.js, take a look at the following resources:
+| Route | Purpose |
+|---|---|
+| `GET /api/health[?deep=1]` | Liveness; `deep` also checks PayPal sandbox reachability |
+| `POST /api/products/search` | `{ query, category?, color?, maxPrice?, minPrice?, gender?, limit?, mode? }` → products |
+| `GET /api/products/:id?option_Size=M` | Fresh product detail resolved to a variant, plus any options the catalog relaxed |
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## License
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+MIT — see [LICENSE](LICENSE).

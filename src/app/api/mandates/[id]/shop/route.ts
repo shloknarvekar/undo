@@ -110,7 +110,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
       {
         orderId,
         approveUrl: approveLink(order),
-        cart: { title: chosen.product.title, brand: chosen.product.brand, variant: chosen.product.variant, price: chosen.product.price, currency: chosen.product.currency, quantity, retailer: chosen.product.sourceDomain },
+        cart: { title: chosen.product.title, brand: chosen.product.brand, variant: chosen.product.variant, price: chosen.product.price, currency: chosen.product.currency, quantity, retailer: chosen.product.sourceDomain, imageUrl: chosen.product.imageUrl },
         agent: { reasoning: decision.reasoning, confidence: decision.confidence, unverified: decision.unverified, guard: decision.guard, considered: decision.considered },
         undoWindow: window,
       },

@@ -104,7 +104,8 @@ async function choose(mandate: IntentMandate, candidates: Candidate[]) {
       system:
         "You are a careful shopping agent. Every candidate already satisfies the shopper's hard limits. " +
         "Pick the one that best matches what the shopper meant, preferring exact variant matches, then value. " +
-        "Be honest about anything you could not verify. Never invent facts that are not in the listing.",
+        "Be honest about anything you could not verify. Never invent facts that are not in the listing. " +
+        "Write the reasoning to the shopper in plain words; never refer to candidates by number or index.",
       prompt: JSON.stringify({ shopperRequest: mandate.request, mandate: mandate.intent, candidates: listing }),
       output: Output.object({ schema: Pick, name: "agent_pick" }),
       temperature: 0,

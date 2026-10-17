@@ -15,7 +15,7 @@ export async function GET(req: Request) {
   const url = new URL(req.url);
   const orderId = url.searchParams.get("order") ?? "";
   const token = url.searchParams.get("token") ?? "";
-  const done = () => NextResponse.redirect(`${publicBaseUrl(req)}/api/orders/${orderId}`, 303);
+  const done = () => NextResponse.redirect(`${publicBaseUrl(req)}/orders/${orderId}`, 303);
 
   const order = await loadOrder(orderId);
   if (!order || !order.paypalOrderId || order.paypalOrderId !== token) {

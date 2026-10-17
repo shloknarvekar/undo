@@ -30,7 +30,7 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
       open: order.status === "AUTHORIZED" && msLeft !== null && msLeft > 0,
       minutesLeft: msLeft !== null ? Math.max(0, Math.round(msLeft / 60_000)) : null,
     },
-    mandate: loaded ? { id: loaded.mandate.id, request: loaded.mandate.request, intent: loaded.mandate.intent, status: loaded.status } : null,
+    mandate: loaded ? { id: loaded.mandate.id, request: loaded.mandate.request, intent: loaded.mandate.intent, status: loaded.status, shopperKey: loaded.mandate.shopperKey } : null,
     chain: { intact: history.intact, events: history.events.map(({ seq, type, createdAt, hash }) => ({ seq, type, createdAt, hash })) },
   });
 }

@@ -15,5 +15,5 @@ export async function GET(req: Request) {
     await getDb().update(schema.orders).set({ status: "CANCELLED", updatedAt: new Date() }).where(eq(schema.orders.id, order.id));
     await appendEvent(order.mandateId, "CHECKOUT_CANCELLED", { orderId: order.id, by: "shopper" });
   }
-  return NextResponse.redirect(`${publicBaseUrl(req)}/api/orders/${order.id}`, 303);
+  return NextResponse.redirect(`${publicBaseUrl(req)}/orders/${order.id}`, 303);
 }

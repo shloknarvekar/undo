@@ -256,6 +256,55 @@ export function disputeActions(d: Dispute): string[] {
   return d.links.map((l) => l.rel.replace(/-/g, "_"));
 }
 
+/** Events Undo listens to: money rails, disputes, and catalog (catalog gives a signed event with no buyer step). */
+export const WEBHOOK_EVENTS = [
+  "CHECKOUT.ORDER.APPROVED",
+  "PAYMENT.AUTHORIZATION.CREATED",
+  "PAYMENT.AUTHORIZATION.VOIDED",
+  "PAYMENT.CAPTURE.COMPLETED",
+  "PAYMENT.CAPTURE.REFUNDED",
+  "CUSTOMER.DISPUTE.CREATED",
+  "CUSTOMER.DISPUTE.UPDATED",
+  "CUSTOMER.DISPUTE.RESOLVED",
+  "CATALOG.PRODUCT.CREATED",
+] as const;
+
+export type Webhook = { id: string; url: string; event_types: { name: string }[] };
+export type WebhookEvent = {
+  id: string;
+  event_type: string;
+  create_time: string;
+  resource_type?: string;
+  summary?: string;
+  resource?: { id?: string; status?: string; [k: string]: unknown };
+};
+
+export const webhooks = {
+  list: () => call<{ webhooks: Webhook[] }>("GET", "/v1/notifications/webhooks"),
+  create: (url: string, events: readonly string[]) =>
+    call<Webhook>("POST", "/v1/notifications/webhooks", {
+      url,
+      event_types: events.map((name) => ({ name })),
+    }),
+  /**
+   * Ask PayPal whether a delivery is genuine. Needs the transmission headers PayPal sent and the id of the
+   * webhook it was delivered to. Returns true only for verification_status SUCCESS.
+   */
+  async verify(headers: Headers, event: unknown, webhookId: string): Promise<boolean> {
+    const h = (name: string) => headers.get(name) ?? "";
+    const res = await call<{ verification_status: string }>("POST", "/v1/notifications/verify-webhook-signature", {
+      auth_algo: h("paypal-auth-algo"),
+      cert_url: h("paypal-cert-url"),
+      transmission_id: h("paypal-transmission-id"),
+      transmission_sig: h("paypal-transmission-sig"),
+      transmission_time: h("paypal-transmission-time"),
+      webhook_id: webhookId,
+      webhook_event: event,
+    });
+    return res.verification_status === "SUCCESS";
+  },
+};
+
 export function approveLink(order: Order): string | undefined {
   return order.links.find((l) => l.rel === "payer-action" || l.rel === "approve")?.href;
 }

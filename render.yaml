@@ -1,9 +1,11 @@
 # Render Blueprint for Undo — https://render.com/docs/blueprint-spec
+# Zero-cost setup:
+#   - Web service on Render's free plan (750 instance-hours/month covers one service 24/7).
+#     Free services sleep after ~15 min idle; .github/workflows/keepalive.yml pings /api/health
+#     once the repo is public (judging period) so judges don't hit a cold start.
+#   - No Render Postgres: the free one is deleted after 30 days (before judging ends Dec 21).
+#     The database will be Neon's free plan (no expiry); DATABASE_URL gets added when the app needs it.
 # Secrets use sync: false, so Render asks for them in the dashboard; nothing secret lives in git.
-#
-# Plans: free is fine for spikes. Before submitting (judging runs until Dec 21):
-#   - web: starter, so judges don't hit a ~1 min cold start after 15 min idle
-#   - database: a paid plan — free Postgres is deleted 30 days after creation
 services:
   - type: web
     name: undo
@@ -24,13 +26,3 @@ services:
         sync: false
       - key: CHANNEL3_API_KEY
         sync: false
-      - key: DATABASE_URL
-        fromDatabase:
-          name: undo-db
-          property: connectionString
-
-databases:
-  - name: undo-db
-    plan: free
-    databaseName: undo
-    user: undo

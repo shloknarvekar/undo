@@ -1,0 +1,20 @@
+# Keeps the free Render instance warm so judges never wait for a cold start.
+# Runs only when the repo is public: scheduled runs on public repos are free, while on a private repo
+# they would spend the 2,000 free Actions minutes. A skipped job uses no minutes.
+# Set the repository variable UNDO_URL (Settings → Secrets and variables → Actions → Variables),
+# e.g. https://undo-xxxx.onrender.com
+name: keepalive
+
+on:
+  schedule:
+    - cron: "*/10 * * * *"
+  workflow_dispatch:
+
+jobs:
+  ping:
+    if: ${{ !github.event.repository.private && vars.UNDO_URL != '' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - name: Ping health endpoint
+        run: curl -fsS --retry 3 --retry-delay 20 --max-time 90 "${{ vars.UNDO_URL }}/api/health"

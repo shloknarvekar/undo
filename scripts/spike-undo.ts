@@ -6,9 +6,10 @@
  *   D  shopper changed mind          → merchant protected → RETURN_PENDING → return received → partial refund
  *
  * All four checkouts are created first; you approve the four PayPal links, then everything else is automatic.
- * Run: npm run spike:undo -- --base=https://undo-1c56.onrender.com [--only=A,C]
+ * Run: npm run spike:undo -- --base=https://undo-1c56.onrender.com [--only=A,C] [--resume]
  */
 import { createHash } from "node:crypto";
+import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { generateSigningKey, signMessage } from "../src/lib/crypto";
 import { undoSigningMessage } from "../src/lib/fault-core";
 
@@ -49,12 +50,17 @@ async function deliveredPhoto(): Promise<{ dataUrl: string; sha256: string; what
   throw new Error("no usable delivered-item photo found");
 }
 
+type Run = { s: Scenario; key: ReturnType<typeof generateSigningKey>; orderId: string; approveUrl: string; cart: any };
+// Test-buyer keys live only in this git-ignored file, so an unfinished run can be resumed with --resume.
+const STATE = "data/undo-e2e.json";
+
 async function main() {
   const scenarios = SCENARIOS.filter((s) => !ONLY || ONLY.has(s.id));
   log(`\nUndo · fault engine e2e → ${BASE}\n`);
 
-  const runs: { s: Scenario; key: ReturnType<typeof generateSigningKey>; orderId: string; approveUrl: string; cart: any }[] = [];
-  for (const s of scenarios) {
+  const runs: Run[] = args.resume ? JSON.parse(await readFile(STATE, "utf8")) : [];
+  if (args.resume) log(`  ↻ resuming ${runs.length} checkouts from ${STATE}`);
+  for (const s of args.resume ? [] : scenarios) {
     const key = generateSigningKey();
     const d = must(await api("POST", "/api/mandates/draft", { request: s.request }), 200, `${s.id} draft`);
     if (!d.ready.ok) throw new Error(`${s.id} draft not ready: ${JSON.stringify(d.draft.mustAsk)}`);
@@ -64,13 +70,15 @@ async function main() {
     runs.push({ s, key, orderId: shop.orderId, approveUrl: shop.approveUrl, cart: shop.cart });
     log(`  ✔ ${s.id} agent bought  ${shop.cart.title} · ${JSON.stringify(shop.cart.variant)} · $${shop.cart.price}${s.simulate ? "  (simulated careless agent)" : ""}`);
   }
+  await mkdir("data", { recursive: true });
+  await writeFile(STATE, JSON.stringify(runs, null, 2));
 
   log(`\n  → Approve these ${runs.length} PayPal payments as your US SANDBOX PERSONAL buyer (any order):`);
   for (const r of runs) log(`     ${r.s.id}  $${r.cart.price}  ${r.approveUrl}`);
-  log("");
+  log(`  (Waiting up to 60 min. If this stops, re-run with --resume to pick up the same checkouts.)\n`);
 
   const pending = new Set(runs.map((r) => r.orderId));
-  const deadline = Date.now() + 15 * 60_000;
+  const deadline = Date.now() + 60 * 60_000;
   while (pending.size && Date.now() < deadline) {
     for (const id of [...pending]) {
       const o = await api("GET", `/api/orders/${id}`).catch(() => null);

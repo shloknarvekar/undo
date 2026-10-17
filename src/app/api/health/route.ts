@@ -1,6 +1,7 @@
 import { sql } from "drizzle-orm";
 import { NextResponse } from "next/server";
 import { databaseUrl, getDb } from "@/db";
+import { maybeSweep } from "@/lib/money";
 import { catalog } from "@/lib/paypal";
 
 /**
@@ -11,6 +12,7 @@ import { catalog } from "@/lib/paypal";
  */
 
 export async function GET(req: Request) {
+  maybeSweep(); // undo-window scheduler rides on health-check/keepalive traffic (free host, no cron)
   const configured = {
     paypal: Boolean(process.env.PAYPAL_CLIENT_ID && process.env.PAYPAL_CLIENT_SECRET),
     channel3: Boolean(process.env.CHANNEL3_API_KEY),

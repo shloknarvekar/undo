@@ -16,7 +16,8 @@
     "db:generate": "drizzle-kit generate",
     "db:migrate": "tsx scripts/migrate.ts",
     "spike:mandate": "tsx scripts/spike-mandate.ts",
-    "spike:agent": "tsx scripts/spike-agent.ts"
+    "spike:agent": "tsx scripts/spike-agent.ts",
+    "spike:undo": "tsx scripts/spike-undo.ts"
   },
   "dependencies": {
     "@ai-sdk/google": "^4.0.99",

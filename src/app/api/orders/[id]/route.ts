@@ -1,10 +1,12 @@
 import { NextResponse } from "next/server";
 import { chain } from "@/lib/events";
+import { maybeSweep } from "@/lib/money";
 import { loadMandate, loadOrder } from "@/lib/store";
 
 /** GET /api/orders/:id → the purchase, the live undo window, and the mandate's verified event chain. */
 export async function GET(_req: Request, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
+  maybeSweep();
   const order = await loadOrder(id);
   if (!order) return NextResponse.json({ error: "not_found" }, { status: 404 });
   const [loaded, history] = await Promise.all([loadMandate(order.mandateId), chain(order.mandateId)]);
@@ -20,6 +22,7 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
       product: order.product,
       agent: order.agent,
       paypal: { orderId: order.paypalOrderId, authorizationId: order.authorizationId, captureId: order.captureId },
+      resolution: order.resolution,
     },
     undoWindow: {
       ...(order.risk as object),

@@ -28,8 +28,22 @@ export const orders = pgTable(
       .notNull()
       .references(() => mandates.id),
     status: text("status", {
-      enum: ["CHECKOUT_CREATED", "CANCELLED", "AUTHORIZED", "VOIDED", "CAPTURED", "REFUNDED", "DISPUTED", "FAILED"],
+      enum: [
+        "CHECKOUT_CREATED",
+        "CANCELLED",
+        "AUTHORIZED", // undo window open: Undo = free void
+        "VOIDED",
+        "CAPTURED", // window closed: Undo = refund / claim / return
+        "REFUNDED",
+        "PARTIALLY_REFUNDED",
+        "CLAIM_OPEN", // merchant fault: evidence pack sent to the merchant
+        "RETURN_PENDING", // shopper changed mind: merchant protected, refund after the return arrives
+        "REVIEW", // fault engine not confident: a human decides
+        "DISPUTED",
+        "FAILED",
+      ],
     }).notNull(),
+    resolution: jsonb("resolution"), // latest Undo: verdict, evidence, money action taken
     paypalOrderId: text("paypal_order_id").unique(),
     authorizationId: text("authorization_id"),
     captureId: text("capture_id"),

@@ -189,14 +189,23 @@ export const paypal = {
   /** Same request id for the same order, so a double-hit return URL can't authorize twice. */
   authorizeOrder: (id: string) => call<Order>("POST", `/v2/checkout/orders/${id}/authorize`, {}, `undo-authorize-${id}`),
   getAuthorization: (id: string) => call<Authorization>("GET", `/v2/payments/authorizations/${id}`),
-  voidAuthorization: (id: string) => call<Authorization>("POST", `/v2/payments/authorizations/${id}/void`),
+  // Money calls use deterministic request ids: a retried or racing call (scheduler vs. Undo) gets PayPal's
+  // original response instead of moving money twice.
+  voidAuthorization: (id: string) =>
+    call<Authorization>("POST", `/v2/payments/authorizations/${id}/void`, undefined, `undo-void-${id}`),
   captureAuthorization: (id: string) =>
-    call<Capture>("POST", `/v2/payments/authorizations/${id}/capture`, { final_capture: true }),
-  refundCapture: (id: string, amount?: Money, note?: string) =>
-    call<Refund>("POST", `/v2/payments/captures/${id}/refund`, {
-      ...(amount ? { amount } : {}),
-      ...(note ? { note_to_payer: note } : {}),
-    }),
+    call<Capture>("POST", `/v2/payments/authorizations/${id}/capture`, { final_capture: true }, `undo-capture-${id}`),
+  /** `key` distinguishes different refunds of the same capture (e.g. "full" vs "return"). */
+  refundCapture: (id: string, amount?: Money, note?: string, key = "full") =>
+    call<Refund>(
+      "POST",
+      `/v2/payments/captures/${id}/refund`,
+      {
+        ...(amount ? { amount } : {}),
+        ...(note ? { note_to_payer: note.slice(0, 255) } : {}),
+      },
+      `undo-refund-${id}-${key}`,
+    ),
 };
 
 export type Dispute = {

@@ -109,6 +109,9 @@ export type Order = {
   purchase_units?: { payments?: { authorizations?: Authorization[]; captures?: Capture[] } }[];
 };
 
+/** Orders v2 items[].image_url pattern (an https URL ending in an image extension, max 2048 chars). */
+const PAYPAL_IMAGE_URL = /^https:\/\/[^\s?#]{1,2030}\.(?:jpe?g|gif|png)$/i;
+
 export const paypal = {
   createAuthorizeOrder(amount: Money, description: string, returnUrl: string, cancelUrl: string) {
     return call<Order>("POST", "/v2/checkout/orders", {
@@ -126,8 +129,65 @@ export const paypal = {
       },
     });
   },
+  /**
+   * The agent's checkout: one line item, AUTHORIZE intent (money is held, not taken, until the undo window
+   * closes). custom_id ties the PayPal order back to the Undo order; the request id makes retries safe.
+   */
+  createAgentOrder(o: {
+    undoOrderId: string;
+    item: { name: string; sku: string; quantity: number; unitPrice: string; currency: string; url?: string; imageUrl?: string };
+    returnUrl: string;
+    cancelUrl: string;
+  }) {
+    const { item } = o;
+    const total = (Number(item.unitPrice) * item.quantity).toFixed(2);
+    return call<Order>(
+      "POST",
+      "/v2/checkout/orders",
+      {
+        intent: "AUTHORIZE",
+        purchase_units: [
+          {
+            reference_id: o.undoOrderId,
+            custom_id: o.undoOrderId,
+            description: `Undo agent purchase · ${item.name}`.slice(0, 127),
+            amount: {
+              currency_code: item.currency,
+              value: total,
+              breakdown: { item_total: { currency_code: item.currency, value: total } },
+            },
+            items: [
+              {
+                name: item.name.slice(0, 127),
+                sku: item.sku.slice(0, 127),
+                quantity: String(item.quantity),
+                unit_amount: { currency_code: item.currency, value: item.unitPrice },
+                category: "PHYSICAL_GOODS",
+                ...(item.url?.startsWith("https://") ? { url: item.url.slice(0, 2048) } : {}),
+                // PayPal only accepts image URLs ending in an image extension; CDN links without one are rejected.
+                ...(item.imageUrl && PAYPAL_IMAGE_URL.test(item.imageUrl) ? { image_url: item.imageUrl } : {}),
+              },
+            ],
+          },
+        ],
+        payment_source: {
+          paypal: {
+            experience_context: {
+              brand_name: "Undo Demo Store",
+              user_action: "CONTINUE",
+              shipping_preference: "NO_SHIPPING",
+              return_url: o.returnUrl,
+              cancel_url: o.cancelUrl,
+            },
+          },
+        },
+      },
+      `undo-order-${o.undoOrderId}`,
+    );
+  },
   getOrder: (id: string) => call<Order>("GET", `/v2/checkout/orders/${id}`),
-  authorizeOrder: (id: string) => call<Order>("POST", `/v2/checkout/orders/${id}/authorize`, {}),
+  /** Same request id for the same order, so a double-hit return URL can't authorize twice. */
+  authorizeOrder: (id: string) => call<Order>("POST", `/v2/checkout/orders/${id}/authorize`, {}, `undo-authorize-${id}`),
   getAuthorization: (id: string) => call<Authorization>("GET", `/v2/payments/authorizations/${id}`),
   voidAuthorization: (id: string) => call<Authorization>("POST", `/v2/payments/authorizations/${id}/void`),
   captureAuthorization: (id: string) =>

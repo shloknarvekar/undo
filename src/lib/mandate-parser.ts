@@ -3,13 +3,9 @@
  * The draft is only a proposal: the shopper reviews it (answering any mustAsk questions) before signing,
  * and the server re-validates everything when the signed mandate comes back.
  */
-import { google } from "@ai-sdk/google";
 import { generateText, Output } from "ai";
+import { AiUnavailable, aiModel } from "./ai";
 import { IntentDraft } from "./mandate";
-
-// A "-latest" alias survives model retirements (gemini-2.5-flash is closed to new keys). Lite = fastest and
-// the most generous free-tier quota; override with GEMINI_MODEL if a heavier model is needed.
-const MODEL = process.env.GEMINI_MODEL ?? "gemini-flash-lite-latest";
 
 const INSTRUCTIONS = `You turn a shopper's request into a purchase mandate for an AI shopping agent.
 Rules:
@@ -20,12 +16,12 @@ Rules:
 - mustAsk: questions the agent must ask before buying when something essential is missing or ambiguous (for shoes and clothing, a missing size). Empty when nothing is missing.
 - currency defaults to USD unless the shopper states another.`;
 
-export class ParseError extends Error {}
+/** Raised when the AI isn't configured; the draft route turns it into a 503. */
+export const ParseError = AiUnavailable;
 
 export async function parseRequest(request: string): Promise<IntentDraft> {
-  if (!process.env.GOOGLE_GENERATIVE_AI_API_KEY) throw new ParseError("GOOGLE_GENERATIVE_AI_API_KEY missing in .env");
   const { output } = await generateText({
-    model: google(MODEL),
+    model: aiModel(),
     system: INSTRUCTIONS,
     prompt: request,
     output: Output.object({ schema: IntentDraft, name: "intent_mandate" }),

@@ -7,6 +7,7 @@
  */
 import { randomUUID } from "node:crypto";
 import { z } from "zod";
+import { containsToken } from "./agent-core";
 import { canonicalJson, sha256Hex, verifySignature } from "./crypto";
 import type { StoreProduct } from "./channel3";
 
@@ -128,7 +129,8 @@ export function checkCart(m: IntentMandate, product: StoreProduct, quantity = 1,
   for (const [k, vals] of Object.entries(product.attributes)) if (!stated[norm(k)] && vals[0]) stated[norm(k)] = vals[0];
   for (const [key, wanted] of Object.entries(intent.attributes)) {
     const actual = stated[norm(key)];
-    if (actual !== undefined && norm(actual) !== norm(wanted)) v.push({ rule: `attribute:${norm(key)}`, expected: wanted, actual });
+    // Certain mismatches only: "Black/Black" satisfies "black"; "10.5" does not satisfy "10".
+    if (actual !== undefined && !containsToken(actual, wanted)) v.push({ rule: `attribute:${norm(key)}`, expected: wanted, actual });
   }
   return v;
 }

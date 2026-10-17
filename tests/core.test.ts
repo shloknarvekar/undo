@@ -86,4 +86,7 @@ test("checkCart flags price, quantity and attribute violations only", () => {
   assert.deepEqual(bad.map((v) => v.rule).sort(), ["attribute:size", "max_price", "quantity"]);
   // Unknown attribute values are not violations (left to the fuzzy layer).
   assert.deepEqual(checkCart(m, product({ variant: {} })), []);
+  // A colorway that contains the wanted color is not a violation; a different size is.
+  assert.deepEqual(checkCart(m, product({ variant: { Size: "10", Color: "Black/Black" } })), []);
+  assert.deepEqual(checkCart(m, product({ variant: { Size: "10.5", Color: "Black" } })).map((v) => v.rule), ["attribute:size"]);
 });

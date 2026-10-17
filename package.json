@@ -11,11 +11,19 @@
     "spike:disputes": "tsx scripts/spike-disputes.ts",
     "spike:channel3": "tsx scripts/spike-channel3.ts",
     "spike:dispute-create": "tsx scripts/spike-dispute-create.ts",
-    "spike:webhooks": "tsx scripts/spike-webhooks.ts"
+    "spike:webhooks": "tsx scripts/spike-webhooks.ts",
+    "test": "tsx --test tests/*.test.ts",
+    "db:generate": "drizzle-kit generate",
+    "db:migrate": "drizzle-kit migrate",
+    "spike:mandate": "tsx scripts/spike-mandate.ts"
   },
   "dependencies": {
+    "@ai-sdk/google": "^4.0.99",
     "@channel3/sdk": "^4.2.0",
+    "@neondatabase/serverless": "^1.2.0",
+    "ai": "^7.0.143",
     "dotenv": "^18.0.8",
+    "drizzle-orm": "^0.45.4",
     "next": "16.4.2",
     "react": "19.3.0",
     "react-dom": "19.3.0",
@@ -26,6 +34,7 @@
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",
+    "drizzle-kit": "^0.31.11",
     "eslint": "^9",
     "eslint-config-next": "16.4.2",
     "tailwindcss": "^4",

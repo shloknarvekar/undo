@@ -5,6 +5,7 @@ import { AgGridReact } from "ag-grid-react";
 import { AlertTriangle, ExternalLink, FastForward, Loader2, PackageCheck, RefreshCw, Search, ShieldCheck, X } from "lucide-react";
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { EVENT_LABEL } from "./order-app";
 import { useFocusTrap } from "./use-focus-trap";
 import { Badge, Container, PillButton, StatusBadge, VERDICT, VerdictBadge, cx, money, shortHash } from "./ui";
 
@@ -38,20 +39,20 @@ type Detail = {
   chain: { intact: boolean; events: { seq: number; type: string; hash: string }[] };
 };
 
-/** AG Grid themed to the Undo tokens: DM Sans, ink text, Rewind hover/selection, 30px card radius. */
+/** AG Grid themed from the Undo tokens (globals.css @theme): DM Sans, ink text, Rewind Mist hover, 30px radius. */
 const gridTheme = themeQuartz.withParams({
   fontFamily: "var(--font-dm-sans), ui-sans-serif, system-ui",
   fontSize: 14,
   headerFontSize: 13,
   headerFontWeight: 500,
-  foregroundColor: "#000000",
-  backgroundColor: "#ffffff",
-  headerBackgroundColor: "#ffffff",
-  headerTextColor: "#4a4f5c",
-  borderColor: "rgba(0,0,0,0.08)",
-  rowHoverColor: "#eefbc9",
-  selectedRowBackgroundColor: "#eefbc9",
-  accentColor: "#0a1238",
+  foregroundColor: "var(--color-ink)",
+  backgroundColor: "var(--color-paper)",
+  headerBackgroundColor: "var(--color-paper)",
+  headerTextColor: "var(--color-muted)",
+  borderColor: "color-mix(in srgb, var(--color-ink) 8%, transparent)",
+  rowHoverColor: "var(--color-mist)",
+  selectedRowBackgroundColor: "var(--color-mist)",
+  accentColor: "var(--color-deep)",
   wrapperBorderRadius: 30,
   wrapperBorder: false,
   rowHeight: 64,
@@ -108,8 +109,14 @@ export function MerchantConsole() {
 
   useEffect(() => {
     void load();
-    const t = setInterval(load, 15000);
-    return () => clearInterval(t);
+    // Poll only while the tab is visible; catch up as soon as it comes back.
+    const t = setInterval(() => document.visibilityState === "visible" && load(), 15000);
+    const onVisible = () => document.visibilityState === "visible" && load();
+    document.addEventListener("visibilitychange", onVisible);
+    return () => {
+      clearInterval(t);
+      document.removeEventListener("visibilitychange", onVisible);
+    };
   }, [load]);
 
   const columns = useMemo<ColDef<Row>[]>(
@@ -209,7 +216,7 @@ export function MerchantConsole() {
               value={query}
               onChange={(e) => setQuery(e.target.value)}
               placeholder="Search product, mandate, status…"
-              className="min-h-11 w-full rounded-full border border-ink/20 bg-paper pl-11 pr-5 text-body outline-none focus:border-ink"
+              className="field-focus min-h-11 w-full rounded-full border border-ink/20 bg-paper pl-11 pr-5 text-body"
             />
           </label>
         </div>
@@ -227,15 +234,22 @@ export function MerchantConsole() {
                 getRowId={(p) => p.data.id}
                 rowSelection={{ mode: "singleRow", checkboxes: false, enableClickSelection: true }}
                 onRowClicked={(e) => e.data && setSelected(e.data)}
+                // Keyboard: arrow keys move between cells, Enter or Space opens the order.
+                onCellKeyDown={(e) => {
+                  const ev = e.event as KeyboardEvent | null | undefined;
+                  if (e.data && ev && (ev.key === "Enter" || ev.key === " ")) {
+                    ev.preventDefault();
+                    setSelected(e.data);
+                  }
+                }}
                 pagination={visible.length > 50}
                 paginationPageSize={50}
                 overlayNoRowsTemplate="<span style='padding:24px'>No agent orders here yet.</span>"
-                suppressCellFocus
               />
             </div>
           )}
         </div>
-        <p className="mt-3 text-body-sm text-muted">Click an order to see the evidence and act on it. Updates every 15 seconds.</p>
+        <p className="mt-3 text-body-sm text-muted">Click an order, or press Enter on it, to see the evidence and act. Updates every 15 seconds.</p>
       </Container>
 
       {selected && <OrderDrawer row={selected} onClose={() => setSelected(null)} onChanged={load} />}
@@ -343,7 +357,7 @@ function OrderDrawer({ row, onClose, onChanged }: { row: Row; onClose: () => voi
             <ol className="mt-4 space-y-2 font-mono text-caption">
               {detail.chain.events.map((e) => (
                 <li key={e.seq} className="flex justify-between gap-3 border-b border-ink/10 pb-2">
-                  <span>{e.seq}. {e.type}</span>
+                  <span className="font-sans text-body-sm">{e.seq}. {EVENT_LABEL[e.type] ?? e.type}</span>
                   <span className="text-muted">{shortHash(e.hash, 10)}</span>
                 </li>
               ))}

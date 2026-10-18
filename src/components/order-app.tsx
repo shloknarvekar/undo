@@ -29,7 +29,7 @@ type OrderData = {
   chain: { intact: boolean; events: { seq: number; type: string; createdAt: string; hash: string }[] };
 };
 
-const EVENT_LABEL: Record<string, string> = {
+export const EVENT_LABEL: Record<string, string> = {
   MANDATE_SIGNED: "Mandate signed on your device",
   CART_PROPOSED: "Agent proposed a cart",
   CHECKOUT_CREATED: "PayPal checkout created (authorize only)",
@@ -201,6 +201,7 @@ export function OrderApp() {
             <StatusBadge status={order.status} />
             {isOpen ? (
               <>
+                <h1 className="sr-only">Purchase held: undo window open</h1>
                 <p className="mt-6 display-type text-[64px] leading-none tabular sm:text-display" role="timer" aria-label={`${countdown.spoken} left to undo for free`}>
                   {countdown.text}
                 </p>
@@ -325,7 +326,7 @@ export function OrderApp() {
               value={reason}
               onChange={(e) => setReason(e.target.value)}
               placeholder="e.g. Wrong colour — I asked for black."
-              className="mt-2 w-full resize-none rounded-[20px] border border-ink/25 p-4 text-body outline-none focus:border-ink"
+              className="field-focus mt-2 w-full resize-none rounded-[20px] border border-ink/25 p-4 text-body"
               autoFocus
             />
             <div className="mt-4">
@@ -349,7 +350,7 @@ export function OrderApp() {
                   <button type="button" className="min-h-11 cursor-pointer px-3 text-body-sm underline" onClick={() => setPhoto(null)}>Remove</button>
                 </div>
               ) : (
-                <label htmlFor="photo" className="inline-flex min-h-11 cursor-pointer items-center gap-2 rounded-full border border-ink/25 px-5 text-body-sm hover:border-ink">
+                <label htmlFor="photo" className="inline-flex min-h-11 cursor-pointer items-center gap-2 rounded-full border border-ink/25 px-5 text-body-sm transition-colors hover:border-ink has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-offset-2 has-[:focus-visible]:outline-ink">
                   <Camera className="size-4" aria-hidden /> Add a photo of what arrived (optional)
                 </label>
               )}

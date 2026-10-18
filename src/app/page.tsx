@@ -2,8 +2,7 @@ import { ArrowRight, Hourglass } from "lucide-react";
 import type { ReactNode } from "react";
 import { HeadlineCycle } from "@/components/headline-cycle";
 import { HeroToggle } from "@/components/hero-toggle";
-import { CountdownChip, Reveal } from "@/components/motion";
-import { Boxes } from "@/components/ui/background-boxes";
+import { CountdownChip, CtrlZBand, HeroGrid, Reveal } from "@/components/motion";
 import { SiteNav } from "@/components/site-nav";
 import { Container, PillLink, SiteFooter } from "@/components/ui";
 
@@ -45,7 +44,7 @@ export default function Home() {
       <main className="flex-1">
         {/* Deep field — the promise, over a grid of cells that light up in Rewind tints under the cursor */}
         <section className="on-deep relative overflow-hidden bg-deep text-paper">
-          <Boxes rows={64} cols={48} colors={HERO_TINTS} lineClassName="border-paper/[0.16] text-paper/25" />
+          <HeroGrid colors={HERO_TINTS} lineColor="rgb(255 255 255 / 0.16)" />
           {/* Fades the grid toward the edges so the centre reads first */}
           <div aria-hidden className="pointer-events-none absolute inset-0 z-10 bg-deep [mask-image:radial-gradient(transparent_35%,white)]" />
           {/* The wrapper lets pointer events through to the grid; only the controls take them back */}
@@ -163,20 +162,8 @@ export default function Home() {
           </Container>
         </section>
 
-        {/* Full-bleed band — type as the image, running left to right on a loop (two copies make it seamless) */}
-        <section aria-label="Ctrl+Z for money" className="overflow-hidden bg-deep">
-          <div aria-hidden className="marquee-ltr flex w-max select-none py-4">
-            {[0, 1].map((copy) => (
-              <p key={copy} className="display-type flex shrink-0 items-center whitespace-nowrap text-[31vw] leading-[0.8] text-field">
-                {[0, 1].map((k) => (
-                  <span key={k} className="flex items-center">
-                    CTRL+Z<span className="mx-[6vw] inline-block size-[5vw] rounded-full bg-field" />
-                  </span>
-                ))}
-              </p>
-            ))}
-          </div>
-        </section>
+        {/* Full-bleed band — type as the image, running right to left on a loop */}
+        <CtrlZBand />
 
         {/* Mist — merchants: the one elevated surface compares the same mistake with and without Undo */}
         <section id="merchants" aria-labelledby="merchants-title" className="bg-mist">

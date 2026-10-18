@@ -87,6 +87,11 @@
   textarea {
     caret-color: var(--color-ink);
   }
+  /* Browser default placeholder grey is 3.9:1; muted ink passes AA and stays visibly secondary. */
+  ::placeholder {
+    color: var(--color-muted);
+    opacity: 1;
+  }
   input[type="checkbox"] {
     accent-color: var(--color-ink);
   }
@@ -112,6 +117,16 @@
   }
 }
 
+/* Text fields: a thick ink ring on focus, not just a 1px border tint. */
+@utility field-focus {
+  outline: none;
+  transition: box-shadow 160ms ease-out, border-color 160ms ease-out;
+  &:focus {
+    border-color: var(--color-ink);
+    box-shadow: 0 0 0 2px var(--color-paper), 0 0 0 4px var(--color-ink);
+  }
+}
+
 @utility display-type {
   font-family: var(--font-display);
   font-weight: 900;
@@ -129,7 +144,7 @@
 }
 
 /* ── Motion ─────────────────────────────────────────────────────────────────────────────────────
- * Focal moment: the CTRL+Z band runs left to right on a loop, the hero grid lights up under the cursor.
+ * Focal moment: the CTRL+Z band runs right to left on a loop, the hero grid lights up under the cursor.
  * Supporting: the hero headline is stamped in once; the how-it-works track fills as you scroll
  * through the steps; the verdict card's evidence lines arrive one by one as the engine "checks".
  * Everything is visible by default: animations only run where supported and when scripts mark them.
@@ -154,13 +169,13 @@
     transform: none;
   }
 }
-/* Marquee: the track holds two identical copies; shifting from -50% to 0 moves it left to right seamlessly. */
-@keyframes undo-marquee-ltr {
+/* Marquee: the track holds two identical copies; shifting from 0 to -50% moves it right to left seamlessly. */
+@keyframes undo-marquee {
   from {
-    transform: translateX(-50%);
+    transform: translateX(0);
   }
   to {
-    transform: translateX(0);
+    transform: translateX(-50%);
   }
 }
 @keyframes undo-track {
@@ -176,8 +191,8 @@
   .stamp-in {
     animation: undo-stamp 760ms cubic-bezier(0.16, 1, 0.3, 1) 80ms both;
   }
-  .marquee-ltr {
-    animation: undo-marquee-ltr 28s linear infinite;
+  .marquee {
+    animation: undo-marquee 28s linear infinite;
     will-change: transform;
   }
   /* Scroll-linked pieces: plain static layout where scroll timelines aren't supported. */
@@ -205,7 +220,7 @@
     scroll-behavior: auto;
   }
   .stamp-in,
-  .marquee-ltr,
+  .marquee,
   .track-fill {
     animation: none !important;
     transform: none !important;

@@ -6,7 +6,7 @@ import { evaluateProduct, searchWithinMandate } from "@/lib/agent";
 import { undoWindow } from "@/lib/agent-core";
 import { CheckoutFailed, openCheckout, openOrderFor } from "@/lib/checkout";
 import { appendEvent } from "@/lib/events";
-import type { AgentRef, IntentMandate } from "@/lib/mandate";
+import { agentMayUse, type AgentRef, type IntentMandate } from "@/lib/mandate";
 import { parseRequest } from "@/lib/mandate-parser";
 import { createMandateRequest, loadMandate, loadMandateRequest, loadOrder, publicBaseUrl } from "@/lib/store";
 
@@ -50,11 +50,8 @@ async function mandateFor(mandateId: string, caller: AgentRef): Promise<{ mandat
   const loaded = await loadMandate(mandateId);
   if (!loaded) return { error: "No signed mandate with that id (or its signature no longer verifies)." };
   if (loaded.status !== "ACTIVE") return { error: `This mandate is ${loaded.status.toLowerCase()}.` };
-  const named = loaded.mandate.agent;
-  if (!named) return { error: "This mandate was signed for Undo's own web agent, not for outside agents." };
-  if (named.verified && (!caller.verified || caller.name !== named.name)) {
-    return { error: `This mandate authorizes ${named.name} only. Connect with that operator's key.` };
-  }
+  const may = agentMayUse(loaded.mandate, caller);
+  if (!may.ok) return { error: may.reason };
   return { mandate: loaded.mandate };
 }
 

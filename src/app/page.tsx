@@ -110,9 +110,14 @@ export default function Home() {
                 Undo checks the signed mandate against what was bought and what arrived, then routes the money through the
                 matching PayPal rail. It doesn&apos;t take anyone&apos;s word for it: not the shopper&apos;s, not the agent&apos;s.
               </p>
-              <PillLink href="/shop" tone="white">
-                See it decide <ArrowRight className="arrow size-4" aria-hidden />
-              </PillLink>
+              <div className="flex flex-wrap gap-3">
+                <PillLink href="/shop" tone="white">
+                  See it decide <ArrowRight className="arrow size-4" aria-hidden />
+                </PillLink>
+                <PillLink href="/rogue" tone="field">
+                  Watch 8 agents try to break a mandate
+                </PillLink>
+              </div>
             </div>
 
             {/* A real verdict from the live sandbox run; evidence lines arrive one by one like the engine's checks */}

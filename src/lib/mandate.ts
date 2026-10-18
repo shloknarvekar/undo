@@ -89,6 +89,19 @@ export function signingMessage(m: IntentMandate): string {
   return `undo-intent-mandate-v${m.version}:${mandateDigest(m)}`;
 }
 
+/**
+ * Whether an agent may act on a mandate. A mandate signed for a registered (verified) agent can only be used by that
+ * same registered agent; one signed for an unregistered name is a bearer mandate; one with no agent at all was signed
+ * for Undo's own web agent and isn't open to outside agents.
+ */
+export function agentMayUse(m: IntentMandate, caller: AgentRef): { ok: true } | { ok: false; reason: string } {
+  if (!m.agent) return { ok: false, reason: "This mandate was signed for Undo's own web agent, not for outside agents." };
+  if (m.agent.verified && (!caller.verified || caller.name !== m.agent.name)) {
+    return { ok: false, reason: `This mandate authorizes ${m.agent.name} only. Connect with that operator's key.` };
+  }
+  return { ok: true };
+}
+
 export type MandateCheck = { ok: true; digest: string } | { ok: false; reason: string };
 
 export function verifyMandate(m: IntentMandate, signature: string, now = new Date()): MandateCheck {

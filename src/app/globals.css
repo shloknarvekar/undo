@@ -283,6 +283,11 @@
     animation: undo-rise 520ms cubic-bezier(0.16, 1, 0.3, 1) both;
     animation-delay: calc(var(--i, 0) * 110ms);
   }
+  /* Rogue agents: verdicts land one after another, like the guard working down the list. */
+  .rogue-row {
+    animation: undo-rise 480ms cubic-bezier(0.16, 1, 0.3, 1) both;
+    animation-delay: calc(var(--i, 0) * 90ms);
+  }
 }
 
 /* Reduced motion: drop spatial movement, keep state and colour feedback (band sweeps, fills, spinners). */
@@ -295,7 +300,8 @@
   .track-fill,
   .section-lead,
   .section-flow,
-  .section-flow > * {
+  .section-flow > *,
+  .rogue-row {
     animation: none !important;
     transform: none !important;
     clip-path: none !important;

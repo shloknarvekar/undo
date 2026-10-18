@@ -66,6 +66,7 @@ export function SiteFooter() {
           <p className="mb-1 font-medium text-ink">Product</p>
           <FooterLink href="/shop">Shopper demo</FooterLink>
           <FooterLink href="/merchant">Merchant console</FooterLink>
+          <FooterLink href="/rogue">Rogue agents</FooterLink>
           <FooterLink href="/#how">How it works</FooterLink>
         </div>
         <div className="space-y-2">

@@ -196,6 +196,30 @@
     transform: translateX(-50%);
   }
 }
+@keyframes undo-section-in {
+  from {
+    border-radius: 48px 48px 0 0;
+  }
+  to {
+    border-radius: 0;
+  }
+}
+@keyframes undo-section-out {
+  to {
+    transform: scale(0.92);
+    border-radius: 48px;
+  }
+}
+@keyframes undo-content-rise {
+  from {
+    opacity: 0.15;
+    transform: translateY(72px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
 @keyframes undo-track {
   from {
     transform: scaleX(0);
@@ -215,6 +239,35 @@
   }
   /* Scroll-linked pieces: plain static layout where scroll timelines aren't supported. */
   @supports (animation-timeline: view()) {
+    /*
+     * Section hand-off, driven by scroll position: the section you're leaving recedes (shrinks from its bottom edge,
+     * corners round) onto the dark stage behind <main>, while the next colour field arrives with rounded top corners
+     * that flatten and content that rises into place. The hero only recedes; it is already on screen at load.
+     */
+    .section-lead,
+    .section-flow {
+      transform-origin: 50% 100%;
+    }
+    .section-lead {
+      animation: undo-section-out linear both;
+      animation-timeline: view();
+      animation-range: exit 0% exit 100%;
+    }
+    .section-flow {
+      animation:
+        undo-section-in linear both,
+        undo-section-out linear both;
+      animation-timeline: view(), view();
+      animation-range:
+        entry 0% entry 100%,
+        exit 0% exit 100%;
+    }
+    /* The marquee track keeps its own animation, so it is left out of the content rise. */
+    .section-flow > :not(.marquee) {
+      animation: undo-content-rise linear both;
+      animation-timeline: view();
+      animation-range: entry 0% entry 60%;
+    }
     .track-fill {
       transform-origin: left center;
       animation: undo-track linear both;
@@ -239,7 +292,10 @@
   }
   .stamp-in,
   .marquee,
-  .track-fill {
+  .track-fill,
+  .section-lead,
+  .section-flow,
+  .section-flow > * {
     animation: none !important;
     transform: none !important;
     clip-path: none !important;

@@ -41,9 +41,10 @@ export default function Home() {
   return (
     <>
       <SiteNav current="home" />
-      <main className="flex-1">
+      {/* The dark stage behind every section: what a receding section is set down onto (see .section-flow) */}
+      <main className="flex-1 bg-ink">
         {/* Deep field — the promise, over a grid of cells that light up in Rewind tints under the cursor */}
-        <section className="on-deep relative overflow-hidden bg-deep text-paper">
+        <section className="section-lead on-deep relative overflow-hidden bg-deep text-paper">
           {/* The grid fills the right ~60% of the hero; its edge is an invisible diagonal that fades out (globals.css). */}
           <div aria-hidden className="hero-slash absolute inset-0 z-0">
             <HeroGrid colors={HERO_TINTS} lineColor="rgb(255 255 255 / 0.16)" className="hero-grid-pos" />
@@ -77,7 +78,7 @@ export default function Home() {
         </section>
 
         {/* White — why now, as an argument rather than a stat grid */}
-        <section aria-labelledby="why">
+        <section aria-labelledby="why" className="section-flow bg-paper">
           <Container className="grid gap-10 py-20 sm:py-28 lg:grid-cols-[1fr_1.2fr] lg:gap-20">
             <h2 id="why" className="heading-type text-heading sm:text-[46px] sm:leading-[1.1]">
               Agents can already buy. Nobody built how they <span className="bg-field px-1">undo</span>.
@@ -97,7 +98,7 @@ export default function Home() {
         </section>
 
         {/* Deep field — the four outcomes */}
-        <section className="on-deep bg-deep text-paper">
+        <section className="section-flow on-deep bg-deep text-paper">
           <Container className="grid items-center gap-14 py-20 sm:py-28 lg:grid-cols-2">
             <div className="space-y-8">
               <HeadlineCycle
@@ -137,7 +138,7 @@ export default function Home() {
         </section>
 
         {/* White — how it works: a sequence, so a stepper whose track fills as you scroll through it */}
-        <section id="how" aria-labelledby="how-title">
+        <section id="how" aria-labelledby="how-title" className="section-flow bg-paper">
           <Container className="py-20 sm:py-28">
             <div className="flex flex-col justify-between gap-6 md:flex-row md:items-end">
               <h2 id="how-title" className="display-type text-[48px] leading-none sm:text-heading-lg">How it works</h2>
@@ -167,7 +168,7 @@ export default function Home() {
         <CtrlZBand />
 
         {/* Mist — merchants: the one elevated surface compares the same mistake with and without Undo */}
-        <section id="merchants" aria-labelledby="merchants-title" className="bg-mist">
+        <section id="merchants" aria-labelledby="merchants-title" className="section-flow bg-mist">
           <Container className="grid items-center gap-14 py-20 sm:py-28 lg:grid-cols-[1fr_1.1fr]">
             <div className="space-y-6">
               <h2 id="merchants-title" className="display-type text-[48px] leading-none sm:text-heading-lg">
@@ -204,7 +205,7 @@ export default function Home() {
         </section>
 
         {/* Hot field — close */}
-        <section className="bg-field">
+        <section className="section-flow bg-field">
           <Container className="flex flex-col items-start justify-between gap-8 py-16 sm:py-20 md:flex-row md:items-center">
             <p className="display-type text-[48px] leading-none sm:text-heading-lg">Undo doesn&apos;t believe anyone.<br />It checks.</p>
             <PillLink href="/shop" tone="ink" className="shrink-0">

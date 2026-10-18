@@ -98,7 +98,7 @@ export function HeroGrid({ colors, lineColor, className }: { colors: string[]; l
 export function CtrlZBand() {
   const [paused, setPaused] = useState(false);
   return (
-    <section aria-label="Ctrl+Z for money" className="relative overflow-hidden bg-deep">
+    <section aria-label="Ctrl+Z for money" className="section-flow relative overflow-hidden bg-deep">
       <div aria-hidden className={`marquee flex w-max select-none py-4 ${paused ? "[animation-play-state:paused]" : ""}`}>
         {[0, 1].map((copy) => (
           <p key={copy} className="display-type flex shrink-0 items-center whitespace-nowrap text-[31vw] leading-[0.8] text-field">

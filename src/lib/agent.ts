@@ -11,7 +11,7 @@
 import { generateText, Output } from "ai";
 import { z } from "zod";
 import { aiModel } from "./ai";
-import { matchVariant, neighbouringVariant, withTextEvidence, type VariantMatch } from "./agent-core";
+import { containsToken, matchVariant, neighbouringVariant, withTextEvidence, type VariantMatch } from "./agent-core";
 import { colorFilter, getProduct, relaxedOptions, resolveCategory, searchProducts, toStoreProduct, type StoreProduct } from "./channel3";
 import { checkCart, mandateToSearch, type IntentMandate, type Violation } from "./mandate";
 
@@ -46,8 +46,8 @@ export class NoCompliantProduct extends Error {
   }
 }
 
-async function search(mandate: IntentMandate) {
-  const s = mandateToSearch(mandate);
+async function search(mandate: IntentMandate, query?: string) {
+  const s = { ...mandateToSearch(mandate), ...(query ? { query } : {}) };
   const slug = s.category ? await resolveCategory(s.category) : null;
   const base = { price: { max_price: s.maxPrice }, ...(s.gender ? { gender: s.gender } : {}) };
   // Strictest first; color filters are fuzzy and categories can be narrow, so relax them in turn.
@@ -65,9 +65,15 @@ async function search(mandate: IntentMandate) {
   return { results: [], searches };
 }
 
-async function evaluate(mandate: IntentMandate, p: StoreProduct, pick?: (m: VariantMatch) => Record<string, string> | null): Promise<Candidate | null> {
+async function evaluate(
+  mandate: IntentMandate,
+  p: StoreProduct,
+  pick?: (m: VariantMatch) => Record<string, string> | null,
+  /** An outside agent named the variant itself: check what it picked even if the mandate's variant isn't offered. */
+  agentPicked = false,
+): Promise<Candidate | null> {
   const match = matchVariant(mandate.intent.attributes, p.variantOptions);
-  if (match.missing.length) return null; // the listing can't be had in the requested size/color at all
+  if (match.missing.length && !agentPicked) return null; // the listing can't be had in the requested size/color at all
   const requested = pick ? pick(match) : match.requested;
   if (!requested) return null;
   const detail = await getProduct(p.channel3Id, Object.keys(requested).length ? requested : undefined).catch(() => null);
@@ -129,6 +135,51 @@ async function choose(mandate: IntentMandate, candidates: Candidate[]) {
       model: null,
     };
   }
+}
+
+/**
+ * For outside agents (MCP): search the catalog, but only inside the mandate's hard limits (price ceiling,
+ * colour, category, gender). The agent may phrase its own query; it can't widen the filters.
+ */
+export async function searchWithinMandate(mandate: IntentMandate, query?: string, limit = 8) {
+  const { results } = await search(mandate, query);
+  return results
+    .map(toStoreProduct)
+    .filter((p): p is StoreProduct => p !== null)
+    .slice(0, limit);
+}
+
+/**
+ * For outside agents (MCP): run Undo's guard on one specific product. Fetches it fresh, resolved to the variant the
+ * agent asked for (or, if it named none, the variant the mandate requires), then checks it against the mandate.
+ * Returns null when the listing can't be had in the requested variant at all.
+ */
+export async function evaluateProduct(mandate: IntentMandate, productId: string, options?: Record<string, string>): Promise<Candidate | null> {
+  const listing = await getProduct(productId).catch(() => null);
+  const p = listing && toStoreProduct(listing);
+  if (!p) return null;
+  if (!options || !Object.keys(options).length) return evaluate(mandate, p);
+
+  // What the agent explicitly chose is checked against the mandate on its own: "3XS" when the shopper signed "M"
+  // is a violation even if this retailer can't resolve sizes at all.
+  const wanted = Object.fromEntries(Object.entries(mandate.intent.attributes).map(([k, v]) => [k.toLowerCase(), v]));
+  const conflicts: Violation[] = Object.entries(options)
+    .filter(([k, v]) => wanted[k.toLowerCase()] !== undefined && !containsToken(v, wanted[k.toLowerCase()]))
+    .map(([k, v]) => ({ rule: `attribute:${k.toLowerCase()}`, expected: wanted[k.toLowerCase()], actual: `${v} (agent's choice)` }));
+
+  // Only ask the retailer for dimensions it can resolve; the rest stay with the mandate and count as unverified.
+  const resolvable = new Map(p.variantOptions.filter((o) => o.values.length).map((o) => [o.name.toLowerCase(), o.name]));
+  const c = await evaluate(mandate, p, (m) => {
+    const chosen = { ...m.requested };
+    for (const [k, v] of Object.entries(options)) {
+      const name = resolvable.get(k.toLowerCase());
+      if (name) chosen[name] = v;
+    }
+    return chosen;
+  }, true);
+  if (!c) return null;
+  const violations = [...conflicts, ...c.violations];
+  return { ...c, violations, ok: violations.length === 0 && c.relaxed.length === 0 };
 }
 
 export async function runAgent(mandate: IntentMandate, opts: { simulate?: Simulation } = {}): Promise<AgentDecision> {

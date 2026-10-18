@@ -1,8 +1,7 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
-import { getDb, schema } from "@/db";
-import { appendEvent } from "@/lib/events";
-import { IntentMandate, verifyMandate } from "@/lib/mandate";
+import { IntentMandate } from "@/lib/mandate";
+import { storeSignedMandate } from "@/lib/store";
 
 /**
  * POST /api/mandates { mandate, signature } → stores a shopper-signed mandate.
@@ -16,23 +15,7 @@ export async function POST(req: Request) {
   if (!parsed.success) return NextResponse.json({ error: "invalid_request", issues: parsed.error.issues }, { status: 400 });
   const { mandate, signature } = parsed.data;
 
-  const check = verifyMandate(mandate, signature);
-  if (!check.ok) return NextResponse.json({ error: check.reason }, { status: 422 });
-
-  const inserted = await getDb()
-    .insert(schema.mandates)
-    .values({
-      id: mandate.id,
-      shopperKey: mandate.shopperKey,
-      mandate,
-      digest: check.digest,
-      signature,
-      expiresAt: new Date(mandate.expiresAt),
-    })
-    .onConflictDoNothing()
-    .returning({ id: schema.mandates.id });
-  if (!inserted.length) return NextResponse.json({ error: "mandate_exists" }, { status: 409 });
-
-  const event = await appendEvent(mandate.id, "MANDATE_SIGNED", { digest: check.digest, signature });
-  return NextResponse.json({ id: mandate.id, digest: check.digest, event: { seq: event.seq, hash: event.hash } }, { status: 201 });
+  const stored = await storeSignedMandate(mandate, signature);
+  if (!stored.ok) return NextResponse.json({ error: stored.error }, { status: stored.status });
+  return NextResponse.json({ id: mandate.id, digest: stored.digest, event: { seq: stored.event.seq, hash: stored.event.hash } }, { status: 201 });
 }

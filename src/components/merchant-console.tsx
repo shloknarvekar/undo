@@ -26,6 +26,9 @@ type Row = {
   agentConfidence: number | null;
   guardBypassed: boolean;
   simulated: string | null;
+  agentName: string;
+  agentVerified: boolean;
+  agentVia: string;
   verdict: string | null;
   verdictConfidence: number | null;
   liability: string | null;
@@ -129,6 +132,18 @@ export function MerchantConsole() {
         valueFormatter: (p) => new Date(p.value).toLocaleString([], { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" }),
       },
       { field: "product", headerName: "Agent order", flex: 2, minWidth: 260, cellRenderer: ProductCell },
+      {
+        field: "agentName",
+        headerName: "Agent",
+        width: 190,
+        cellRenderer: (p: ICellRendererParams<Row>) =>
+          p.data && (
+            <span className="flex h-full flex-col justify-center leading-tight">
+              <span className="truncate font-medium">{p.data.agentName}</span>
+              <span className="text-caption text-muted">{p.data.agentVia === "mcp" ? "via MCP" : "Undo web"} · {p.data.agentVerified ? "registered" : "unregistered"}</span>
+            </span>
+          ),
+      },
       {
         field: "amount",
         headerName: "Amount",
@@ -302,6 +317,7 @@ function OrderDrawer({ row, onClose, onChanged }: { row: Row; onClose: () => voi
         {row.request && <p className="mt-6 rounded-[20px] bg-bone p-4 text-body">Mandate: “{row.request}”</p>}
         <div className="mt-4 flex flex-wrap gap-2">
           {row.guardBypassed ? <Badge tone="bad" icon={<AlertTriangle className="size-3.5" aria-hidden />}>Agent skipped checks</Badge> : <Badge tone="ok" icon={<ShieldCheck className="size-3.5" aria-hidden />}>Agent passed checks</Badge>}
+          <Badge tone={row.agentVerified ? "neutral" : "warn"}>{row.agentName}{row.agentVia === "mcp" ? " via MCP" : ""}{row.agentVerified ? "" : " · unregistered"}</Badge>
           {row.agentConfidence != null && <Badge tone="neutral">Agent confidence {Math.round(row.agentConfidence * 100)}%</Badge>}
         </div>
 

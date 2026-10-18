@@ -68,6 +68,18 @@ test("signed mandate verifies; any change to it breaks the signature", () => {
   assert.deepEqual(verifyMandate(m, sig, later), { ok: false, reason: "created_at_out_of_range" });
 });
 
+test("a mandate can name the agent it authorizes; swapping the agent breaks the signature", () => {
+  const k = generateSigningKey();
+  const now = new Date();
+  const m = prepareMandate("black hoodie size M under $80", intent, k.publicKey, now, { name: "Claude", verified: false });
+  const sig = signMessage(k.privateKey, signingMessage(m));
+  assert.equal(verifyMandate(m, sig, now).ok, true);
+  assert.deepEqual(verifyMandate({ ...m, agent: { name: "Some Other Agent", verified: false } }, sig, now), { ok: false, reason: "bad_signature" });
+  // Mandates signed before the field existed carry no `agent` key at all, so their digest is unchanged.
+  const plain = prepareMandate("black hoodie size M under $80", intent, k.publicKey, now);
+  assert.equal("agent" in plain, false);
+});
+
 test("drafts with open questions or no budget can't become mandates", () => {
   const key = generateSigningKey().publicKey;
   assert.throws(() => prepareMandate("x", { ...intent, mustAsk: ["What size?"] }, key), /open_questions/);

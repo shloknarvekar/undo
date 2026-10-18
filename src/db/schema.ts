@@ -17,6 +17,21 @@ export const mandates = pgTable(
 );
 
 /**
+ * A mandate an outside agent asked for (via MCP) and the shopper hasn't signed yet. The agent gets a link;
+ * the shopper reviews the draft and signs on their own device, which turns this into a real mandate.
+ */
+export const mandateRequests = pgTable("mandate_requests", {
+  id: uuid("id").primaryKey(),
+  request: text("request").notNull(), // the shopper's words as the agent relayed them (+ answers)
+  draft: jsonb("draft").notNull(), // IntentDraft shown to the shopper
+  agent: jsonb("agent").notNull(), // AgentRef of the requesting agent
+  status: text("status", { enum: ["PENDING", "SIGNED", "EXPIRED"] }).notNull().default("PENDING"),
+  mandateId: uuid("mandate_id").references(() => mandates.id),
+  expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+/**
  * A purchase the agent made under a mandate. Money moves only through PayPal; this row tracks where it stands.
  * CHECKOUT_CREATED → (shopper approves in PayPal) → AUTHORIZED (undo window open) → CAPTURED | VOIDED → REFUNDED…
  */

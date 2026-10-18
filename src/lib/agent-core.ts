@@ -27,7 +27,8 @@ export function matchVariant(attributes: Record<string, string>, options: Varian
   const out: VariantMatch = { requested: {}, approximate: [], missing: [], unverifiable: [] };
   for (const [attribute, wanted] of Object.entries(attributes)) {
     const option = options.find((o) => norm(o.name) === norm(attribute)) ?? options.find((o) => norm(o.name).includes(norm(attribute)));
-    if (!option) {
+    // An option the catalog lists with no in-stock labels proves nothing either way: unverifiable, not missing.
+    if (!option || option.values.length === 0) {
       out.unverifiable.push(attribute);
       continue;
     }

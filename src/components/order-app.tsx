@@ -20,7 +20,7 @@ type OrderData = {
     amount: string;
     currency: string;
     product: { title: string; brand: string | null; variant: Record<string, string>; imageUrl: string | null; sourceDomain: string; price: number };
-    agent: { reasoning: string; guard?: { bypassed: boolean }; simulated?: string };
+    agent: { reasoning: string; guard?: { bypassed: boolean }; simulated?: string; operator?: { name: string; verified: boolean; via?: string } };
     paypal: { orderId: string | null; authorizationId: string | null; captureId: string | null };
     resolution: Resolution | null;
   };
@@ -246,6 +246,11 @@ export function OrderApp() {
                 <p className="mt-2 text-body text-muted">{[order.product.brand, variant, order.product.sourceDomain].filter(Boolean).join(" · ")}</p>
                 <p className="mt-3 font-mono text-subheading tabular">{money(order.amount, order.currency)}</p>
                 {order.agent.simulated && <Badge tone="warn" className="mt-3">Bought by the careless demo agent</Badge>}
+                {order.agent.operator?.via === "mcp" && (
+                  <Badge tone={order.agent.operator.verified ? "neutral" : "warn"} className="mt-3">
+                    Bought by {order.agent.operator.name} via MCP{order.agent.operator.verified ? "" : " (unregistered)"}
+                  </Badge>
+                )}
               </div>
             </div>
             {mandate && (

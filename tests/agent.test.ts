@@ -15,6 +15,13 @@ test("matchVariant: exact, loose, missing and unverifiable attributes", () => {
   assert.deepEqual(matchVariant({ size: "12" }, options).missing, [{ attribute: "size", wanted: "12" }]);
 });
 
+test("matchVariant: an option listed with no in-stock labels is unverifiable, not missing", () => {
+  const m = matchVariant({ size: "M", color: "black" }, [{ name: "Color", values: ["Black", "Grey"] }, { name: "Size", values: [] }]);
+  assert.deepEqual(m.requested, { Color: "Black" });
+  assert.deepEqual(m.missing, []);
+  assert.deepEqual(m.unverifiable, ["size"]);
+});
+
 test("matchVariant: '10' never matches '10.5' or '110'", () => {
   const m = matchVariant({ size: "10" }, [{ name: "Shoe Size", values: ["10.5", "110", "US 10"] }]);
   assert.deepEqual(m.requested, { "Shoe Size": "US 10" });

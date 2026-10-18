@@ -24,7 +24,9 @@ export async function GET() {
   const orders = rows.map(({ order: o, request }) => {
     const r = o.resolution as Resolution;
     const product = o.product as { title?: string; brand?: string | null; variant?: Record<string, string>; imageUrl?: string | null; sourceDomain?: string };
-    const agent = o.agent as { confidence?: number; guard?: { bypassed?: boolean }; simulated?: string };
+    const agent = o.agent as { confidence?: number; guard?: { bypassed?: boolean }; simulated?: string; operator?: { name: string; verified: boolean; via?: string } };
+    // Orders from before agents were recorded came from Undo's own web agent (or its careless demo twin).
+    const operator = agent.operator ?? { name: agent.simulated ? "Careless demo agent" : "Undo web agent", verified: !agent.simulated, via: "web" };
     return {
       id: o.id,
       createdAt: o.createdAt.toISOString(),
@@ -40,6 +42,9 @@ export async function GET() {
       agentConfidence: agent.confidence ?? null,
       guardBypassed: Boolean(agent.guard?.bypassed),
       simulated: agent.simulated ?? null,
+      agentName: operator.name,
+      agentVerified: operator.verified,
+      agentVia: operator.via ?? "web",
       verdict: r?.decision?.verdict ?? null,
       verdictConfidence: r?.decision?.confidence ?? null,
       liability: r?.decision?.liability ?? null,

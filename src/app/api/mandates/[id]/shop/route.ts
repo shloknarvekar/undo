@@ -1,13 +1,10 @@
-import { randomUUID } from "node:crypto";
-import { and, eq, inArray } from "drizzle-orm";
 import { NextResponse } from "next/server";
 import { z } from "zod";
-import { getDb, schema } from "@/db";
 import { runAgent, NoCompliantProduct } from "@/lib/agent";
 import { undoWindow } from "@/lib/agent-core";
 import { AiUnavailable } from "@/lib/ai";
+import { CheckoutFailed, openCheckout, openOrderFor } from "@/lib/checkout";
 import { appendEvent } from "@/lib/events";
-import { approveLink, paypal, PayPalError } from "@/lib/paypal";
 import { loadMandate, publicBaseUrl } from "@/lib/store";
 
 /**
@@ -27,13 +24,8 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
   if (loaded.status !== "ACTIVE") return NextResponse.json({ error: `mandate_${loaded.status.toLowerCase()}` }, { status: 409 });
   const { mandate } = loaded;
 
-  const db = getDb();
-  const open = await db
-    .select({ id: schema.orders.id })
-    .from(schema.orders)
-    .where(and(eq(schema.orders.mandateId, id), inArray(schema.orders.status, ["CHECKOUT_CREATED", "AUTHORIZED", "CAPTURED"])))
-    .limit(1);
-  if (open.length) return NextResponse.json({ error: "purchase_already_open", orderId: open[0].id }, { status: 409 });
+  const openId = await openOrderFor(id);
+  if (openId) return NextResponse.json({ error: "purchase_already_open", orderId: openId }, { status: 409 });
 
   let decision;
   try {
@@ -50,7 +42,6 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
 
   const { chosen } = decision;
   const quantity = mandate.intent.quantity;
-  const unitPrice = chosen.product.price.toFixed(2);
   const window = undoWindow({
     price: chosen.product.price,
     quantity,
@@ -60,8 +51,6 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     relaxed: decision.guard.relaxed.length,
     guardBypassed: decision.guard.bypassed,
   });
-
-  const orderId = randomUUID();
   const agent = {
     reasoning: decision.reasoning,
     confidence: decision.confidence,
@@ -72,44 +61,16 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     considered: decision.considered,
     searches: decision.searches,
     model: decision.model,
+    operator: { name: "Undo web agent", verified: true, via: "web" },
     ...(parsed.data.simulate ? { simulated: parsed.data.simulate } : {}),
   };
-  await db.insert(schema.orders).values({
-    id: orderId,
-    mandateId: id,
-    status: "CHECKOUT_CREATED",
-    amount: (Number(unitPrice) * quantity).toFixed(2),
-    currency: chosen.product.currency,
-    quantity,
-    product: chosen.product,
-    agent,
-    risk: window,
-  });
-  await appendEvent(id, "CART_PROPOSED", { orderId, product: chosen.product, quantity, agent, risk: window });
 
-  const base = publicBaseUrl(req);
   try {
-    const order = await paypal.createAgentOrder({
-      undoOrderId: orderId,
-      item: {
-        name: chosen.product.title,
-        sku: chosen.product.channel3Id,
-        quantity,
-        unitPrice,
-        currency: chosen.product.currency,
-        url: chosen.product.sourceUrl,
-        imageUrl: chosen.product.imageUrl ?? undefined,
-      },
-      returnUrl: `${base}/api/checkout/return?order=${orderId}`,
-      cancelUrl: `${base}/api/checkout/cancel?order=${orderId}`,
-    });
-    await db.update(schema.orders).set({ paypalOrderId: order.id, updatedAt: new Date() }).where(eq(schema.orders.id, orderId));
-    await appendEvent(id, "CHECKOUT_CREATED", { orderId, paypalOrderId: order.id, intent: "AUTHORIZE", amount: (Number(unitPrice) * quantity).toFixed(2), currency: chosen.product.currency });
-
+    const { orderId, approveUrl } = await openCheckout({ mandateId: id, product: chosen.product, quantity, agent, window, baseUrl: publicBaseUrl(req) });
     return NextResponse.json(
       {
         orderId,
-        approveUrl: approveLink(order),
+        approveUrl,
         cart: { title: chosen.product.title, brand: chosen.product.brand, variant: chosen.product.variant, price: chosen.product.price, currency: chosen.product.currency, quantity, retailer: chosen.product.sourceDomain, imageUrl: chosen.product.imageUrl },
         agent: { reasoning: decision.reasoning, confidence: decision.confidence, unverified: decision.unverified, guard: decision.guard, considered: decision.considered },
         undoWindow: window,
@@ -117,8 +78,6 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
       { status: 201 },
     );
   } catch (err) {
-    await db.update(schema.orders).set({ status: "FAILED", updatedAt: new Date() }).where(eq(schema.orders.id, orderId));
-    await appendEvent(id, "CHECKOUT_FAILED", { orderId, error: err instanceof PayPalError ? err.message : String(err) });
-    return NextResponse.json({ error: "paypal_checkout_failed", detail: err instanceof PayPalError ? err.message : undefined }, { status: 502 });
+    return NextResponse.json({ error: "paypal_checkout_failed", detail: err instanceof CheckoutFailed ? err.message : undefined }, { status: 502 });
   }
 }

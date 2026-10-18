@@ -34,6 +34,14 @@ export const IntentDraft = z.object({
 });
 export type IntentDraft = z.infer<typeof IntentDraft>;
 
+/**
+ * The agent a mandate authorizes. Undo's own web agent leaves it unset; third-party agents (via MCP) are named
+ * here, inside the signed bytes, so the shopper signs "this agent may buy…" and liability can follow the name.
+ * `verified` means the agent presented a registered operator key when it asked for the mandate.
+ */
+export const AgentRef = z.object({ name: z.string().min(1).max(80), verified: z.boolean() });
+export type AgentRef = z.infer<typeof AgentRef>;
+
 export const MANDATE_VERSION = 1;
 const MANDATE_TTL_DAYS = 14;
 
@@ -45,6 +53,7 @@ export const IntentMandate = z.object({
   shopperKey: z.string().min(40).max(60), // base64 of a 32-byte Ed25519 public key
   request: z.string().max(1000), // the shopper's own words, kept verbatim as evidence
   intent: IntentDraft,
+  agent: AgentRef.optional(),
 });
 export type IntentMandate = z.infer<typeof IntentMandate>;
 
@@ -55,7 +64,7 @@ export function readyToSign(d: IntentDraft): { ok: true } | { ok: false; reason:
   return { ok: true };
 }
 
-export function prepareMandate(request: string, intent: IntentDraft, shopperKey: string, now = new Date()): IntentMandate {
+export function prepareMandate(request: string, intent: IntentDraft, shopperKey: string, now = new Date(), agent?: AgentRef): IntentMandate {
   const ready = readyToSign(IntentDraft.parse(intent));
   if (!ready.ok) throw new Error(`Draft not ready to sign: ${ready.reason}`);
   const expires = new Date(now.getTime() + MANDATE_TTL_DAYS * 86_400_000);
@@ -67,6 +76,7 @@ export function prepareMandate(request: string, intent: IntentDraft, shopperKey:
     shopperKey,
     request,
     intent: IntentDraft.parse(intent),
+    ...(agent ? { agent } : {}),
   });
 }
 

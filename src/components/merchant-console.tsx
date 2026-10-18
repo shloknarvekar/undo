@@ -4,7 +4,8 @@ import { AllCommunityModule, ModuleRegistry, themeQuartz, type ColDef, type ICel
 import { AgGridReact } from "ag-grid-react";
 import { AlertTriangle, ExternalLink, FastForward, Loader2, PackageCheck, RefreshCw, Search, ShieldCheck, X } from "lucide-react";
 import Link from "next/link";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useFocusTrap } from "./use-focus-trap";
 import { Badge, Container, PillButton, StatusBadge, VERDICT, VerdictBadge, cx, money, shortHash } from "./ui";
 
 ModuleRegistry.registerModules([AllCommunityModule]);
@@ -157,8 +158,8 @@ export function MerchantConsole() {
         <Container className="py-10 sm:py-14">
           <div className="flex flex-col justify-between gap-6 sm:flex-row sm:items-end">
             <div>
-              <p className="text-body-sm text-paper/70">Undo Demo Store · PayPal sandbox</p>
-              <h1 className="mt-2 display-type text-[45px] leading-none sm:text-heading-lg">Agent orders</h1>
+              <h1 className="display-type text-[45px] leading-none sm:text-heading-lg">Agent orders</h1>
+              <p className="mt-3 text-body text-paper/70">Undo Demo Store, on the PayPal sandbox</p>
             </div>
             <PillButton tone="white" onClick={load} disabled={loading}>
               <RefreshCw className={cx("size-4", loading && "animate-spin")} aria-hidden /> Refresh
@@ -174,7 +175,7 @@ export function MerchantConsole() {
             ].map(([label, value, note]) => (
               <div key={label} className="border-t border-paper/20 pt-4">
                 <dt className="text-body-sm text-paper/70">{label}{note && <span className="ml-1 text-paper/50">({note})</span>}</dt>
-                <dd className="mt-2 display-type text-[45px] leading-none text-field tabular">{value}</dd>
+                <dd className="mt-2 display-type text-[32px] leading-none text-field tabular sm:text-[45px]">{value}</dd>
               </div>
             ))}
           </dl>
@@ -183,13 +184,12 @@ export function MerchantConsole() {
 
       <Container className="py-8 sm:py-10">
         <div className="flex flex-col justify-between gap-4 lg:flex-row lg:items-center">
-          <div role="tablist" aria-label="Filter orders" className="flex flex-wrap gap-2">
+          <div role="group" aria-label="Filter orders" className="flex flex-wrap gap-2">
             {(Object.keys(FILTERS) as (keyof typeof FILTERS)[]).map((k) => (
               <button
                 key={k}
-                role="tab"
                 type="button"
-                aria-selected={filter === k}
+                aria-pressed={filter === k}
                 onClick={() => setFilter(k)}
                 className={cx(
                   "min-h-11 cursor-pointer rounded-full border px-5 text-body-sm font-medium transition-colors",
@@ -253,11 +253,8 @@ function OrderDrawer({ row, onClose, onChanged }: { row: Row; onClose: () => voi
     fetch(`/api/orders/${row.id}`, { cache: "no-store" }).then(async (r) => r.ok && setDetail(await r.json()));
   }, [row.id, row.status]);
 
-  useEffect(() => {
-    const onKey = (e: KeyboardEvent) => e.key === "Escape" && onClose();
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, [onClose]);
+  const drawerRef = useRef<HTMLElement>(null);
+  useFocusTrap(drawerRef, true, onClose);
 
   async function act(path: string, body?: object) {
     setBusy(path);
@@ -272,6 +269,7 @@ function OrderDrawer({ row, onClose, onChanged }: { row: Row; onClose: () => voi
   return (
     <div className="fixed inset-0 z-50 flex justify-end bg-black/40" onClick={onClose}>
       <aside
+        ref={drawerRef}
         role="dialog"
         aria-modal="true"
         aria-labelledby="drawer-title"

@@ -201,9 +201,8 @@ export function ShopApp() {
       {(stage === "review" || stage === "signing") && draft && (
         <section className="mt-8 grid gap-8 lg:grid-cols-[1.3fr_1fr]" aria-labelledby="review-title">
           <div className="rounded-card bg-paper p-[27px] sm:p-10">
-            <p className="text-body-sm text-muted">You asked</p>
-            <p className="mt-1 text-subheading">“{request}”</p>
-            <h1 id="review-title" className="mt-8 display-type text-[45px] leading-none">Your mandate</h1>
+            <h1 id="review-title" className="display-type text-[45px] leading-none">Your mandate</h1>
+            <p className="mt-3 text-subheading text-muted">From your words: “{request}”</p>
             <dl className="mt-6 grid gap-x-8 gap-y-4 sm:grid-cols-2">
               <Field label="Item" value={draft.item} />
               <Field label="Budget per item" value={draft.maxPrice > 0 ? `up to ${money(draft.maxPrice, draft.currency)}` : "not set"} missing={draft.maxPrice <= 0} />
@@ -333,8 +332,7 @@ function CartView({ r, careless }: { r: ShopResult; careless: boolean }) {
   return (
     <section className="mt-8 grid gap-8 lg:grid-cols-[1.3fr_1fr]" aria-labelledby="cart-title">
       <div className="rounded-card bg-paper p-[27px] sm:p-10">
-        <p className="text-body-sm text-muted">The agent picked</p>
-        <div className="mt-4 flex flex-col gap-6 sm:flex-row">
+        <div className="flex flex-col gap-6 sm:flex-row">
           {cart.imageUrl ? (
             // eslint-disable-next-line @next/next/no-img-element
             <img src={cart.imageUrl} alt={cart.title} width={180} height={180} className="size-44 shrink-0 rounded-[24px] bg-bone object-contain" />

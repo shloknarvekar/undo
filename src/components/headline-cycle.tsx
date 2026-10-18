@@ -7,7 +7,7 @@ import { cx } from "./ui";
  * Animated headline stack: the active word is full Rewind, the rest sit at 40% white in the same column.
  * The full list is always in the DOM (screen readers read it once); motion stops under prefers-reduced-motion.
  */
-export function HeadlineCycle({ words, interval = 2400 }: { words: string[]; interval?: number }) {
+export function HeadlineCycle({ words, label, id, interval = 2400 }: { words: string[]; label: string; id?: string; interval?: number }) {
   const [active, setActive] = useState(0);
   useEffect(() => {
     if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
@@ -16,7 +16,8 @@ export function HeadlineCycle({ words, interval = 2400 }: { words: string[]; int
   }, [words.length, interval]);
 
   return (
-    <p className="display-type text-[48px] leading-[0.98] sm:text-[67px]" aria-label={words.join(" ")}>
+    <h2 id={id} className="display-type text-[48px] leading-[0.98] sm:text-[67px]">
+      <span className="sr-only">{label}</span>
       {words.map((w, i) => (
         <span
           key={w}
@@ -26,6 +27,6 @@ export function HeadlineCycle({ words, interval = 2400 }: { words: string[]; int
           {w}
         </span>
       ))}
-    </p>
+    </h2>
   );
 }

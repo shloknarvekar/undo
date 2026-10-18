@@ -78,6 +78,38 @@
     background: var(--color-field);
     color: var(--color-ink);
   }
+  /* Browser surfaces carry the palette too: scrollbars, caret, native controls. */
+  html {
+    scrollbar-color: var(--color-ink) var(--color-bone);
+    scroll-behavior: smooth;
+  }
+  input,
+  textarea {
+    caret-color: var(--color-ink);
+  }
+  input[type="checkbox"] {
+    accent-color: var(--color-ink);
+  }
+  a {
+    text-underline-offset: 0.22em;
+  }
+}
+
+/*
+ * Rewind band — our version of the reference's "Cobalt Fade": a hard-edged stripe painted behind
+ * interactive text (transparent top and bottom), swept in on hover/focus and held on the current page.
+ */
+@utility band-hover {
+  background-image: linear-gradient(transparent 0 52%, var(--color-field) 52% 90%, transparent 90% 100%);
+  background-repeat: no-repeat;
+  background-position: 0 0;
+  background-size: 0% 100%;
+  transition: background-size 320ms cubic-bezier(0.16, 1, 0.3, 1);
+  &:hover,
+  &:focus-visible,
+  &[aria-current="page"] {
+    background-size: 100% 100%;
+  }
 }
 
 @utility display-type {
@@ -96,28 +128,94 @@
   font-variant-numeric: tabular-nums;
 }
 
+/* ── Motion ─────────────────────────────────────────────────────────────────────────────────────
+ * Focal moment: the CTRL+Z band rewinds — the letters travel against your scroll, right to left.
+ * Supporting: the hero headline is stamped in once; the how-it-works track fills as you scroll
+ * through the steps; the verdict card's evidence lines arrive one by one as the engine "checks".
+ * Everything is visible by default: animations only run where supported and when scripts mark them.
+ */
+@keyframes undo-stamp {
+  from {
+    clip-path: inset(0 0 100% 0);
+    transform: translateY(0.18em);
+  }
+  to {
+    clip-path: inset(0 0 -0.2em 0);
+    transform: none;
+  }
+}
 @keyframes undo-rise {
   from {
     opacity: 0;
-    transform: translateY(12px);
+    transform: translateY(14px);
   }
   to {
     opacity: 1;
     transform: none;
   }
 }
-
-@utility animate-rise {
-  animation: undo-rise 420ms cubic-bezier(0.2, 0.7, 0.2, 1) both;
+@keyframes undo-rewind {
+  from {
+    transform: translateX(16%);
+  }
+  to {
+    transform: translateX(-16%);
+  }
+}
+@keyframes undo-track {
+  from {
+    transform: scaleX(0);
+  }
+  to {
+    transform: scaleX(1);
+  }
 }
 
+@layer components {
+  .stamp-in {
+    animation: undo-stamp 760ms cubic-bezier(0.16, 1, 0.3, 1) 80ms both;
+  }
+  /* Scroll-linked pieces: plain static layout where scroll timelines aren't supported. */
+  @supports (animation-timeline: view()) {
+    .scroll-rewind {
+      animation: undo-rewind linear both;
+      animation-timeline: view();
+      animation-range: entry 0% exit 100%;
+    }
+    .track-fill {
+      transform-origin: left center;
+      animation: undo-track linear both;
+      animation-timeline: view();
+      animation-range: entry 60% cover 55%;
+    }
+  }
+  /* Reveal: the script sets data-reveal="pending" only on off-screen content, then "shown" in view. */
+  [data-reveal="pending"] > * {
+    opacity: 0;
+  }
+  [data-reveal="shown"] > * {
+    animation: undo-rise 520ms cubic-bezier(0.16, 1, 0.3, 1) both;
+    animation-delay: calc(var(--i, 0) * 110ms);
+  }
+}
+
+/* Reduced motion: drop spatial movement, keep state and colour feedback (band sweeps, fills, spinners). */
 @media (prefers-reduced-motion: reduce) {
-  *,
-  *::before,
-  *::after {
-    animation-duration: 0.01ms !important;
-    animation-iteration-count: 1 !important;
-    transition-duration: 0.01ms !important;
-    scroll-behavior: auto !important;
+  html {
+    scroll-behavior: auto;
+  }
+  .stamp-in,
+  .scroll-rewind,
+  .track-fill {
+    animation: none !important;
+    transform: none !important;
+    clip-path: none !important;
+  }
+  [data-reveal] > * {
+    opacity: 1 !important;
+    animation: none !important;
+  }
+  .motion-transform {
+    transition-property: color, background-color, border-color, opacity, background-size !important;
   }
 }

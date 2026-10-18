@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { ShopApp } from "@/components/shop-app";
-import { SiteNav } from "@/components/ui";
+import { SiteNav } from "@/components/site-nav";
 
 export const metadata: Metadata = { title: "Shop with an agent" };
 

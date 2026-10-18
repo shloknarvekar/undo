@@ -4,6 +4,7 @@ import { AlertTriangle, Camera, FastForward, Fingerprint, Link2, Loader2, Shield
 import { useParams } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { DeviceKeyUnsupported, getDeviceKey, sha256Hex, undoMessage } from "@/lib/device-key";
+import { useFocusTrap } from "./use-focus-trap";
 import { Badge, Container, PillButton, PillLink, StatusBadge, VERDICT, VerdictBadge, cx, money, shortHash } from "./ui";
 
 type Evidence = { source: string; finding: string };
@@ -133,18 +134,9 @@ export function OrderApp() {
 
   const countdown = useCountdown(status === "AUTHORIZED" ? (data?.undoWindow.endsAt ?? null) : null);
 
-  // Undo dialog: Escape closes it and focus returns to the button that opened it.
-  const openerRef = useRef<HTMLElement | null>(null);
-  useEffect(() => {
-    if (!open) return;
-    openerRef.current = document.activeElement as HTMLElement | null;
-    const onKey = (e: KeyboardEvent) => e.key === "Escape" && setOpen(false);
-    window.addEventListener("keydown", onKey);
-    return () => {
-      window.removeEventListener("keydown", onKey);
-      openerRef.current?.focus();
-    };
-  }, [open]);
+  // Undo dialog: focus stays inside, Escape closes it, focus returns to the button that opened it.
+  const dialogRef = useRef<HTMLFormElement>(null);
+  useFocusTrap(dialogRef, open, () => setOpen(false));
 
   async function submitUndo(e: React.FormEvent) {
     e.preventDefault();
@@ -241,8 +233,7 @@ export function OrderApp() {
           {resolved && <VerdictCard r={resolved} order={order} />}
 
           <article className="rounded-card bg-paper p-[27px] sm:p-10" aria-labelledby="product-title">
-            <p className="text-body-sm text-muted">What the agent bought</p>
-            <div className="mt-4 flex flex-col gap-6 sm:flex-row">
+            <div className="flex flex-col gap-6 sm:flex-row">
               {order.product.imageUrl ? (
                 // eslint-disable-next-line @next/next/no-img-element
                 <img src={order.product.imageUrl} alt={order.product.title} width={150} height={150} className="size-36 shrink-0 rounded-[24px] bg-bone object-contain" />
@@ -314,7 +305,7 @@ export function OrderApp() {
 
       {open && (
         <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/50 p-0 sm:items-center sm:p-6" role="dialog" aria-modal="true" aria-labelledby="undo-title">
-          <form onSubmit={submitUndo} className="max-h-[92dvh] w-full max-w-xl overflow-y-auto rounded-t-card bg-paper p-[27px] sm:rounded-card sm:p-10">
+          <form ref={dialogRef} onSubmit={submitUndo} className="max-h-[92dvh] w-full max-w-xl overflow-y-auto rounded-t-card bg-paper p-[27px] sm:rounded-card sm:p-10">
             <div className="flex items-start justify-between gap-4">
               <h2 id="undo-title" className="display-type text-[45px] leading-none">Undo</h2>
               <button type="button" onClick={() => setOpen(false)} className="grid size-11 cursor-pointer place-items-center rounded-full hover:bg-bone" aria-label="Close">

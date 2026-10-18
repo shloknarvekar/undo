@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { Suspense } from "react";
 import { OrderApp } from "@/components/order-app";
-import { SiteNav } from "@/components/ui";
+import { SiteNav } from "@/components/site-nav";
 
 export const metadata: Metadata = { title: "Your purchase" };
 

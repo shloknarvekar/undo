@@ -31,7 +31,7 @@ const PILL: Record<Tone, string> = {
   field: "border-field text-field hover:bg-field hover:text-deep",
 };
 const pillBase =
-  "inline-flex min-h-11 items-center justify-center gap-2 rounded-full border px-[33px] py-[13px] text-body font-medium leading-none transition-colors duration-200 cursor-pointer disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-transparent disabled:hover:text-current";
+  "inline-flex min-h-11 items-center justify-center gap-2 rounded-full border px-[33px] py-[13px] text-body font-medium leading-none motion-transform transition-[color,background-color,border-color,transform] duration-200 ease-out active:scale-[0.98] [&_.arrow]:transition-transform [&_.arrow]:duration-200 hover:[&_.arrow]:translate-x-1 cursor-pointer disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-transparent disabled:hover:text-current";
 
 export function PillLink({ tone = "ink", className, ...p }: ComponentProps<typeof Link> & { tone?: Tone }) {
   return <Link {...p} className={cx(pillBase, PILL[tone], className)} />;
@@ -49,41 +49,6 @@ export function Logo({ onDeep = false }: { onDeep?: boolean }) {
       </span>
       <span className={cx("display-type text-[26px] leading-none", onDeep ? "text-paper" : "text-ink")}>undo</span>
     </Link>
-  );
-}
-
-export function SiteNav({ current }: { current?: "home" | "shop" | "merchant" }) {
-  const link = (href: string, label: string, key: string) => (
-    <Link
-      href={href}
-      aria-current={current === key ? "page" : undefined}
-      className={cx("rounded-full px-3 py-2 text-body transition-colors hover:bg-bone", current === key && "font-medium underline underline-offset-8")}
-    >
-      {label}
-    </Link>
-  );
-  return (
-    <header className="sticky top-0 z-40 border-b border-fog/60 bg-paper/95 backdrop-blur">
-      <Container className="flex h-[72px] items-center justify-between gap-4 md:h-[88px]">
-        <Logo />
-        <nav aria-label="Main" className="hidden items-center gap-2 md:flex">
-          {link("/#how", "How it works", "how")}
-          {link("/#merchants", "For merchants", "merchants-anchor")}
-          {link("/merchant", "Merchant console", "merchant")}
-        </nav>
-        <div className="flex items-center gap-2">
-          {/* Wrapper carries the breakpoint: the pill's own inline-flex would override `hidden`. */}
-          <span className="hidden sm:inline-flex">
-            <PillLink href="/merchant" tone="ink" className="px-6">
-              Console
-            </PillLink>
-          </span>
-          <PillLink href="/shop" tone="solid" className="whitespace-nowrap px-5 sm:px-6">
-            Try the demo
-          </PillLink>
-        </div>
-      </Container>
-    </header>
   );
 }
 
@@ -120,7 +85,7 @@ export function SiteFooter() {
 function FooterLink({ href, children }: { href: string; children: ReactNode }) {
   return (
     <p>
-      <Link className="inline-flex min-h-11 items-center hover:text-ink" href={href}>
+      <Link className="band-hover inline-flex min-h-11 items-center transition-colors hover:text-ink" href={href}>
         {children}
       </Link>
     </p>

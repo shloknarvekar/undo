@@ -13,13 +13,12 @@ export function HeroToggle() {
   const [who, setWho] = useState<keyof typeof COPY>("shoppers");
   return (
     <div className="flex flex-col items-center gap-8">
-      <div role="tablist" aria-label="Audience" className="inline-flex rounded-full border border-ink p-1">
+      <div role="group" aria-label="Show the promise for" className="inline-flex rounded-full border border-ink p-1">
         {(["shoppers", "merchants"] as const).map((k) => (
           <button
             key={k}
-            role="tab"
             type="button"
-            aria-selected={who === k}
+            aria-pressed={who === k}
             aria-controls="hero-promise"
             onClick={() => setWho(k)}
             className={cx(
@@ -31,7 +30,7 @@ export function HeroToggle() {
           </button>
         ))}
       </div>
-      <p id="hero-promise" role="tabpanel" className="max-w-[640px] text-center text-subheading text-ink/80 sm:text-heading-sm sm:leading-snug">
+      <p id="hero-promise" aria-live="polite" className="max-w-[640px] text-center text-subheading text-ink/80 sm:text-heading-sm sm:leading-snug">
         {COPY[who]}
       </p>
     </div>

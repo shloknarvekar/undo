@@ -4,13 +4,13 @@
  * state change is conditional on the status we read, so the scheduler and an Undo racing each other can't
  * double-move money.
  */
-import { and, eq, lte } from "drizzle-orm";
+import { and, eq, lte, sql } from "drizzle-orm";
 import { getDb, schema } from "@/db";
 import { canonicalJson, sha256Hex } from "./crypto";
 import { appendEvent, chain } from "./events";
 import type { Decision, MoneyAction } from "./fault-core";
 import { route } from "./fault-core";
-import { paypal, PayPalError } from "./paypal";
+import { operatorConfigured, paypal, PayPalError, payouts } from "./paypal";
 
 type OrderRow = typeof schema.orders.$inferSelect;
 
@@ -68,6 +68,7 @@ export function maybeSweep() {
   if (!process.env.DATABASE_URL || Date.now() - lastSweep < 60_000) return;
   lastSweep = Date.now();
   captureDue().catch((err) => console.error("capture sweep failed:", err instanceof Error ? err.message : err));
+  refreshSettlements().catch((err) => console.error("settlement sweep failed:", err instanceof Error ? err.message : err));
 }
 
 /** Evidence pack: what a merchant, PayPal or a judge needs to check the verdict, with a digest for integrity. */
@@ -115,8 +116,11 @@ export async function executeUndo(order: OrderRow, decision: Decision, attempt =
       const refund = await paypal.refundCapture(order.captureId!, undefined, "Undo: your agent's purchase broke your mandate — full refund.", "full");
       await transition(order, "REFUNDED", { resolution });
       await ev("PAYMENT_REFUNDED", { captureId: order.captureId, refundId: refund.id, amount: refund.amount, kind: "full" });
-      await ev("LIABILITY_ASSIGNED", { party: "agent_operator", amount: `${order.amount} ${order.currency}`, note: "merchant made whole by the agent operator" });
-      return { action, status: "REFUNDED", paypal: { captureId: order.captureId, refundId: refund.id } };
+      await ev("LIABILITY_ASSIGNED", { party: "agent_operator", operator: operatorName(order), amount: `${order.amount} ${order.currency}` });
+      // The shopper is already refunded; now the agent operator pays the merchant back from its own PayPal account.
+      // A failed payout is recorded and retryable; it never touches the shopper's refund.
+      const settlement = await settleAgentLiability({ ...order, status: "REFUNDED" }, refund.amount?.value ?? order.amount, 1);
+      return { action, status: "REFUNDED", paypal: { captureId: order.captureId, refundId: refund.id, payoutBatchId: settlement.payoutBatchId ?? null } };
     }
     case "OPEN_CLAIM": {
       const pack = await evidencePack(order, decision);
@@ -138,6 +142,119 @@ export async function executeUndo(order: OrderRow, decision: Decision, attempt =
     case "NONE":
       return { action, status: order.status, paypal: {} };
   }
+}
+
+/**
+ * Agent-fault liability settlement. When an agent broke the mandate and the merchant had to refund a captured
+ * payment, the agent operator pays the merchant that amount back through PayPal Payouts, from the operator's own
+ * account (the same idea as 3-D Secure shifting chargeback liability off the merchant).
+ */
+export type Settlement = {
+  status: "PENDING" | "SUCCESS" | "FAILED" | "UNCLAIMED" | "NOT_CONFIGURED";
+  amount: string;
+  currency: string;
+  from: string;
+  to: string | null;
+  attempt: number;
+  payoutBatchId?: string;
+  payoutItemId?: string;
+  transactionId?: string;
+  error?: string;
+  at: string;
+};
+
+export function operatorName(order: OrderRow): string {
+  const agent = order.agent as { operator?: { name: string }; simulated?: string };
+  return agent.operator?.name ?? (agent.simulated ? "Careless demo agent" : "Undo web agent");
+}
+
+async function saveSettlement(order: OrderRow, settlement: Settlement) {
+  const [row] = await getDb().select({ resolution: schema.orders.resolution }).from(schema.orders).where(eq(schema.orders.id, order.id)).limit(1);
+  await getDb()
+    .update(schema.orders)
+    .set({ resolution: { ...((row?.resolution as object) ?? {}), settlement }, updatedAt: new Date() })
+    .where(eq(schema.orders.id, order.id));
+}
+
+/** PayPal batch/item statuses → ours. Anything not final stays PENDING and is re-read by the sweep. */
+function payoutStatus(batch: string, item?: string): Settlement["status"] {
+  if (batch === "DENIED" || batch === "CANCELED") return "FAILED";
+  if (item === "SUCCESS") return "SUCCESS";
+  if (item === "UNCLAIMED") return "UNCLAIMED";
+  if (item && ["FAILED", "RETURNED", "BLOCKED", "REVERSED", "REFUNDED"].includes(item)) return "FAILED";
+  return "PENDING";
+}
+
+export async function settleAgentLiability(order: OrderRow, amount: string, attempt: number): Promise<Settlement> {
+  const from = operatorName(order);
+  const base = { amount, currency: order.currency, from, to: null as string | null, attempt, at: new Date().toISOString() };
+  let settlement: Settlement;
+  if (!operatorConfigured()) {
+    settlement = { ...base, status: "NOT_CONFIGURED", error: "No agent-operator PayPal account is configured on this server." };
+    await appendEvent(order.mandateId, "LIABILITY_UNSETTLED", { orderId: order.id, operator: from, amount: `${amount} ${order.currency}`, reason: settlement.error });
+  } else {
+    try {
+      const pp = await paypal.getOrder(order.paypalOrderId!);
+      const merchantId = pp.purchase_units?.[0]?.payee?.merchant_id;
+      if (!merchantId) throw new Error("The PayPal order has no payee merchant id.");
+      const batch = await payouts.settle({
+        orderId: order.id,
+        attempt,
+        merchantPayPalId: merchantId,
+        amount,
+        currency: order.currency,
+        note: `Undo: ${from} reimburses the refund on order ${order.id.slice(0, 8)}; its agent broke the shopper's signed mandate.`,
+      });
+      settlement = { ...base, to: merchantId, status: payoutStatus(batch.batch_header.batch_status), payoutBatchId: batch.batch_header.payout_batch_id };
+      await appendEvent(order.mandateId, "LIABILITY_PAYOUT_SENT", { orderId: order.id, operator: from, to: merchantId, amount: `${amount} ${order.currency}`, payoutBatchId: settlement.payoutBatchId, attempt });
+    } catch (err) {
+      const error = err instanceof PayPalError ? err.message : err instanceof Error ? err.message : String(err);
+      settlement = { ...base, status: "FAILED", error };
+      await appendEvent(order.mandateId, "LIABILITY_PAYOUT_FAILED", { orderId: order.id, operator: from, amount: `${amount} ${order.currency}`, error, attempt });
+    }
+  }
+  await saveSettlement(order, settlement);
+  return settlement;
+}
+
+/** Re-reads payouts PayPal hasn't finished yet. Runs from the opportunistic sweep; safe to run concurrently. */
+export async function refreshSettlements(limit = 5) {
+  const pending = await getDb()
+    .select()
+    .from(schema.orders)
+    .where(and(eq(schema.orders.status, "REFUNDED"), sql`${schema.orders.resolution}->'settlement'->>'status' = 'PENDING'`))
+    .limit(limit);
+  for (const order of pending) {
+    const s = (order.resolution as { settlement: Settlement }).settlement;
+    if (!s.payoutBatchId) continue;
+    try {
+      const batch = await payouts.get(s.payoutBatchId);
+      const item = batch.items?.[0];
+      const status = payoutStatus(batch.batch_header.batch_status, item?.transaction_status);
+      if (status === "PENDING") continue;
+      const next: Settlement = { ...s, status, payoutItemId: item?.payout_item_id, transactionId: item?.transaction_id, ...(item?.errors ? { error: item.errors.message ?? item.errors.name } : {}) };
+      await saveSettlement(order, next);
+      await appendEvent(order.mandateId, status === "SUCCESS" ? "LIABILITY_SETTLED" : "LIABILITY_PAYOUT_FAILED", {
+        orderId: order.id,
+        operator: s.from,
+        to: s.to,
+        amount: `${s.amount} ${s.currency}`,
+        payoutBatchId: s.payoutBatchId,
+        transactionId: item?.transaction_id ?? null,
+        status,
+      });
+    } catch (err) {
+      console.error("settlement refresh failed:", err instanceof Error ? err.message : err);
+    }
+  }
+}
+
+/** Merchant console: send the operator's payout again after it failed or before an operator account existed. */
+export async function retrySettlement(order: OrderRow) {
+  const s = (order.resolution as { settlement?: Settlement } | null)?.settlement;
+  if (order.status !== "REFUNDED" || !s || !["FAILED", "NOT_CONFIGURED"].includes(s.status)) throw new StaleOrder(order.id);
+  // A denied batch needs a new batch id; a call that never reached PayPal can safely reuse the same one.
+  return settleAgentLiability(order, s.amount, s.payoutBatchId ? s.attempt + 1 : s.attempt);
 }
 
 /** Merchant-side completions (sandbox demo; the merchant console calls these). */

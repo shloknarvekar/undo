@@ -9,7 +9,7 @@ import { maybeSweep } from "@/lib/money";
  */
 const fee = (amount: number) => amount * 0.0349 + 0.49; // PayPal US checkout fee estimate (shown as an estimate)
 
-type Resolution = { decision?: { verdict?: string; confidence?: number; liability?: string | null }; action?: { type?: string } } | null;
+type Resolution = { decision?: { verdict?: string; confidence?: number; liability?: string | null }; action?: { type?: string }; settlement?: { status: string; amount: string } } | null;
 
 export async function GET() {
   maybeSweep();
@@ -48,6 +48,8 @@ export async function GET() {
       verdict: r?.decision?.verdict ?? null,
       verdictConfidence: r?.decision?.confidence ?? null,
       liability: r?.decision?.liability ?? null,
+      settlement: r?.settlement?.status ?? null,
+      settledAmount: r?.settlement?.status === "SUCCESS" ? Number(r.settlement.amount) : 0,
       action: r?.action?.type ?? null,
       windowEndsAt: o.windowEndsAt?.toISOString() ?? null,
       windowMinutesLeft: o.status === "AUTHORIZED" && o.windowEndsAt ? Math.max(0, Math.round((o.windowEndsAt.getTime() - now) / 60_000)) : null,
@@ -60,7 +62,8 @@ export async function GET() {
     agentOrders: placed.length,
     undone: placed.filter((o) => o.verdict).length,
     feesAvoided: placed.filter((o) => o.status === "VOIDED").reduce((s, o) => s + fee(o.amount), 0),
-    billedToAgents: placed.filter((o) => o.liability === "agent_operator" && o.status === "REFUNDED").reduce((s, o) => s + o.amount, 0),
+    // Only money that actually arrived from an agent operator through Payouts counts.
+    billedToAgents: placed.reduce((s, o) => s + o.settledAmount, 0),
     merchantProtected: placed.filter((o) => o.liability === "shopper").length,
     needsAction: orders.filter((o) => ["CLAIM_OPEN", "RETURN_PENDING", "REVIEW"].includes(o.status)).length,
     heldNow: placed.filter((o) => o.status === "AUTHORIZED").reduce((s, o) => s + o.amount, 0),

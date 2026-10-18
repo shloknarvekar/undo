@@ -12,6 +12,7 @@ type Resolution = {
   decision: { verdict: string; confidence: number; liability: string | null; evidence: Evidence[] };
   action: { type: string; reason: string; refundOnReturn?: string; restockingFee?: string };
   evidencePack?: { digest: string };
+  settlement?: { status: string; amount: string; currency: string; from: string; to: string | null; payoutBatchId?: string; transactionId?: string; error?: string };
 };
 type OrderData = {
   order: {
@@ -398,6 +399,15 @@ function VerdictCard({ r, order }: { r: Resolution; order: OrderData["order"] })
         <span className="text-body">{r.action.type.replaceAll("_", " ").toLowerCase().replace(/^./, (c) => c.toUpperCase())}</span>
         <span className="font-mono text-body-sm text-paper/70">PayPal {ref ? shortHash(ref, 14) : "—"}{r.evidencePack ? ` · pack ${shortHash(r.evidencePack.digest, 10)}` : ""}</span>
       </div>
+      {r.settlement && (
+        <p className="mt-3 text-body-sm text-paper/80">
+          {r.settlement.status === "SUCCESS"
+            ? `${r.settlement.from} has paid the merchant back ${money(r.settlement.amount, r.settlement.currency)} through PayPal Payouts. The mistake cost the merchant nothing.`
+            : r.settlement.status === "PENDING"
+              ? `${r.settlement.from} is paying the merchant back ${money(r.settlement.amount, r.settlement.currency)}; PayPal is processing it.`
+              : `${r.settlement.from} owes the merchant ${money(r.settlement.amount, r.settlement.currency)}. Your refund is not affected.`}
+        </p>
+      )}
     </article>
   );
 }

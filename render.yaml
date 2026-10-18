@@ -26,3 +26,7 @@ services:
         sync: false
       - key: CHANNEL3_API_KEY
         sync: false
+      - key: PAYPAL_OPERATOR_CLIENT_ID
+        sync: false
+      - key: PAYPAL_OPERATOR_CLIENT_SECRET
+        sync: false

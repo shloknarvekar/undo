@@ -38,7 +38,7 @@ type Row = {
 };
 type Kpis = { agentOrders: number; undone: number; feesAvoided: number; billedToAgents: number; merchantProtected: number; needsAction: number; heldNow: number };
 type Detail = {
-  order: { resolution: { decision: { verdict: string; confidence: number; evidence: { source: string; finding: string }[] }; action: { type: string; reason: string }; evidencePack?: { digest: string } } | null };
+  order: { resolution: { decision: { verdict: string; confidence: number; evidence: { source: string; finding: string }[] }; action: { type: string; reason: string }; evidencePack?: { digest: string }; settlement?: { status: string; amount: string; currency: string; from: string; to: string | null; payoutBatchId?: string; transactionId?: string; error?: string } } | null };
   chain: { intact: boolean; events: { seq: number; type: string; hash: string }[] };
 };
 
@@ -339,6 +339,21 @@ function OrderDrawer({ row, onClose, onChanged }: { row: Row; onClose: () => voi
               ))}
             </ul>
             {res.evidencePack && <p className="mt-4 font-mono text-caption text-paper/60">Evidence pack {shortHash(res.evidencePack.digest, 16)}</p>}
+            {res.settlement && (
+              <div className="mt-5 rounded-[20px] bg-paper/10 px-4 py-3">
+                <p className="text-body-sm">
+                  {res.settlement.status === "SUCCESS"
+                    ? `${res.settlement.from} paid you ${money(res.settlement.amount, res.settlement.currency)} through PayPal Payouts.`
+                    : res.settlement.status === "PENDING"
+                      ? `${res.settlement.from} is paying you ${money(res.settlement.amount, res.settlement.currency)}: PayPal is processing the payout.`
+                      : `${res.settlement.from} owes you ${money(res.settlement.amount, res.settlement.currency)}; the payout didn't go through.`}
+                </p>
+                {res.settlement.error && res.settlement.status !== "SUCCESS" && <p className="mt-1 text-caption text-paper/70">{res.settlement.error}</p>}
+                {(res.settlement.transactionId ?? res.settlement.payoutBatchId) && (
+                  <p className="mt-1 font-mono text-caption text-paper/60">Payout {shortHash(res.settlement.transactionId ?? res.settlement.payoutBatchId!, 16)}</p>
+                )}
+              </div>
+            )}
           </section>
         )}
 
@@ -352,6 +367,11 @@ function OrderDrawer({ row, onClose, onChanged }: { row: Row; onClose: () => voi
           {row.status === "RETURN_PENDING" && (
             <PillButton tone="solid" onClick={() => act(`/api/orders/${row.id}/resolve`, { action: "return_received" })} disabled={!!busy}>
               {busy ? <Loader2 className="size-4 animate-spin" aria-hidden /> : <PackageCheck className="size-4" aria-hidden />} Mark return received
+            </PillButton>
+          )}
+          {(res?.settlement?.status === "FAILED" || res?.settlement?.status === "NOT_CONFIGURED") && (
+            <PillButton tone="solid" onClick={() => act(`/api/orders/${row.id}/resolve`, { action: "retry_settlement" })} disabled={!!busy}>
+              {busy ? <Loader2 className="size-4 animate-spin" aria-hidden /> : <RefreshCw className="size-4" aria-hidden />} Collect from {res.settlement.from} again
             </PillButton>
           )}
           {row.status === "AUTHORIZED" && (

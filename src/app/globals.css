@@ -144,14 +144,17 @@
 }
 
 /*
- * Hero slash (lg and up): the grid region is everything right of a "/" running from 70% (top) to 52% (bottom),
- * matching the lime line drawn in page.tsx.
+ * Hero grid region: the right ~60% of the hero. Its left edge is an invisible "/" (leaning top-right to bottom-left)
+ * where the grid fades out over a short band, so there is no hard line. A mask doesn't stop pointer events, so the
+ * fade band itself stays narrow.
  */
+.hero-slash {
+  --slash: linear-gradient(112deg, transparent 0 34%, black 46%);
+  -webkit-mask-image: var(--slash);
+  mask-image: var(--slash);
+}
 @media (min-width: 1024px) {
-  .hero-slash {
-    clip-path: polygon(70% 0, 100% 0, 100% 100%, 52% 100%);
-  }
-  /* Where the skewed grid sits so it fills the slash (measured by probing coverage at 1280–2560px wide). */
+  /* Where the skewed grid sits so it fills the region (measured by probing coverage at 1280–2560px wide). */
   .hero-grid-pos {
     left: 78%;
     top: 60%;

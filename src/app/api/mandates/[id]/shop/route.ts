@@ -61,7 +61,8 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     considered: decision.considered,
     searches: decision.searches,
     model: decision.model,
-    operator: { name: "Undo web agent", verified: true, via: "web" },
+    // The careless demo agent is a stand-in for a third-party agent: liability (and the payout) is billed under its name.
+    operator: parsed.data.simulate ? { name: "Careless demo agent", verified: false, via: "web" } : { name: "Undo web agent", verified: true, via: "web" },
     ...(parsed.data.simulate ? { simulated: parsed.data.simulate } : {}),
   };
 

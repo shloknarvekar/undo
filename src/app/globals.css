@@ -143,6 +143,21 @@
   font-variant-numeric: tabular-nums;
 }
 
+/*
+ * Hero slash (lg and up): the grid region is everything right of a "/" running from 70% (top) to 52% (bottom),
+ * matching the lime line drawn in page.tsx.
+ */
+@media (min-width: 1024px) {
+  .hero-slash {
+    clip-path: polygon(70% 0, 100% 0, 100% 100%, 52% 100%);
+  }
+  /* Where the skewed grid sits so it fills the slash (measured by probing coverage at 1280–2560px wide). */
+  .hero-grid-pos {
+    left: 78%;
+    top: 60%;
+  }
+}
+
 /* ── Motion ─────────────────────────────────────────────────────────────────────────────────────
  * Focal moment: the CTRL+Z band runs right to left on a loop, the hero grid lights up under the cursor.
  * Supporting: the hero headline is stamped in once; the how-it-works track fills as you scroll

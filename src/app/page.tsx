@@ -42,14 +42,19 @@ export default function Home() {
     <>
       <SiteNav current="home" />
       <main className="flex-1">
-        {/* Deep field — the promise, over a grid of cells that light up in Rewind tints under the cursor */}
+        {/* Deep field — the promise on the left; past a "/" cut, a grid of cells that light up in Rewind tints */}
         <section className="on-deep relative overflow-hidden bg-deep text-paper">
-          <HeroGrid colors={HERO_TINTS} lineColor="rgb(255 255 255 / 0.16)" />
-          {/* Fades the grid toward the edges so the centre reads first */}
-          <div aria-hidden className="pointer-events-none absolute inset-0 z-10 bg-deep [mask-image:radial-gradient(transparent_35%,white)]" />
+          {/* From laptop width up, the grid lives only right of the slash, so it never sits under the copy. Phones skip it:
+              there's no room beside the text and no hover. clip-path also clips hit-testing to the visible cells. */}
+          <div aria-hidden className="hero-slash absolute inset-0 z-0 hidden lg:block">
+            <HeroGrid colors={HERO_TINTS} lineColor="rgb(255 255 255 / 0.16)" className="hero-grid-pos" />
+          </div>
+          <svg aria-hidden className="pointer-events-none absolute inset-0 z-10 hidden size-full lg:block" viewBox="0 0 100 100" preserveAspectRatio="none">
+            <line x1="70" y1="0" x2="52" y2="100" stroke="var(--color-field)" strokeWidth="2" vectorEffect="non-scaling-stroke" />
+          </svg>
           {/* The wrapper lets pointer events through to the grid; only the controls take them back */}
-          <Container className="pointer-events-none relative z-20 flex flex-col items-center gap-10 py-20 text-center sm:py-28">
-            <h1 className="stamp-in display-type max-w-[1100px] text-[52px] leading-[0.95] sm:text-[88px] lg:text-display">
+          <Container className="pointer-events-none relative z-20 flex flex-col items-center gap-10 py-20 text-center sm:py-28 lg:items-start lg:text-left">
+            <h1 className="stamp-in display-type max-w-[1100px] text-[52px] leading-[0.95] sm:text-[88px] lg:max-w-[9.5ch] lg:text-[96px] xl:text-[112px]">
               Every agent purchase gets an <span className="text-field">undo.</span>
             </h1>
             <div className="pointer-events-auto">

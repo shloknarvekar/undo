@@ -2,6 +2,7 @@
 
 import { Pause, Play } from "lucide-react";
 import { createElement, useEffect, useRef, useState, type ReactNode } from "react";
+import { cn } from "@/lib/utils";
 import { Boxes } from "./ui/background-boxes";
 
 /**
@@ -55,11 +56,16 @@ export function CountdownChip({ start = 5 * 3600 + 59 * 60 + 41 }: { start?: num
  */
 const BOX_TRANSFORM = "translate(-40%,-60%) skewX(-48deg) skewY(14deg) scale(0.675) rotate(0deg) translateZ(0)";
 
-export function HeroGrid({ colors, lineColor }: { colors: string[]; lineColor: string }) {
+export function HeroGrid({ colors, lineColor, className }: { colors: string[]; lineColor: string; className?: string }) {
   const [mode, setMode] = useState<"pending" | "interactive" | "static">("pending");
+  // Very wide screens need a bigger grid to fill the slash; everyone else keeps the lighter one.
+  const [wide, setWide] = useState(false);
   useEffect(() => {
     const mq = window.matchMedia("(hover: hover) and (pointer: fine)");
-    const pick = () => setMode(mq.matches ? "interactive" : "static");
+    const pick = () => {
+      setWide(window.innerWidth > 2000);
+      setMode(mq.matches ? "interactive" : "static");
+    };
     const idle = window.requestIdleCallback ? window.requestIdleCallback(pick, { timeout: 800 }) : window.setTimeout(pick, 200);
     mq.addEventListener("change", pick);
     return () => {
@@ -69,10 +75,11 @@ export function HeroGrid({ colors, lineColor }: { colors: string[]; lineColor: s
     };
   }, []);
 
-  if (mode === "interactive") return <Boxes rows={64} cols={48} colors={colors} lineClassName="border-paper/[0.16] text-paper/25" />;
+  if (mode === "interactive")
+    return <Boxes rows={wide ? 96 : 64} cols={wide ? 64 : 48} colors={colors} lineClassName="border-paper/[0.16] text-paper/25" className={className} />;
   if (mode === "pending") return null;
   return (
-    <div aria-hidden className="absolute -top-1/4 left-1/4 z-0 h-full w-full p-4" style={{ transform: BOX_TRANSFORM }}>
+    <div aria-hidden className={cn("absolute -top-1/4 left-1/4 z-0 h-full w-full p-4", className)} style={{ transform: BOX_TRANSFORM }}>
       <div
         className="h-[1536px] w-[4096px]"
         style={{

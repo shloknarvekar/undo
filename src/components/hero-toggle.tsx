@@ -12,7 +12,7 @@ const COPY = {
 export function HeroToggle({ onDeep = false }: { onDeep?: boolean }) {
   const [who, setWho] = useState<keyof typeof COPY>("shoppers");
   return (
-    <div className="flex flex-col items-center gap-8">
+    <div className="flex flex-col items-center gap-8 lg:items-start">
       <div role="group" aria-label="Show the promise for" className={cx("inline-flex rounded-full border p-1", onDeep ? "border-paper/40" : "border-ink")}>
         {(["shoppers", "merchants"] as const).map((k) => (
           <button
@@ -32,7 +32,7 @@ export function HeroToggle({ onDeep = false }: { onDeep?: boolean }) {
           </button>
         ))}
       </div>
-      <p id="hero-promise" aria-live="polite" className={cx("max-w-[640px] text-center text-subheading sm:text-heading-sm sm:leading-snug", onDeep ? "text-paper/80" : "text-ink/80")}>
+      <p id="hero-promise" aria-live="polite" className={cx("max-w-[560px] text-center text-subheading sm:text-heading-sm sm:leading-snug lg:text-left", onDeep ? "text-paper/80" : "text-ink/80")}>
         {COPY[who]}
       </p>
     </div>

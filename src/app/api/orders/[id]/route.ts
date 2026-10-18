@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { chain } from "@/lib/events";
 import { maybeSweep } from "@/lib/money";
+import { proofFor } from "@/lib/proof";
 import { loadMandate, loadOrder } from "@/lib/store";
 
 /** GET /api/orders/:id → the purchase, the live undo window, and the mandate's verified event chain. */
@@ -31,6 +32,10 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
       minutesLeft: msLeft !== null ? Math.max(0, Math.round(msLeft / 60_000)) : null,
     },
     mandate: loaded ? { id: loaded.mandate.id, request: loaded.mandate.request, intent: loaded.mandate.intent, status: loaded.status, shopperKey: loaded.mandate.shopperKey } : null,
-    chain: { intact: history.intact, events: history.events.map(({ seq, type, createdAt, hash }) => ({ seq, type, createdAt, hash })) },
+    // Each event carries its proof: how that step was decided and the PayPal call or id behind it (lib/proof.ts).
+    chain: {
+      intact: history.intact,
+      events: history.events.map(({ seq, type, createdAt, hash, payload }) => ({ seq, type, createdAt, hash, proof: proofFor(type, payload) })),
+    },
   });
 }

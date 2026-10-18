@@ -1,9 +1,10 @@
 "use client";
 
-import { AlertTriangle, Camera, FastForward, Fingerprint, Link2, Loader2, ShieldCheck, Undo2, X } from "lucide-react";
+import { AlertTriangle, Camera, ChevronDown, Circle, CreditCard, FastForward, Fingerprint, Link2, Loader2, ShieldCheck, Sparkles, Undo2, UserRound, X } from "lucide-react";
 import { useParams } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { DeviceKeyUnsupported, getDeviceKey, sha256Hex, undoMessage } from "@/lib/device-key";
+import { proofSummary, type Proof, type ProofKind } from "@/lib/proof";
 import { useFocusTrap } from "./use-focus-trap";
 import { Badge, Container, PillButton, PillLink, StatusBadge, VERDICT, VerdictBadge, cx, money, shortHash } from "./ui";
 
@@ -27,7 +28,7 @@ type OrderData = {
   };
   undoWindow: { minutes: number; endsAt: string | null; open: boolean; factors: { factor: string; minutes: number }[] };
   mandate: { id: string; request: string; shopperKey: string; intent: { attributes: Record<string, string>; maxPrice: number } } | null;
-  chain: { intact: boolean; events: { seq: number; type: string; createdAt: string; hash: string }[] };
+  chain: { intact: boolean; events: { seq: number; type: string; createdAt: string; hash: string; proof: Proof }[] };
 };
 
 export const EVENT_LABEL: Record<string, string> = {
@@ -49,6 +50,15 @@ export const EVENT_LABEL: Record<string, string> = {
   REVIEW_REQUIRED: "Sent to human review",
   CHECKOUT_CANCELLED: "Checkout cancelled",
   AGENT_NO_MATCH: "Agent found nothing that fits",
+  AGENT_CART_REJECTED: "Undo refused the agent's cart",
+  CHECKOUT_FAILED: "PayPal checkout failed",
+  AUTHORIZATION_FAILED: "PayPal authorization failed",
+  CAPTURE_FAILED: "Capture failed",
+  UNDO_FAILED: "Undo failed",
+  LIABILITY_PAYOUT_SENT: "Agent operator paid the merchant back",
+  LIABILITY_SETTLED: "Payout confirmed — merchant made whole",
+  LIABILITY_PAYOUT_FAILED: "Agent operator's payout failed",
+  LIABILITY_UNSETTLED: "Liability recorded, not yet paid",
 };
 
 const RESOLVED_HEADLINE: Record<string, string> = {
@@ -277,18 +287,42 @@ export function OrderApp() {
                 {chain.intact ? "Intact" : "Tampered"}
               </Badge>
             </div>
-            <p className="mt-2 text-body-sm text-muted">Every step is hashed into the next. Editing history breaks the chain.</p>
-            <ol className="mt-6 space-y-4">
+            <p className="mt-2 text-body-sm text-muted">Every step is hashed into the next. Editing history breaks the chain. Open a step to see how it was decided.</p>
+            <ProofSummaryLine proofs={chain.events.map((e) => e.proof)} />
+            <ol className="mt-6 space-y-3">
               {chain.events.map((e) => (
                 <li key={e.seq} className="flex gap-3">
-                  <span className="mt-1 grid size-6 shrink-0 place-items-center rounded-full bg-ink font-mono text-[11px] text-paper">{e.seq}</span>
-                  <div className="min-w-0">
-                    <p className="text-body">{EVENT_LABEL[e.type] ?? e.type}</p>
-                    <p className="flex flex-wrap items-center gap-x-2 font-mono text-caption text-muted">
-                      <span>{new Date(e.createdAt).toLocaleTimeString()}</span>
-                      <span className="inline-flex items-center gap-1"><Link2 className="size-3" aria-hidden />{shortHash(e.hash, 12)}</span>
-                    </p>
-                  </div>
+                  <span className="mt-2.5 grid size-6 shrink-0 place-items-center rounded-full bg-ink font-mono text-[11px] text-paper">{e.seq}</span>
+                  <details className="group min-w-0 flex-1 rounded-[16px] transition-colors open:bg-bone">
+                    <summary className="flex min-h-11 cursor-pointer list-none items-start justify-between gap-3 rounded-[16px] px-2 py-1.5 transition-colors hover:bg-bone [&::-webkit-details-marker]:hidden">
+                      <span className="min-w-0">
+                        <span className="block text-body">{EVENT_LABEL[e.type] ?? e.type}</span>
+                        <span className="flex flex-wrap items-center gap-x-2 font-mono text-caption text-muted">
+                          <span>{new Date(e.createdAt).toLocaleTimeString()}</span>
+                          <span className="inline-flex items-center gap-1"><Link2 className="size-3" aria-hidden />{shortHash(e.hash, 12)}</span>
+                        </span>
+                      </span>
+                      <span className="flex shrink-0 items-center gap-1.5 pt-0.5">
+                        <KindChip kind={e.proof.kind} />
+                        <ChevronDown className="size-4 text-muted transition-transform group-open:rotate-180" aria-hidden />
+                      </span>
+                    </summary>
+                    <div className="space-y-3 px-2 pb-3 pt-1 text-body-sm">
+                      <p>{e.proof.how}</p>
+                      {e.proof.checks?.length ? (
+                        <ul className="space-y-2">
+                          {e.proof.checks.map((c, i) => (
+                            <li key={i} className="flex items-start gap-2">
+                              <KindChip kind={c.by} />
+                              <span className="min-w-0 pt-0.5 text-ink/85">{c.text}</span>
+                            </li>
+                          ))}
+                        </ul>
+                      ) : null}
+                      {e.proof.api && <p className="break-words font-mono text-caption">{e.proof.api}</p>}
+                      {e.proof.ref && <p className="break-all font-mono text-caption text-muted">ref {e.proof.ref}</p>}
+                    </div>
+                  </details>
                 </li>
               ))}
             </ol>
@@ -409,5 +443,42 @@ function VerdictCard({ r, order }: { r: Resolution; order: OrderData["order"] })
         </p>
       )}
     </article>
+  );
+}
+
+/** How a step was decided, as a chip: the icon and the word carry the meaning, never colour alone. */
+const KIND: Record<ProofKind, { label: string; tone: "ok" | "held" | "neutral"; icon: React.ReactNode }> = {
+  signature: { label: "Signature", tone: "ok", icon: <Fingerprint className="size-3.5" aria-hidden /> },
+  rule: { label: "Rule", tone: "ok", icon: <ShieldCheck className="size-3.5" aria-hidden /> },
+  ai: { label: "AI", tone: "held", icon: <Sparkles className="size-3.5" aria-hidden /> },
+  paypal: { label: "PayPal API", tone: "neutral", icon: <CreditCard className="size-3.5" aria-hidden /> },
+  person: { label: "Person", tone: "neutral", icon: <UserRound className="size-3.5" aria-hidden /> },
+  record: { label: "Record", tone: "neutral", icon: <Circle className="size-3.5" aria-hidden /> },
+};
+
+function KindChip({ kind }: { kind: ProofKind }) {
+  const k = KIND[kind];
+  return (
+    <Badge tone={k.tone} icon={k.icon} className="shrink-0 px-2 py-0.5 text-caption">
+      {k.label}
+    </Badge>
+  );
+}
+
+/** One line a judge can read in two seconds: how much of this purchase was code, AI, PayPal and people. */
+function ProofSummaryLine({ proofs }: { proofs: Proof[] }) {
+  const c = proofSummary(proofs);
+  const parts = [
+    [c.rule, "rule check", "rule checks"],
+    [c.ai, "AI judgment", "AI judgments"],
+    [c.paypal, "PayPal API call", "PayPal API calls"],
+    [c.signature, "signature", "signatures"],
+    [c.person, "human step", "human steps"],
+  ].filter(([n]) => (n as number) > 0) as [number, string, string][];
+  if (!parts.length) return null;
+  return (
+    <p className="mt-4 rounded-[16px] bg-mist px-4 py-3 text-body-sm">
+      This purchase so far: {parts.map(([n, one, many]) => `${n} ${n === 1 ? one : many}`).join(" · ")}.
+    </p>
   );
 }

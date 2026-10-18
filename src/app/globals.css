@@ -129,7 +129,7 @@
 }
 
 /* ── Motion ─────────────────────────────────────────────────────────────────────────────────────
- * Focal moment: the CTRL+Z band rewinds — the letters travel against your scroll, right to left.
+ * Focal moment: the CTRL+Z band runs left to right on a loop, the hero grid lights up under the cursor.
  * Supporting: the hero headline is stamped in once; the how-it-works track fills as you scroll
  * through the steps; the verdict card's evidence lines arrive one by one as the engine "checks".
  * Everything is visible by default: animations only run where supported and when scripts mark them.
@@ -154,12 +154,13 @@
     transform: none;
   }
 }
-@keyframes undo-rewind {
+/* Marquee: the track holds two identical copies; shifting from -50% to 0 moves it left to right seamlessly. */
+@keyframes undo-marquee-ltr {
   from {
-    transform: translateX(16%);
+    transform: translateX(-50%);
   }
   to {
-    transform: translateX(-16%);
+    transform: translateX(0);
   }
 }
 @keyframes undo-track {
@@ -175,13 +176,12 @@
   .stamp-in {
     animation: undo-stamp 760ms cubic-bezier(0.16, 1, 0.3, 1) 80ms both;
   }
+  .marquee-ltr {
+    animation: undo-marquee-ltr 28s linear infinite;
+    will-change: transform;
+  }
   /* Scroll-linked pieces: plain static layout where scroll timelines aren't supported. */
   @supports (animation-timeline: view()) {
-    .scroll-rewind {
-      animation: undo-rewind linear both;
-      animation-timeline: view();
-      animation-range: entry 0% exit 100%;
-    }
     .track-fill {
       transform-origin: left center;
       animation: undo-track linear both;
@@ -205,7 +205,7 @@
     scroll-behavior: auto;
   }
   .stamp-in,
-  .scroll-rewind,
+  .marquee-ltr,
   .track-fill {
     animation: none !important;
     transform: none !important;

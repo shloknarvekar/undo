@@ -3,6 +3,7 @@ import type { ReactNode } from "react";
 import { HeadlineCycle } from "@/components/headline-cycle";
 import { HeroToggle } from "@/components/hero-toggle";
 import { CountdownChip, Reveal } from "@/components/motion";
+import { Boxes } from "@/components/ui/background-boxes";
 import { SiteNav } from "@/components/site-nav";
 import { Container, PillLink, SiteFooter } from "@/components/ui";
 
@@ -29,6 +30,9 @@ const STEPS = [
   },
 ];
 
+/** Hover colours for the hero grid: Rewind and its tints, never the status colours. */
+const HERO_TINTS = ["#c6f432", "#d7f86a", "#eefbc9", "#a9d61c", "#ffffff"];
+
 /** Big inline figure for the editorial "why now" paragraph. */
 function Figure({ children }: { children: ReactNode }) {
   return <span className="display-type tabular text-[1.35em] leading-none">{children}</span>;
@@ -39,22 +43,28 @@ export default function Home() {
     <>
       <SiteNav current="home" />
       <main className="flex-1">
-        {/* Hot field — the promise */}
-        <section className="bg-field">
-          <Container className="flex flex-col items-center gap-10 py-20 text-center sm:py-28">
+        {/* Deep field — the promise, over a grid of cells that light up in Rewind tints under the cursor */}
+        <section className="on-deep relative overflow-hidden bg-deep text-paper">
+          <Boxes rows={64} cols={48} colors={HERO_TINTS} lineClassName="border-paper/[0.16] text-paper/25" />
+          {/* Fades the grid toward the edges so the centre reads first */}
+          <div aria-hidden className="pointer-events-none absolute inset-0 z-10 bg-deep [mask-image:radial-gradient(transparent_35%,white)]" />
+          {/* The wrapper lets pointer events through to the grid; only the controls take them back */}
+          <Container className="pointer-events-none relative z-20 flex flex-col items-center gap-10 py-20 text-center sm:py-28">
             <h1 className="stamp-in display-type max-w-[1100px] text-[52px] leading-[0.95] sm:text-[88px] lg:text-display">
-              Every agent purchase gets an undo.
+              Every agent purchase gets an <span className="text-field">undo.</span>
             </h1>
-            <HeroToggle />
-            <div className="flex flex-col gap-3 sm:flex-row">
-              <PillLink href="/shop" tone="solid">
+            <div className="pointer-events-auto">
+              <HeroToggle onDeep />
+            </div>
+            <div className="pointer-events-auto flex flex-col gap-3 sm:flex-row">
+              <PillLink href="/shop" tone="lime">
                 Try the live demo <ArrowRight className="arrow size-4" aria-hidden />
               </PillLink>
-              <PillLink href="/merchant" tone="ink">
+              <PillLink href="/merchant" tone="white">
                 Open the merchant console
               </PillLink>
             </div>
-            <p className="mt-4 inline-flex items-center gap-3 rounded-full bg-ink py-2 pl-2 pr-5 text-paper">
+            <p className="mt-4 inline-flex items-center gap-3 rounded-full bg-paper py-2 pl-2 pr-5 text-ink">
               <span className="grid size-9 place-items-center rounded-full bg-field text-ink">
                 <Hourglass className="size-4" aria-hidden />
               </span>
@@ -153,11 +163,19 @@ export default function Home() {
           </Container>
         </section>
 
-        {/* Full-bleed band — type as the image; it rewinds (travels right to left) as you scroll down */}
+        {/* Full-bleed band — type as the image, running left to right on a loop (two copies make it seamless) */}
         <section aria-label="Ctrl+Z for money" className="overflow-hidden bg-deep">
-          <p aria-hidden className="scroll-rewind display-type select-none whitespace-nowrap py-4 text-center text-[31vw] leading-[0.8] text-field [margin-inline:-6vw]">
-            CTRL+Z
-          </p>
+          <div aria-hidden className="marquee-ltr flex w-max select-none py-4">
+            {[0, 1].map((copy) => (
+              <p key={copy} className="display-type flex shrink-0 items-center whitespace-nowrap text-[31vw] leading-[0.8] text-field">
+                {[0, 1].map((k) => (
+                  <span key={k} className="flex items-center">
+                    CTRL+Z<span className="mx-[6vw] inline-block size-[5vw] rounded-full bg-field" />
+                  </span>
+                ))}
+              </p>
+            ))}
+          </div>
         </section>
 
         {/* Mist — merchants: the one elevated surface compares the same mistake with and without Undo */}

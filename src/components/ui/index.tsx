@@ -23,12 +23,14 @@ export function Container({ className, children }: { className?: string; childre
 }
 
 /** Pill buttons: outline-only on color fields; one solid black allowed on white. */
-type Tone = "ink" | "white" | "solid" | "field";
+type Tone = "ink" | "white" | "solid" | "field" | "lime";
 const PILL: Record<Tone, string> = {
   ink: "border-ink text-ink hover:bg-ink hover:text-paper",
   white: "border-paper text-paper hover:bg-paper hover:text-deep",
   solid: "border-ink bg-ink text-paper hover:bg-deep hover:border-deep",
   field: "border-field text-field hover:bg-field hover:text-deep",
+  /** The one solid pill allowed on the deep field. */
+  lime: "border-field bg-field text-deep hover:bg-paper hover:border-paper",
 };
 const pillBase =
   "inline-flex min-h-11 items-center justify-center gap-2 rounded-full border px-[33px] py-[13px] text-body font-medium leading-none motion-transform transition-[color,background-color,border-color,transform] duration-200 ease-out active:scale-[0.98] [&_.arrow]:transition-transform [&_.arrow]:duration-200 hover:[&_.arrow]:translate-x-1 cursor-pointer disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-transparent disabled:hover:text-current";

@@ -75,9 +75,9 @@ const handler = createMcpHandler(
       {
         title: "Ask the shopper for a signed mandate",
         description:
-          "Start here. Turns the shopper's request (in their own words) into a draft mandate and returns a link. " +
-          "Give the link to the shopper: they review the limits and sign on their own device. You cannot sign for them. " +
-          "Then call undo_get_mandate until it is signed.",
+          "Start here. Turns the shopper's request (in their own words) into a draft mandate and returns a signing link. " +
+          "You MUST show the shopper the full link in your reply: they open it, review the limits and sign on their own device. " +
+          "You cannot sign for them. When they say they've signed, call undo_get_mandate.",
         inputSchema: z.object({
           request: z.string().min(3).max(1000).describe("What the shopper wants, verbatim, e.g. 'black running shoes, size 10, under $120'"),
           agent_name: z.string().max(80).optional().describe("Your name as the shopper should see it, e.g. 'Claude'"),
@@ -94,9 +94,10 @@ const handler = createMcpHandler(
         const { id, expiresAt } = await createMandateRequest(request, draft, agent);
         const signUrl = `${baseUrl(ctx.http?.req)}/mandates/sign/${id}`;
         return text(
-          `Ask the shopper to open this link and sign: ${signUrl}\n` +
-            (draft.mustAsk.length ? `They'll be asked: ${draft.mustAsk.join(" ")}\n` : "") +
-            "The undo window and the Undo button stay with the device that signs, so they should use their own phone or laptop.",
+          `SHOW THE SHOPPER THIS LINK NOW (they must open it and sign before you can search or buy):\n${signUrl}\n\n` +
+            (draft.mustAsk.length ? `The page will ask them: ${draft.mustAsk.join(" ")}\n` : "") +
+            "Tell them to sign on the phone or laptop they'll keep using: the Undo button only works from the device that signs. " +
+            "The first load can take up to a minute while the server wakes up.",
           { mandateRequestId: id, signUrl, expiresAt, requestedBy: agent, draft: { item: draft.item, maxPrice: draft.maxPrice, attributes: draft.attributes, openQuestions: draft.mustAsk } },
         );
       },
@@ -110,13 +111,17 @@ const handler = createMcpHandler(
         inputSchema: z.object({ mandate_request_id: z.string().uuid() }),
         annotations: { readOnlyHint: true },
       },
-      async ({ mandate_request_id }) => {
+      async ({ mandate_request_id }, ctx) => {
         const req = await loadMandateRequest(mandate_request_id);
         if (!req) return fail("No mandate request with that id.");
         if (req.status !== "SIGNED" || !req.mandateId) {
-          return text(req.status === "EXPIRED" ? "The request expired before the shopper signed. Ask again." : "Not signed yet. The shopper still needs to open the link and sign.", {
+          if (req.status === "EXPIRED") return text("The request expired before the shopper signed. Call undo_request_mandate again.", { status: req.status });
+          const signUrl = `${baseUrl(ctx.http?.req)}/mandates/sign/${req.id}`;
+          return text(`Not signed yet. Show the shopper this link again and ask them to press the sign button and wait for "Signed.":\n${signUrl}`, {
             status: req.status,
+            signUrl,
             openQuestions: req.draft.mustAsk,
+            expiresAt: req.expiresAt,
           });
         }
         const loaded = await loadMandate(req.mandateId);
@@ -136,7 +141,7 @@ const handler = createMcpHandler(
         title: "Search products within the mandate",
         description:
           "Searches real retailers (via Channel3) with the mandate's hard limits applied: price ceiling, colour, category, gender. " +
-          "You may phrase your own query; you can't widen the limits. Returns product ids and the variants each one offers.",
+          "You may phrase your own query; you can't widen the limits. Returns product ids and the variants each listing names (unconfirmed until undo_check_cart).",
         inputSchema: z.object({
           mandate_id: z.string().uuid(),
           query: z.string().max(200).optional().describe("Optional search phrase; defaults to the mandate's item and colour"),
@@ -157,8 +162,11 @@ const handler = createMcpHandler(
             price: p.price,
             currency: p.currency,
             retailer: p.sourceDomain,
-            variantsOffered: Object.fromEntries(p.variantOptions.map((o) => [o.name, o.values.slice(0, 20)])),
+            variantsListed: Object.fromEntries(p.variantOptions.map((o) => [o.name, o.values.slice(0, 20)])),
           })),
+          note:
+            "variantsListed comes from the search index and can be stale or incomplete. Don't tell the shopper a size or colour " +
+            "is confirmed until undo_check_cart says so: it re-reads the product page and lists anything it couldn't verify.",
         });
       },
     );
@@ -169,7 +177,7 @@ const handler = createMcpHandler(
       options: z
         .record(z.string(), z.string())
         .optional()
-        .describe("The exact variant to buy, using the option names from variantsOffered, e.g. { \"Size\": \"10\", \"Color\": \"Black\" }"),
+        .describe("The exact variant to buy, using the option names from variantsListed, e.g. { \"Size\": \"10\", \"Color\": \"Black\" }"),
     });
 
     /** Shared by check and propose: Undo's guard on one product, plus the undo window it would get. */

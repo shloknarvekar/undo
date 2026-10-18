@@ -74,13 +74,13 @@ async function shop() {
 
   // Find a product that offers both the right size and some other size, to try a wrong variant first.
   const want = String(m.data.limits.required.size ?? "M").toLowerCase();
-  const pick = found.data.results.find((p: { variantsOffered: Record<string, string[]> }) =>
-    Object.entries(p.variantsOffered).some(([k, v]) => /size/i.test(k) && v.some((x) => x.toLowerCase() === want) && v.length > 1),
+  const pick = found.data.results.find((p: { variantsListed: Record<string, string[]> }) =>
+    Object.entries(p.variantsListed).some(([k, v]) => /size/i.test(k) && v.some((x) => x.toLowerCase() === want) && v.length > 1),
   );
   if (!pick) throw new Error("No result offers the mandate's size alongside another size; try another request.");
-  const sizeKey = Object.keys(pick.variantsOffered).find((k) => /size/i.test(k))!;
-  const wrong = pick.variantsOffered[sizeKey].find((x: string) => x.toLowerCase() !== want);
-  const right = pick.variantsOffered[sizeKey].find((x: string) => x.toLowerCase() === want);
+  const sizeKey = Object.keys(pick.variantsListed).find((k) => /size/i.test(k))!;
+  const wrong = pick.variantsListed[sizeKey].find((x: string) => x.toLowerCase() !== want);
+  const right = pick.variantsListed[sizeKey].find((x: string) => x.toLowerCase() === want);
   console.log(`  using ${pick.title} (${pick.productId}); wrong size ${wrong}, right size ${right}`);
 
   const bad = await tool(s.base, "undo_propose_cart", {

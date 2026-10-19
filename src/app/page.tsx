@@ -42,10 +42,9 @@ export default function Home() {
   return (
     <>
       <SiteNav current="home" />
-      {/* The dark stage behind every section: what a receding section is set down onto (see .section-flow) */}
-      <main className="flex-1 bg-ink">
+      <main className="flex-1">
         {/* Deep field — the promise, over a grid of cells that light up in Rewind tints under the cursor */}
-        <section className="section-lead on-deep relative overflow-hidden bg-deep text-paper">
+        <section className="on-deep relative overflow-hidden bg-deep text-paper">
           {/* The grid fills the right ~60% of the hero; its edge is an invisible diagonal that fades out (globals.css). */}
           <div aria-hidden className="hero-slash absolute inset-0 z-0">
             <HeroGrid colors={HERO_TINTS} lineColor="rgb(255 255 255 / 0.16)" className="hero-grid-pos" />

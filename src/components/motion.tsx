@@ -99,7 +99,8 @@ export function CtrlZBand() {
   const [paused, setPaused] = useState(false);
   return (
     <section aria-label="Ctrl+Z for money" className="section-flow relative overflow-hidden bg-deep">
-      <div aria-hidden className={`marquee flex w-max select-none py-4 ${paused ? "[animation-play-state:paused]" : ""}`}>
+      {/* Extra bottom room: the next section is laid over this one's bottom edge (--section-overlap). */}
+      <div aria-hidden className={`marquee flex w-max select-none pb-16 pt-4 ${paused ? "[animation-play-state:paused]" : ""}`}>
         {[0, 1].map((copy) => (
           <p key={copy} className="display-type flex shrink-0 items-center whitespace-nowrap text-[31vw] leading-[0.8] text-field">
             {[0, 1].map((k) => (
@@ -113,7 +114,7 @@ export function CtrlZBand() {
       <button
         type="button"
         onClick={() => setPaused((p) => !p)}
-        className="on-deep motion-reduce:hidden absolute bottom-3 right-4 inline-flex min-h-11 cursor-pointer items-center gap-2 rounded-full bg-deep/80 px-4 text-body-sm font-medium text-paper ring-1 ring-paper/30 transition-colors hover:bg-paper hover:text-deep"
+        className="on-deep motion-reduce:hidden absolute bottom-16 right-4 inline-flex min-h-11 cursor-pointer items-center gap-2 rounded-full bg-deep/80 px-4 text-body-sm font-medium text-paper ring-1 ring-paper/30 transition-colors hover:bg-paper hover:text-deep"
       >
         {paused ? <Play className="size-4" aria-hidden /> : <Pause className="size-4" aria-hidden />}
         {paused ? "Play" : "Pause"}

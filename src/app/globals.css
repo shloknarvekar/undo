@@ -54,6 +54,10 @@
 }
 
 @layer base {
+  :root {
+    /* How far each section is laid over the one before it (matches its starting corner radius). */
+    --section-overlap: 48px;
+  }
   html {
     -webkit-text-size-adjust: 100%;
     /* Keep focused/anchored content clear of the sticky 72–88px header (WCAG 2.4.11 focus not obscured). */
@@ -198,16 +202,10 @@
 }
 @keyframes undo-section-in {
   from {
-    border-radius: 48px 48px 0 0;
+    border-radius: var(--section-overlap) var(--section-overlap) 0 0;
   }
   to {
     border-radius: 0;
-  }
-}
-@keyframes undo-section-out {
-  to {
-    transform: scale(0.92);
-    border-radius: 48px;
   }
 }
 @keyframes undo-track {
@@ -230,28 +228,17 @@
   /* Scroll-linked pieces: plain static layout where scroll timelines aren't supported. */
   @supports (animation-timeline: view()) {
     /*
-     * Section hand-off, driven by scroll position: the section you're leaving recedes (shrinks from its bottom edge,
-     * corners round) onto the dark stage behind <main>, while the next colour field arrives with rounded top corners
-     * that flatten. The hero only recedes; it is already on screen at load. Inside sections, only the showcase cards
-     * move (ScrollTilt: they tip back and settle flat), so there is one motion per moment, not several at once.
+     * Section hand-off, driven by scroll position: each section is laid over the bottom of the one before it, like a
+     * card on a stack. It arrives with rounded top corners that flatten as it settles; the corners always show the
+     * previous section's colour, so nothing behind the page ever shows. Inside sections, only the showcase cards move
+     * (ScrollTilt: they tip back and settle flat), so there is one motion per moment, not several at once.
      */
-    .section-lead,
     .section-flow {
-      transform-origin: 50% 100%;
-    }
-    .section-lead {
-      animation: undo-section-out linear both;
+      position: relative;
+      margin-top: calc(-1 * var(--section-overlap));
+      animation: undo-section-in linear both;
       animation-timeline: view();
-      animation-range: exit 0% exit 100%;
-    }
-    .section-flow {
-      animation:
-        undo-section-in linear both,
-        undo-section-out linear both;
-      animation-timeline: view(), view();
-      animation-range:
-        entry 0% entry 100%,
-        exit 0% exit 100%;
+      animation-range: entry 0% entry 100%;
     }
     .track-fill {
       transform-origin: left center;
@@ -283,7 +270,6 @@
   .stamp-in,
   .marquee,
   .track-fill,
-  .section-lead,
   .section-flow,
   .section-flow > *,
   .rogue-row {

@@ -1,4 +1,4 @@
-import { ArrowRight, Hourglass } from "lucide-react";
+import { ArrowRight, BadgeCheck, CalendarX, Fingerprint, Hourglass, Layers, ShieldX, Tag, UserX } from "lucide-react";
 import type { ReactNode } from "react";
 import { HeadlineCycle } from "@/components/headline-cycle";
 import { HeroToggle } from "@/components/hero-toggle";
@@ -15,8 +15,8 @@ const STEPS = [
   },
   {
     title: "The agent shops inside the lines",
-    body: "Real products, re-checked live at your exact size and colour. Anything that breaks the mandate is rejected before checkout.",
-    api: "Channel3 · Gemini",
+    body: "Undo's own agent, or any AI that connects over MCP. Real products, re-checked live at your exact size and colour; anything outside the mandate is refused before checkout.",
+    api: "Channel3 · MCP · Gemini",
   },
   {
     title: "Money is held, not taken",
@@ -25,13 +25,35 @@ const STEPS = [
   },
   {
     title: "Undo decides who pays",
-    body: "Rules first, AI second, a human when it's close. Inside the window it's a free void; after capture it's a refund, a claim or a return.",
-    api: "Payments v2 · Disputes v1",
+    body: "Rules first, AI second, a human when it's close. Inside the window it's a free void; after capture, a refund, a claim or a return. If the agent was at fault, its operator pays the shop back.",
+    api: "Payments v2 · Payouts v1",
   },
 ];
 
 /** Hover colours for the hero grid: Rewind and its tints, never the status colours. */
 const HERO_TINTS = ["#c6f432", "#d7f86a", "#eefbc9", "#a9d61c", "#ffffff"];
+
+/** The rogue-agents demo (lib/rogue.ts): one signed mandate, each cheat and the rule that stopped it. */
+const ROGUES: { agent: string; tried: string; rule: string; icon: ReactNode }[] = [
+  { agent: "Upsell Bot", tried: "a pricier hoodie, over the $80 limit", rule: "Price ceiling", icon: <Tag className="size-3.5" aria-hidden /> },
+  { agent: "Close Enough", tried: "size XL instead of M", rule: "Variant check", icon: <Layers className="size-3.5" aria-hidden /> },
+  { agent: "Colour Blind", tried: "grey instead of black", rule: "Variant check", icon: <Layers className="size-3.5" aria-hidden /> },
+  { agent: "Bulk Buyer", tried: "three hoodies, not one", rule: "Quantity rule", icon: <Layers className="size-3.5" aria-hidden /> },
+  { agent: "Budget Hacker", tried: "editing $80 to $800 after signing", rule: "Ed25519 signature", icon: <Fingerprint className="size-3.5" aria-hidden /> },
+  { agent: "Late Shopper", tried: "the same mandate three weeks later", rule: "Mandate expiry", icon: <CalendarX className="size-3.5" aria-hidden /> },
+  { agent: "Impersonator", tried: "a mandate signed for another agent", rule: "Agent binding", icon: <UserX className="size-3.5" aria-hidden /> },
+];
+
+/** An outside agent's session with Undo's MCP server: the tool calls and Undo's replies, abridged. */
+const MCP_EXCHANGE: { who: "shopper" | "agent" | "undo"; tool?: string; text: string; tone?: "bad" | "ok" }[] = [
+  { who: "shopper", text: "Use Undo to buy me a black hoodie, size M, under $80." },
+  { who: "agent", tool: "undo_request_mandate", text: "Here's your signing link. I can't sign it for you." },
+  { who: "shopper", text: "Signed." },
+  { who: "agent", tool: "undo_propose_cart", text: "Classic Hoodie, size XL." },
+  { who: "undo", text: "Refused: size, the mandate says M. Nothing was charged.", tone: "bad" },
+  { who: "agent", tool: "undo_propose_cart", text: "Classic Hoodie, size M." },
+  { who: "undo", text: "Accepted: authorize-only PayPal checkout, undo window open.", tone: "ok" },
+];
 
 /** Big inline figure for the editorial "why now" paragraph. */
 function Figure({ children }: { children: ReactNode }) {
@@ -42,7 +64,8 @@ export default function Home() {
   return (
     <>
       <SiteNav current="home" />
-      <main className="flex-1">
+      {/* clip, not hidden: tilted cards scale past the edge mid-scroll, and sticky columns must keep working */}
+      <main className="flex-1 overflow-x-clip">
         {/* Deep field — the promise, over a grid of cells that light up in Rewind tints under the cursor */}
         <section className="on-deep relative overflow-hidden bg-deep text-paper">
           {/* The grid fills the right ~60% of the hero; its edge is an invisible diagonal that fades out (globals.css). */}
@@ -110,14 +133,9 @@ export default function Home() {
                 Undo checks the signed mandate against what was bought and what arrived, then routes the money through the
                 matching PayPal rail. It doesn&apos;t take anyone&apos;s word for it: not the shopper&apos;s, not the agent&apos;s.
               </p>
-              <div className="flex flex-wrap gap-3">
-                <PillLink href="/shop" tone="white">
-                  See it decide <ArrowRight className="arrow size-4" aria-hidden />
-                </PillLink>
-                <PillLink href="/rogue" tone="field">
-                  Watch 8 agents try to break a mandate
-                </PillLink>
-              </div>
+              <PillLink href="/shop" tone="white">
+                See it decide <ArrowRight className="arrow size-4" aria-hidden />
+              </PillLink>
             </div>
 
             {/* A real verdict from the live sandbox run; evidence lines arrive one by one like the engine's checks */}
@@ -174,6 +192,98 @@ export default function Home() {
         {/* Full-bleed band — type as the image, running right to left on a loop */}
         <CtrlZBand />
 
+        {/* Bone — rogue agents: the guard as a ledger of cheats and the rule that stopped each */}
+        <section aria-labelledby="rogue-title" className="section-flow bg-bone">
+          <Container className="grid gap-12 py-20 sm:py-28 lg:grid-cols-[1fr_1.25fr] lg:gap-16">
+            <div className="space-y-6 lg:sticky lg:top-28 lg:self-start">
+              <h2 id="rogue-title" className="display-type text-[48px] leading-none sm:text-heading-lg">
+                Seven ways an agent can cheat. Seven rules that stop it.
+              </h2>
+              <p className="max-w-md text-subheading text-ink/80">
+                One shopper signs &ldquo;a black hoodie, size M, under $80&rdquo;. Eight agents try to use it, on live products.
+                Undo&apos;s guard decides each one before PayPal ever sees a cart.
+              </p>
+              <PillLink href="/rogue" tone="solid">
+                Run it live <ArrowRight className="arrow size-4" aria-hidden />
+              </PillLink>
+            </div>
+            <Reveal as="ol" className="divide-y divide-ink/10 rounded-card bg-paper px-6 sm:px-8">
+              {ROGUES.map((r) => (
+                <li key={r.agent} className="flex flex-col gap-2 py-5 sm:flex-row sm:items-center sm:justify-between sm:gap-6">
+                  <p className="min-w-0">
+                    <span className="heading-type text-subheading">{r.agent}</span>
+                    <span className="block text-body-sm text-muted">tried {r.tried}</span>
+                  </p>
+                  <span className="flex shrink-0 flex-wrap items-center gap-2">
+                    <span className="inline-flex items-center gap-1.5 rounded-tag bg-bad-bg px-2.5 py-1 text-body-sm font-medium text-bad">
+                      <ShieldX className="size-3.5" aria-hidden /> Blocked
+                    </span>
+                    <span className="inline-flex items-center gap-1.5 rounded-tag bg-neutral-bg px-2.5 py-1 text-body-sm font-medium text-neutral">
+                      {r.icon} {r.rule}
+                    </span>
+                  </span>
+                </li>
+              ))}
+              <li className="flex flex-col gap-2 py-5 sm:flex-row sm:items-center sm:justify-between sm:gap-6">
+                <p className="min-w-0">
+                  <span className="heading-type text-subheading">Careful Claude</span>
+                  <span className="block text-body-sm text-muted">bought exactly what was signed</span>
+                </p>
+                <span className="inline-flex shrink-0 items-center gap-1.5 self-start rounded-tag bg-ok-bg px-2.5 py-1 text-body-sm font-medium text-ok sm:self-auto">
+                  <BadgeCheck className="size-3.5" aria-hidden /> Allowed
+                </span>
+              </li>
+            </Reveal>
+          </Container>
+        </section>
+
+        {/* Deep field — any AI agent can plug in: Undo as an MCP server */}
+        <section id="agents" aria-labelledby="agents-title" className="section-flow on-deep bg-deep text-paper">
+          <Container className="grid items-center gap-14 py-20 sm:py-28 lg:grid-cols-[1fr_1.1fr]">
+            <div className="min-w-0 space-y-6">
+              <h2 id="agents-title" className="display-type text-[48px] leading-none sm:text-heading-lg">
+                Any AI agent can shop through Undo.
+              </h2>
+              <p className="max-w-lg text-subheading text-paper/80">
+                Undo is an MCP server. Claude, Cursor or your own agent connects to one address and gets six tools to ask for a
+                mandate, search, check a cart and buy, inside the lines the shopper signed.
+              </p>
+              <p className="w-fit max-w-full break-all rounded-[16px] bg-black/30 px-4 py-3 font-mono text-body-sm text-field ring-1 ring-paper/10">
+                https://undo-1c56.onrender.com/api/mcp
+              </p>
+              <ul className="space-y-3 text-body text-paper/85">
+                <li className="flex gap-3"><Fingerprint className="mt-1 size-4 shrink-0 text-field" aria-hidden /> The agent never holds the shopper&apos;s key. Only their device can sign or undo.</li>
+                <li className="flex gap-3"><ShieldX className="mt-1 size-4 shrink-0 text-field" aria-hidden /> Every cart goes through the guard. A wrong one is refused, with the reason.</li>
+                <li className="flex gap-3"><BadgeCheck className="mt-1 size-4 shrink-0 text-field" aria-hidden /> The mandate names the agent, so its mistakes are billed to its operator.</li>
+              </ul>
+            </div>
+            <ScrollTilt>
+              <figure className="rounded-card bg-black/30 p-[27px] ring-1 ring-paper/10">
+                <figcaption className="text-body-sm text-paper/70">An agent shopping through Undo&apos;s MCP tools (abridged)</figcaption>
+                <ol className="mt-5 space-y-3">
+                  {MCP_EXCHANGE.map((m, i) => (
+                    <li key={i} className={m.who === "shopper" ? "flex justify-end" : "flex"}>
+                      <p
+                        className={
+                          m.who === "shopper"
+                            ? "max-w-[85%] rounded-[18px] rounded-br-[6px] bg-paper px-4 py-2.5 text-body-sm text-ink"
+                            : m.who === "agent"
+                              ? "max-w-[90%] rounded-[18px] rounded-bl-[6px] bg-paper/10 px-4 py-2.5 text-body-sm"
+                              : `max-w-[90%] rounded-[14px] px-4 py-2.5 font-mono text-caption ${m.tone === "bad" ? "bg-bad-bg text-bad" : "bg-ok-bg text-ok"}`
+                        }
+                      >
+                        {m.tool && <span className="mb-1 block font-mono text-caption text-field">{m.tool}</span>}
+                        {m.who === "undo" && <span className="font-medium">Undo · </span>}
+                        {m.text}
+                      </p>
+                    </li>
+                  ))}
+                </ol>
+              </figure>
+            </ScrollTilt>
+          </Container>
+        </section>
+
         {/* Mist — merchants: the one elevated surface compares the same mistake with and without Undo */}
         <section id="merchants" aria-labelledby="merchants-title" className="section-flow bg-mist">
           <Container className="grid items-center gap-14 py-20 sm:py-28 lg:grid-cols-[1fr_1.1fr]">
@@ -183,7 +293,7 @@ export default function Home() {
               </h2>
               <p className="max-w-lg text-subheading text-ink/80">
                 Every agent order arrives with its signed mandate and a verdict trail. Voids before capture keep PayPal fees
-                off your books; agent faults are billed to the agent operator, not you.
+                off your books. When an agent was at fault, its operator pays you back through PayPal Payouts, automatically.
               </p>
               <PillLink href="/merchant" tone="ink">
                 Open the console <ArrowRight className="arrow size-4" aria-hidden />
@@ -192,7 +302,8 @@ export default function Home() {
             <ScrollTilt>
             <figure className="on-deep bg-deep p-8 text-paper shadow-lift sm:p-10">
               <figcaption className="text-body text-paper/80">
-                One wrong-colour pair of shoes, <span className="font-mono">$59.99</span>, from the live sandbox run.
+                A careless agent bought the wrong colour, <span className="font-mono">$59.99</span>, and the money was captured
+                before anyone noticed. From the live sandbox run.
               </figcaption>
               <div className="mt-8 grid gap-8 sm:grid-cols-2">
                 <div>
@@ -205,7 +316,8 @@ export default function Home() {
                 <div>
                   <p className="text-body-sm text-paper/70">With Undo</p>
                   <p className="mt-2 display-type text-[45px] leading-none tabular text-field">$0.00</p>
-                  <p className="mt-3 text-body-sm text-paper/80">Voided inside the window. The verdict bills the agent operator, and the event chain proves it.</p>
+                  <p className="mt-3 text-body-sm text-paper/80">The shopper was refunded in full, then the agent&apos;s operator paid you back $59.99 through PayPal Payouts.</p>
+                  <p className="mt-3 break-all font-mono text-caption text-paper/60">Payouts transaction 6UP83952EE553052N</p>
                 </div>
               </div>
             </figure>

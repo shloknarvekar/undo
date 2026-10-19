@@ -119,16 +119,17 @@ One feature per slot, each shipped live and verified before the next starts. Gat
 
 | Dates | Work | Done when |
 |---|---|---|
-| Oct 19 (Mon) | Check Devpost prizes for sponsor categories. Landing page tells the new story (any AI via MCP, operator pays the shop back, rogue agents) | sponsor list known; landing shows all three |
+| Oct 19 (Mon) | Check Devpost prizes for sponsor categories. Landing page tells the new story (any AI via MCP, operator pays the shop back, rogue agents) | done: sponsor list below; landing shows all three |
 | Oct 20 (Tue) | "See finished cases" links (one real order per outcome). Quota protection on `/api/rogue` and mandate drafting; 404 page | a judge sees all four outcomes without a PayPal login |
 | Oct 21 (Wed) | Hijacked agent: a real LLM agent reads a listing with a prompt injection; Undo's guard still blocks the cart | ninth rogue agent fooled live, blocked by a named rule |
 | Oct 22 (Thu) | Verify it yourself: re-check the event chain hashes and Ed25519 signatures in the browser, plus a tamper toggle | verification runs with no server call; tamper breaks it |
 | Oct 23 (Fri) | **Vault spike (2 h):** can the sandbox vault a PayPal wallet and charge it merchant-initiated? | go / no-go recorded here |
 | Oct 23–26 (Fri–Mon) | If go: autonomous agent payments with PayPal Vault, inside the mandate, Undo as the safety net. If no-go: trust scores move up and the days become buffer | agent pays with no redirect; undo still works |
 | Oct 27–28 (Tue–Wed) | Agent trust scores + merchant rules (block or lengthen windows by agent record) | rule changes an agent's checkout live |
-| Oct 29–30 (Thu–Fri) | Phone photo by QR for wrong-item cases; desktop verdict updates live | scan, snap, verdict appears on desktop |
+| Oct 29 (Thu) | Phone photo by QR for wrong-item cases; desktop verdict updates live | scan, snap, verdict appears on desktop |
+| Oct 30 (Fri) | **Bryntum** (free trial): undo-window timeline in the merchant console, one bar per held order from authorize to window close, voids and captures marked | live orders on the timeline, a void ends its bar |
 | Oct 31 (Sat) | OpenAPI spec, Postman collection, SDKs generated with APIMatic | collection runs green against the live app |
-| Nov 1 (Sun) | Threat model page; live PayPal webhook feed in the merchant console | both live |
+| Nov 1 (Sun) | **AG Grid** showcase: live PayPal webhook feed and transactions in AG Grid, cells flash on status change, pinned totals row, CSV export. Threat model page | both live |
 | Nov 2 (Mon) | Landing, README and video brief updated for every new feature | docs match the app |
 | Nov 3–4 (Tue–Wed) | Full QA: every flow on live, desktop + phone, accessibility pass, all spikes re-run; fix everything found | zero known bugs |
 | Nov 5 (Thu) | **Feature freeze.** Record the Claude MCP clip; send the final brief to the video maker | brief sent |
@@ -136,7 +137,9 @@ One feature per slot, each shipped live and verified before the next starts. Gat
 | Nov 10 (Tue) | Devpost write-up, screenshots, prize categories, video uploaded public | form complete |
 | Nov 11 (Wed) | **Submit.** Nov 12 and early Nov 13 are buffer only | submitted |
 
-Cut list if behind (drop from the top first): live webhook feed → threat model page → QR photo → trust scores.
+Sponsor prizes in reach (Devpost, checked Oct 19): AG Grid ($5k/$2k/$1k), APIMatic ($1k x3), Bryntum ($1k x3), Channel3 ($1.5k), Render (credits), plus Most Creative, Most Impactful, Best Demo Delivery, Best Use of PayPal + AI, Best Use of Agentic Commerce ($5k each).
+
+Cut list if behind (drop from the top first): threat model page → QR photo → Bryntum timeline → trust scores.
 Never cut: landing story, finished cases, quota protection, QA days, freeze date.
 
 ## 7. 3-minute demo script

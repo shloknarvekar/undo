@@ -40,6 +40,7 @@ export function SiteNav({ current }: { current?: "home" | "shop" | "merchant" })
         <Logo />
         <nav aria-label="Main" className="hidden items-center gap-6 md:flex">
           {anchor("/#how", "How it works")}
+          {anchor("/#agents", "For agents")}
           {anchor("/#merchants", "For merchants")}
         </nav>
         <div className="flex items-center gap-2">

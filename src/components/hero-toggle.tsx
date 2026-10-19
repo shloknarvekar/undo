@@ -5,7 +5,7 @@ import { cx } from "./ui";
 
 const COPY = {
   shoppers: "Your AI agent shops for you. If it gets it wrong, one tap puts the money back — checked against what you actually signed.",
-  merchants: "Agent orders are arriving now. Undo tells you who's at fault, voids before capture, and shifts agent mistakes to the agent.",
+  merchants: "Agent orders are arriving now. Undo tells you who's at fault, voids before capture, and makes the agent's operator pay you back for its mistakes.",
 };
 
 /** The reference's centered toggle pill, made functional: switches the hero promise per audience. */

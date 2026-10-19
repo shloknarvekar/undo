@@ -6,6 +6,7 @@ import { AiUnavailable } from "@/lib/ai";
 import { CheckoutFailed, openCheckout, openOrderFor } from "@/lib/checkout";
 import { appendEvent } from "@/lib/events";
 import { loadMandate, publicBaseUrl } from "@/lib/store";
+import { QuotaExceeded, limitRoute, quotaResponse } from "@/lib/usage";
 
 /**
  * POST /api/mandates/:id/shop { simulate? } → the agent shops within the mandate and opens a PayPal checkout
@@ -26,6 +27,8 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
 
   const openId = await openOrderFor(id);
   if (openId) return NextResponse.json({ error: "purchase_already_open", orderId: openId }, { status: 409 });
+  const limited = limitRoute(req, "shop");
+  if (limited) return limited;
 
   let decision;
   try {
@@ -35,6 +38,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
       await appendEvent(id, "AGENT_NO_MATCH", { considered: err.considered });
       return NextResponse.json({ error: "no_compliant_product", considered: err.considered }, { status: 422 });
     }
+    if (err instanceof QuotaExceeded) return quotaResponse(err);
     if (err instanceof AiUnavailable) return NextResponse.json({ error: "ai_unavailable" }, { status: 503 });
     console.error("agent failed:", err instanceof Error ? err.message : err);
     return NextResponse.json({ error: "agent_failed" }, { status: 502 });

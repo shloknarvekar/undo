@@ -120,7 +120,7 @@ One feature per slot, each shipped live and verified before the next starts. Gat
 | Dates | Work | Done when |
 |---|---|---|
 | Oct 19 (Mon) | Check Devpost prizes for sponsor categories. Landing page tells the new story (any AI via MCP, operator pays the shop back, rogue agents) | done: sponsor list below; landing shows all three |
-| Oct 20 (Tue) | "See finished cases" links (one real order per outcome). Quota protection on `/api/rogue` and mandate drafting; 404 page | a judge sees all four outcomes without a PayPal login |
+| Oct 20 (Tue) | "See finished cases" links (one real order per outcome). Quota protection on `/api/rogue` and mandate drafting; 404 page | done Oct 19: cases linked from landing + README; per-visitor limits + Postgres day/month budgets; 404 page |
 | Oct 21 (Wed) | Hijacked agent: a real LLM agent reads a listing with a prompt injection; Undo's guard still blocks the cart | ninth rogue agent fooled live, blocked by a named rule |
 | Oct 22 (Thu) | Verify it yourself: re-check the event chain hashes and Ed25519 signatures in the browser, plus a tamper toggle | verification runs with no server call; tamper breaks it |
 | Oct 23 (Fri) | **Vault spike (2 h):** can the sandbox vault a PayPal wallet and charge it merchant-initiated? | go / no-go recorded here |

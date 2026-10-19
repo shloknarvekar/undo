@@ -5,6 +5,7 @@ import { getDb, schema } from "@/db";
 import { canonicalJson } from "@/lib/crypto";
 import { IntentDraft, IntentMandate, prepareMandate, readyToSign, signingMessage } from "@/lib/mandate";
 import { parseRequest, ParseError } from "@/lib/mandate-parser";
+import { QuotaExceeded, limitRoute, quotaResponse } from "@/lib/usage";
 import { loadMandateRequest, storeSignedMandate } from "@/lib/store";
 
 /**
@@ -53,12 +54,15 @@ export async function POST(req: Request, { params }: Ctx) {
       .filter(Boolean)
       .join(" ");
     if (!extra) return NextResponse.json({ error: "no_answers" }, { status: 400 });
+    const limited = limitRoute(req, "draft");
+    if (limited) return limited;
     const request = `${row.request}. ${extra}`.slice(0, 1000);
     try {
       const draft = await parseRequest(request);
       await db.update(schema.mandateRequests).set({ request, draft }).where(eq(schema.mandateRequests.id, id));
       return NextResponse.json({ request, draft, ready: readyToSign(draft) });
     } catch (err) {
+      if (err instanceof QuotaExceeded) return quotaResponse(err);
       if (err instanceof ParseError) return NextResponse.json({ error: "parser_unavailable" }, { status: 503 });
       return NextResponse.json({ error: "parse_failed" }, { status: 502 });
     }

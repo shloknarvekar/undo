@@ -106,7 +106,7 @@ async function choose(mandate: IntentMandate, candidates: Candidate[]) {
   }));
   try {
     const { output } = await generateText({
-      model: aiModel(),
+      model: await aiModel(),
       system:
         "You are a careful shopping agent. Every candidate already satisfies the shopper's hard limits. " +
         "Pick the one that best matches what the shopper meant, preferring exact variant matches, then value. " +

@@ -8,6 +8,7 @@ import {
   toStoreProduct,
   type StoreProduct,
 } from "@/lib/channel3";
+import { QuotaExceeded, limitRoute, quotaResponse } from "@/lib/usage";
 
 /**
  * POST /api/products/search — the shopping agent's (and the UI's) product search.
@@ -31,6 +32,8 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "invalid_request", issues: parsed.error.issues }, { status: 400 });
   }
   const { query, maxPrice, minPrice, color, category, gender, limit, mode } = parsed.data;
+  const limited = limitRoute(req, "search");
+  if (limited) return limited;
 
   try {
     const slug = category ? await resolveCategory(category) : null;
@@ -49,6 +52,7 @@ export async function POST(req: Request) {
     const products = results.map(toStoreProduct).filter((p): p is StoreProduct => p !== null);
     return NextResponse.json({ category: slug, products });
   } catch (err) {
+    if (err instanceof QuotaExceeded) return quotaResponse(err);
     if (err instanceof Channel3Error) {
       return NextResponse.json({ error: "channel3_error", status: err.statusCode }, { status: 502 });
     }

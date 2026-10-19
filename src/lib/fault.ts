@@ -36,7 +36,7 @@ function productFacts(p: StoreProduct) {
 async function judgeIntent(mandate: IntentMandate, product: StoreProduct, reason: string): Promise<Findings["intent"]> {
   try {
     const { output } = await generateText({
-      model: aiModel(),
+      model: await aiModel(),
       system:
         "You audit an AI shopping agent. Decide whether the product it bought contradicts the shopper's signed mandate. " +
         "Use only the listing facts given. A requirement the listing doesn't mention is unknown, not a contradiction. " +
@@ -67,7 +67,7 @@ async function judgePhoto(product: StoreProduct, photo: NonNullable<UndoRequest[
     if (product.imageUrl) content.push({ type: "image", image: new URL(product.imageUrl) });
     content.push({ type: "image", image: photo.data, mediaType: photo.mediaType });
     const { output } = await generateText({
-      model: aiModel(),
+      model: await aiModel(),
       messages: [{ role: "user", content }],
       output: Output.object({ schema: PhotoJudgement, name: "delivery_check" }),
       temperature: 0,

@@ -29,6 +29,11 @@ The app runs on Render's free plan. After a while without visitors it sleeps; th
 
 ## Try it (5 minutes)
 
+0. **No PayPal login? Open a finished case.** One real sandbox order per outcome, each with its full event chain:
+   [void](https://undo-1c56.onrender.com/orders/949800eb-309c-4ae1-9d47-c67528b74995) ·
+   [refund + operator payout](https://undo-1c56.onrender.com/orders/dcb22380-412f-4e32-80a5-2e769dc398ba) ·
+   [merchant claim](https://undo-1c56.onrender.com/orders/42f33fa9-072d-49fc-9012-75d9a886576d) ·
+   [return](https://undo-1c56.onrender.com/orders/265e5167-e26f-435a-82e2-9e19b51df39f).
 1. **Watch the guard work.** Open [`/rogue`](https://undo-1c56.onrender.com/rogue) and press *Let the agents
    loose*. Seven agents try to break one signed mandate (over budget, wrong size, wrong colour, wrong quantity, an
    edited budget, an expired mandate, a stolen mandate). Each is stopped by a named rule. The honest agent gets
@@ -240,6 +245,10 @@ tests/                 unit tests (node:test)
   payout still records which agent it was for.
 - **Not every listing exposes every variant.** When the catalog can't confirm a size or colour, Undo says so and
   lengthens the undo window rather than guessing.
+- **Free-tier limits.** Gemini and Channel3 run on free tiers, so each visitor gets a few tries a minute, and the
+  whole demo has daily and monthly budgets stored in Postgres (`src/lib/usage.ts`). Identical catalog searches are
+  reused for ten minutes, and the rogue-agents run is shared for five. If a budget runs out, the page says so in
+  plain words and the rogue demo replays its last live run; the finished cases always work.
 - **Merchant actions aren't behind sign-in** (accepting a claim, marking a return received). They're sandbox-only.
 
 ---

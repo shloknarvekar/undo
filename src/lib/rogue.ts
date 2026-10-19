@@ -8,6 +8,7 @@
 import { evaluateProduct, searchWithinMandate } from "./agent";
 import { searchProducts, toStoreProduct, type StoreProduct } from "./channel3";
 import { generateSigningKey, sha256Hex, signMessage } from "./crypto";
+import { QuotaExceeded, cacheGet, cachePut } from "./usage";
 import { agentMayUse, checkCart, prepareMandate, signingMessage, verifyMandate, type IntentDraft, type Violation } from "./mandate";
 
 export type AttackResult = {
@@ -26,6 +27,8 @@ export type RogueRun = {
   mandate: { request: string; limits: string; authorizes: string; signedBy: string; digest: string };
   results: AttackResult[];
   ranAt: string;
+  /** Set when this is the last good run replayed, because the catalog budget is used up ("budget") or the live run failed ("error"). */
+  replay?: "budget" | "error";
 };
 
 const REQUEST = "A black hoodie, size M, under $80";
@@ -44,11 +47,38 @@ async function timed(fn: () => Promise<Omit<AttackResult, "ms">>): Promise<Attac
 }
 
 let cache: { at: number; run: RogueRun } | null = null;
-const CACHE_MS = 2 * 60_000; // live catalog calls cost quota; a run is reused for two minutes
+let inflight: Promise<RogueRun> | null = null;
+const FRESH_MS = 5 * 60_000; // catalog searches cost credits: a run is reused for five minutes
+const CACHE_KEY = "rogue:last-run";
 
+/**
+ * The latest run. Fresh runs are shared (one at a time, reused for five minutes, kept in the database across restarts).
+ * If the catalog budget is used up or the live run fails, the last good run is replayed and marked as such.
+ */
 export async function runRogueAgents(): Promise<RogueRun> {
-  if (cache && Date.now() - cache.at < CACHE_MS) return cache.run;
+  if (!cache) {
+    const saved = await cacheGet<RogueRun>(CACHE_KEY);
+    if (saved) cache = { at: saved.at.getTime(), run: saved.value };
+  }
+  if (cache && Date.now() - cache.at < FRESH_MS) return cache.run;
+  inflight ??= freshRun()
+    .then(async (run) => {
+      cache = { at: Date.now(), run };
+      await cachePut(CACHE_KEY, run);
+      return run;
+    })
+    .finally(() => {
+      inflight = null;
+    });
+  try {
+    return await inflight;
+  } catch (err) {
+    if (cache) return { ...cache.run, replay: err instanceof QuotaExceeded ? "budget" : "error" };
+    throw err;
+  }
+}
 
+async function freshRun(): Promise<RogueRun> {
   const key = generateSigningKey();
   const mandate = prepareMandate(REQUEST, DRAFT, key.publicKey, new Date(), AUTHORIZED);
   const signature = signMessage(key.privateKey, signingMessage(mandate));
@@ -154,7 +184,7 @@ export async function runRogueAgents(): Promise<RogueRun> {
     }),
   ]);
 
-  const run: RogueRun = {
+  return {
     mandate: {
       request: REQUEST,
       limits: "black · size M · ≤ $80 · quantity 1 · 14 days",
@@ -165,6 +195,4 @@ export async function runRogueAgents(): Promise<RogueRun> {
     results,
     ranAt: new Date().toISOString(),
   };
-  cache = { at: Date.now(), run };
-  return run;
 }

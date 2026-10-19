@@ -8,6 +8,7 @@ import { undoSigningMessage } from "@/lib/fault-core";
 import { executeUndo, StaleOrder } from "@/lib/money";
 import { PayPalError } from "@/lib/paypal";
 import { loadMandate, loadOrder } from "@/lib/store";
+import { limitRoute } from "@/lib/usage";
 
 /**
  * POST /api/orders/:id/undo { reason, photo?, requestedAt, signature }
@@ -27,6 +28,8 @@ const Body = z.object({
 
 export async function POST(req: Request, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
+  const limited = limitRoute(req, "undo");
+  if (limited) return limited;
   const parsed = Body.safeParse(await req.json().catch(() => null));
   if (!parsed.success) return NextResponse.json({ error: "invalid_request", issues: parsed.error.issues }, { status: 400 });
   const { reason, photo, requestedAt, signature } = parsed.data;

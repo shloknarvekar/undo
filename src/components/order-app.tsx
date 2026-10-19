@@ -165,7 +165,13 @@ export function OrderApp() {
         body: JSON.stringify({ reason: reason.trim(), requestedAt, signature, ...(photo ? { photo: photo.dataUrl } : {}) }),
       });
       const body = await res.json().catch(() => ({}));
-      if (!res.ok) throw new Error(body.error === "bad_signature" ? "This device didn't sign the mandate, so it can't undo it." : `Undo failed (${body.error ?? res.status}).`);
+      if (!res.ok) throw new Error(
+          body.error === "bad_signature"
+            ? "This device didn't sign the mandate, so it can't undo it."
+            : body.error === "rate_limited" && body.detail
+              ? body.detail
+              : `Undo failed (${body.error ?? res.status}).`,
+        );
       setOpen(false);
       await load();
     } catch (err) {
@@ -186,7 +192,11 @@ export function OrderApp() {
     return (
       <Container className="py-20">
         <h1 className="display-type text-[45px]">Order not found</h1>
-        <PillLink href="/shop" className="mt-8">Start a new purchase</PillLink>
+        <p className="mt-4 max-w-md text-subheading text-muted">Check the link, or open one of the finished cases from the sandbox.</p>
+        <div className="mt-8 flex flex-wrap gap-3">
+          <PillLink href="/shop" tone="solid">Start a new purchase</PillLink>
+          <PillLink href="/#cases">See finished cases</PillLink>
+        </div>
       </Container>
     );
   if (!data)
@@ -422,12 +432,20 @@ function VerdictCard({ r, order }: { r: Resolution; order: OrderData["order"] })
       <h2 id="verdict-title" className="mt-5 heading-type text-heading-sm sm:text-[30px]">{v?.who ?? "Decision made"}</h2>
       <p className="mt-2 text-body text-paper/80">{r.action.reason}</p>
       <ul className="mt-6 space-y-3">
-        {r.decision.evidence.map((e, i) => (
-          <li key={i} className="flex flex-col gap-1 text-body-sm sm:flex-row sm:gap-3">
-            <span className="shrink-0 font-mono text-field sm:w-32">{e.source.replace("_", " ")}</span>
-            <span className="text-paper/90">{e.finding}</span>
-          </li>
-        ))}
+        {/* The shopper's words are a claim, shown as a quote; everything else is something Undo checked. */}
+        {r.decision.evidence.map((e, i) =>
+          e.source === "shopper" ? (
+            <li key={i} className="flex flex-col gap-1 text-body-sm sm:flex-row sm:gap-3">
+              <span className="shrink-0 font-mono text-paper/60 sm:w-32">shopper claims</span>
+              <span className="text-paper/70">&ldquo;{e.finding}&rdquo;</span>
+            </li>
+          ) : (
+            <li key={i} className="flex flex-col gap-1 text-body-sm sm:flex-row sm:gap-3">
+              <span className="shrink-0 font-mono text-field sm:w-32">{e.source.replaceAll("_", " ")}</span>
+              <span className="text-paper/90">{e.finding}</span>
+            </li>
+          ),
+        )}
       </ul>
       <div className="mt-7 flex flex-wrap items-center justify-between gap-3 rounded-[20px] bg-paper/10 px-5 py-4">
         <span className="text-body">{r.action.type.replaceAll("_", " ").toLowerCase().replace(/^./, (c) => c.toUpperCase())}</span>

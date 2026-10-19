@@ -27,9 +27,9 @@ type RequestData = {
   expiresAt: string;
 };
 
-async function post<T>(id: string, body: unknown): Promise<{ ok: boolean; data: T & { error?: string } }> {
+async function post<T>(id: string, body: unknown): Promise<{ ok: boolean; data: T & { error?: string; detail?: string } }> {
   const res = await fetch(`/api/mandate-requests/${id}`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
-  return { ok: res.ok, data: await res.json().catch(() => ({}) as T & { error?: string }) };
+  return { ok: res.ok, data: await res.json().catch(() => ({}) as T & { error?: string; detail?: string }) };
 }
 
 const ERRORS: Record<string, string> = {
@@ -68,7 +68,7 @@ export function SignApp() {
     setError(null);
     const r = await post<{ request: string; draft: Draft; ready: { ok: boolean } }>(id, { action: "answer", answers });
     setBusy(null);
-    if (!r.ok) return setError(ERRORS[r.data.error ?? ""] ?? "That didn't work. Try again.");
+    if (!r.ok) return setError((r.data.error === "rate_limited" && r.data.detail) || (ERRORS[r.data.error ?? ""] ?? "That didn't work. Try again."));
     setAnswers({});
     setData((d) => (d ? { ...d, request: r.data.request, draft: r.data.draft, ready: r.data.ready } : d));
   }

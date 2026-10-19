@@ -93,3 +93,17 @@ export const events = pgTable(
   },
   (t) => [uniqueIndex("events_subject_seq_uq").on(t.subjectId, t.seq)],
 );
+
+/** Global spend counters for free-tier APIs, one row per resource and period (e.g. "channel3:2026-10-19", "gemini:2026-10"). */
+export const usageCounters = pgTable("usage_counters", {
+  key: text("key").primaryKey(),
+  count: integer("count").notNull().default(0),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+/** Small durable cache for results worth keeping across restarts (e.g. the last rogue-agents run). */
+export const appCache = pgTable("app_cache", {
+  key: text("key").primaryKey(),
+  value: jsonb("value").notNull(),
+  at: timestamp("at", { withTimezone: true }).notNull().defaultNow(),
+});

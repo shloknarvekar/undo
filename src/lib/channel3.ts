@@ -6,6 +6,7 @@
  * offer URLs change — call getProduct() (free) right before showing a product or checking out.
  */
 import { Channel3, Channel3Api, Channel3Error } from "@channel3/sdk";
+import { spend } from "./usage";
 
 export { Channel3Error };
 export type Product = Channel3Api.Product;
@@ -51,16 +52,29 @@ const categoryCache = new Map<string, string | null>();
 export async function resolveCategory(term: string): Promise<string | null> {
   const key = term.trim().toLowerCase();
   if (!categoryCache.has(key)) {
+    await spend("channel3");
     const res = await c3().categories.search({ query: key, limit: 1 });
     categoryCache.set(key, res.categories[0]?.slug ?? null);
   }
   return categoryCache.get(key) ?? null;
 }
 
+/**
+ * Search costs a credit (1,000 free a month), so identical searches within ten minutes reuse the last result and every
+ * real call counts against the budget (lib/usage.ts). Results only shortlist: the guard re-reads each product with
+ * getProduct (free, always live) before anything is checked or bought, so a cached list never decides a purchase.
+ */
+const SEARCH_TTL_MS = 10 * 60_000;
+const searchCache = new Map<string, { at: number; data: Product[] }>();
+
 export async function searchProducts(
   query: string,
   opts: { limit?: number; filters?: SearchFilters; mode?: "default" | "agentic"; userId?: string } = {},
 ): Promise<Product[]> {
+  const key = JSON.stringify([query.trim().toLowerCase(), opts.limit ?? 10, opts.filters ?? null, opts.mode ?? "default", opts.userId ?? null]);
+  const hit = searchCache.get(key);
+  if (hit && Date.now() - hit.at < SEARCH_TTL_MS) return hit.data;
+  await spend("channel3");
   const page = await c3().products.search(
     {
       query,
@@ -70,6 +84,8 @@ export async function searchProducts(
     },
     opts.userId ? { headers: { "x-user-id": opts.userId } } : undefined,
   );
+  searchCache.set(key, { at: Date.now(), data: page.data });
+  if (searchCache.size > 200) searchCache.delete(searchCache.keys().next().value!);
   return page.data;
 }
 

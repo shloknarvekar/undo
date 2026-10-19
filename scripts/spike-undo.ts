@@ -29,8 +29,8 @@ function must(r: { status: number; json: any }, ok: number, what: string) {
 
 type Scenario = { id: "A" | "B" | "C" | "D"; title: string; request: string; simulate?: string; expireFirst: boolean; reason: string; photo?: boolean; expect: string; merchant?: "accept_claim" | "return_received" };
 const SCENARIOS: Scenario[] = [
-  { id: "A", title: "Agent fault inside the window", request: "Buy me black men's running shoes, size 10, under $120", simulate: "unguarded_wrong_variant", expireFirst: false, reason: "Wrong size. I asked for size 10.", expect: "VOID" },
-  { id: "B", title: "Agent fault after capture", request: "Buy me black men's running shoes, size 10, under $120", simulate: "unguarded_wrong_variant", expireFirst: true, reason: "Wrong size. I asked for size 10.", expect: "REFUND_FULL" },
+  { id: "A", title: "Agent fault inside the window", request: "Buy me black men's running shoes, size 10, under $120", simulate: "unguarded_wrong_variant", expireFirst: false, reason: "This isn't what I asked for.", expect: "VOID" },
+  { id: "B", title: "Agent fault after capture", request: "Buy me black men's running shoes, size 10, under $120", simulate: "unguarded_wrong_variant", expireFirst: true, reason: "This isn't what I asked for.", expect: "REFUND_FULL" },
   { id: "C", title: "Merchant shipped the wrong item", request: "Buy me a black hoodie, size M, under $80", expireFirst: true, reason: "The hoodie that arrived is not the one I ordered.", photo: true, expect: "OPEN_CLAIM", merchant: "accept_claim" },
   { id: "D", title: "Shopper changed their mind", request: "Buy me a black hoodie, size M, under $80", expireFirst: true, reason: "I changed my mind, I don't need it anymore.", expect: "AUTHORIZE_RETURN", merchant: "return_received" },
 ];

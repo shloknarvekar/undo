@@ -21,7 +21,7 @@ export const ParseError = AiUnavailable;
 
 export async function parseRequest(request: string): Promise<IntentDraft> {
   const { output } = await generateText({
-    model: aiModel(),
+    model: await aiModel(),
     system: INSTRUCTIONS,
     prompt: request,
     output: Output.object({ schema: IntentDraft, name: "intent_mandate" }),

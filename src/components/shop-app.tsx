@@ -32,20 +32,23 @@ const EXAMPLES = [
   "Noise cancelling earbuds under $150",
 ];
 
-async function post<T>(path: string, body: unknown): Promise<{ ok: boolean; status: number; data: T & { error?: string } }> {
+async function post<T>(path: string, body: unknown): Promise<{ ok: boolean; status: number; data: T & { error?: string; detail?: string } }> {
   const res = await fetch(path, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
-  return { ok: res.ok, status: res.status, data: await res.json().catch(() => ({}) as T & { error?: string }) };
+  return { ok: res.ok, status: res.status, data: await res.json().catch(() => ({}) as T & { error?: string; detail?: string }) };
 }
 
-const humanError = (e?: string) =>
-  ({
+/** A rate limit or used-up allowance comes with its own plain-words detail from the server; everything else is mapped here. */
+const humanError = (e?: string, detail?: string) =>
+  (e === "rate_limited" && detail) ||
+  (({
     parse_failed: "The AI couldn't read that request. Try rephrasing it.",
     parser_unavailable: "The AI is not configured on this server.",
     no_compliant_product: "Nothing in the catalog satisfies your mandate.",
     agent_failed: "The agent hit a problem while shopping. Try again.",
     paypal_checkout_failed: "PayPal couldn't create the checkout. Try again.",
     bad_signature: "Your device signature didn't verify.",
-  })[e ?? ""] ?? (e ? `Something went wrong (${e}).` : "Something went wrong.");
+    ai_unavailable: "The AI is not configured on this server.",
+  })[e ?? ""] ?? (e ? `Something went wrong (${e}).` : "Something went wrong."));
 
 function windowLabel(min: number) {
   if (min === 0) return "captured immediately (low risk)";
@@ -72,7 +75,7 @@ export function ShopApp() {
     setError(null);
     const r = await post<{ draft: Draft; ready: { ok: boolean } }>("/api/mandates/draft", { request: text });
     setBusy(false);
-    if (!r.ok) return setError(humanError(r.data.error));
+    if (!r.ok) return setError(humanError(r.data.error, r.data.detail));
     setRequest(text);
     setDraft(r.data.draft);
     setAnswers({});
@@ -94,10 +97,10 @@ export function ShopApp() {
       const key = await getDeviceKey();
       setFingerprint(key.fingerprint);
       const p = await post<{ mandate: unknown; signingMessage: string }>("/api/mandates/prepare", { request, draft, shopperKey: key.publicKey });
-      if (!p.ok) throw new Error(humanError(p.data.error));
+      if (!p.ok) throw new Error(humanError(p.data.error, p.data.detail));
       const signature = await key.sign(p.data.signingMessage);
       const m = await post<{ id: string }>("/api/mandates", { mandate: p.data.mandate, signature });
-      if (!m.ok) throw new Error(humanError(m.data.error));
+      if (!m.ok) throw new Error(humanError(m.data.error, m.data.detail));
 
       setStage("shopping");
       const s = await post<ShopResult & { considered?: Considered[] }>(`/api/mandates/${m.data.id}/shop`, careless ? { simulate: "unguarded_wrong_variant" } : {});
@@ -105,7 +108,7 @@ export function ShopApp() {
         setConsidered(s.data.considered ?? []);
         return setStage("nomatch");
       }
-      if (!s.ok) throw new Error(humanError(s.data.error));
+      if (!s.ok) throw new Error(humanError(s.data.error, s.data.detail));
       setResult(s.data);
       try {
         const recent = JSON.parse(localStorage.getItem("undo:orders") ?? "[]") as string[];

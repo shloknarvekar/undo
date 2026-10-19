@@ -9,6 +9,7 @@ import { appendEvent } from "@/lib/events";
 import { agentMayUse, type AgentRef, type IntentMandate } from "@/lib/mandate";
 import { parseRequest } from "@/lib/mandate-parser";
 import { createMandateRequest, loadMandate, loadMandateRequest, loadOrder, publicBaseUrl } from "@/lib/store";
+import { QuotaExceeded, limitRoute } from "@/lib/usage";
 
 /**
  * Undo as an MCP server: any agent (Claude, ChatGPT, Cursor, your own) can shop under a mandate the shopper signed.
@@ -85,7 +86,8 @@ const handler = createMcpHandler(
         let draft;
         try {
           draft = await parseRequest(request);
-        } catch {
+        } catch (err) {
+          if (err instanceof QuotaExceeded) return fail(err.message, { retryAfterSeconds: err.retryAfterSec });
           return fail("Undo couldn't read that request right now. Try again in a moment.");
         }
         const { id, expiresAt } = await createMandateRequest(request, draft, agent);
@@ -149,7 +151,13 @@ const handler = createMcpHandler(
       async ({ mandate_id, query, limit }, ctx) => {
         const m = await mandateFor(mandate_id, callerAgent(ctx.http?.authInfo));
         if ("error" in m) return fail(m.error);
-        const products = await searchWithinMandate(m.mandate, query, limit);
+        let products;
+        try {
+          products = await searchWithinMandate(m.mandate, query, limit);
+        } catch (err) {
+          if (err instanceof QuotaExceeded) return fail(err.message, { retryAfterSeconds: err.retryAfterSec });
+          throw err;
+        }
         if (!products.length) return text("Nothing in stock fits the mandate's limits for that search.", { results: [] });
         return text(`${products.length} products within the mandate's limits. Pick one, then call undo_check_cart or undo_propose_cart.`, {
           results: products.map((p) => ({
@@ -312,4 +320,9 @@ const authed = withMcpAuth(handler, (_req, token) => {
   return name ? { token: token!, clientId: name, scopes: [] } : undefined;
 }, { required: false });
 
-export { authed as GET, authed as POST };
+/** Every MCP request counts toward the caller's limit; the paid APIs behind the tools also have global budgets. */
+async function limited(req: Request) {
+  return limitRoute(req, "mcp") ?? authed(req);
+}
+
+export { limited as GET, limited as POST };

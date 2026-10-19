@@ -90,6 +90,13 @@ export function RogueApp() {
           ) : (
             <p className="text-subheading text-muted">{busy ? "Fetching live products and running each agent through the guard…" : "Press the button to run the agents against the live catalog."}</p>
           )}
+          {run?.replay && (
+            <p className="mt-3 rounded-[20px] bg-warn-bg px-4 py-3 text-body-sm text-warn">
+              {run.replay === "budget"
+                ? "The live catalog has used today's free allowance, so this is a replay of the last live run. Same guard, same rules, real results."
+                : "The live catalog didn't answer just now, so this is a replay of the last live run. Try again in a minute for a fresh one."}
+            </p>
+          )}
         </div>
 
         <ol className="mt-8 space-y-3">
@@ -132,7 +139,9 @@ export function RogueApp() {
 
         {run && (
           <p className="mt-6 text-body-sm text-muted">
-            Ran {new Date(run.ranAt).toLocaleTimeString()} on live Channel3 products. Agents connecting through Undo&apos;s MCP server hit these exact checks before PayPal ever sees a cart.
+            Ran {new Date(run.ranAt).toLocaleString([], { dateStyle: "medium", timeStyle: "short" })} on live Channel3 products. Runs are
+            shared and refresh every five minutes, to spare the free catalog allowance. Agents connecting through Undo&apos;s MCP server hit
+            these exact checks before PayPal ever sees a cart.
           </p>
         )}
       </Container>

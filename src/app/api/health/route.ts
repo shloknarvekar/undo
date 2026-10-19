@@ -3,6 +3,7 @@ import { NextResponse } from "next/server";
 import { databaseUrl, getDb } from "@/db";
 import { maybeSweep } from "@/lib/money";
 import { catalog } from "@/lib/paypal";
+import { usageNow } from "@/lib/usage";
 
 /**
  * GET /api/health — Render's health check (shallow, no external calls) and a deploy smoke test.
@@ -43,6 +44,8 @@ export async function GET(req: Request) {
   if (deep && configured.database) {
     body.database = await checkDatabase();
     if ((body.database as { ok: boolean }).ok === false) body.ok = false;
+    // Free-tier budgets used so far (counts only, never keys): how close the demo is to its daily / monthly limits.
+    body.usage = await usageNow().catch((err) => (err instanceof Error ? err.message : "unavailable"));
   }
 
   return NextResponse.json(body, { status: body.ok ? 200 : 503 });

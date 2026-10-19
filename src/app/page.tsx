@@ -1,4 +1,5 @@
 import { ArrowRight, BadgeCheck, CalendarX, Fingerprint, Hourglass, Layers, ShieldX, Tag, UserX } from "lucide-react";
+import Link from "next/link";
 import type { ReactNode } from "react";
 import { HeadlineCycle } from "@/components/headline-cycle";
 import { HeroToggle } from "@/components/hero-toggle";
@@ -32,6 +33,34 @@ const STEPS = [
 
 /** Hover colours for the hero grid: Rewind and its tints, never the status colours. */
 const HERO_TINTS = ["#c6f432", "#d7f86a", "#eefbc9", "#a9d61c", "#ffffff"];
+
+/** One real, finished sandbox order per outcome: every claim on this page can be opened and checked. */
+const CASES = [
+  {
+    outcome: "Void",
+    id: "949800eb-309c-4ae1-9d47-c67528b74995",
+    story: "The agent bought the wrong colour. Undo voided the hold inside the window.",
+    money: "$59.99 held · $0.00 moved",
+  },
+  {
+    outcome: "Refund",
+    id: "dcb22380-412f-4e32-80a5-2e769dc398ba",
+    story: "Wrong colour, money already captured. Refunded in full; the agent's operator paid the shop back.",
+    money: "$59.99 refunded · $59.99 paid out",
+  },
+  {
+    outcome: "Claim",
+    id: "42f33fa9-072d-49fc-9012-75d9a886576d",
+    story: "A yellow graphic hoodie arrived instead of the black one. The photo check put it on the merchant.",
+    money: "$80.00 · merchant at fault",
+  },
+  {
+    outcome: "Return",
+    id: "265e5167-e26f-435a-82e2-9e19b51df39f",
+    story: "Everyone did their job; the shopper changed their mind. A return, less a restocking fee.",
+    money: "$50.99 back of $59.99",
+  },
+];
 
 /** The rogue-agents demo (lib/rogue.ts): one signed mandate, each cheat and the rule that stopped it. */
 const ROGUES: { agent: string; tried: string; rule: string; icon: ReactNode }[] = [
@@ -122,7 +151,7 @@ export default function Home() {
 
         {/* Deep field — the four outcomes */}
         <section className="section-flow on-deep bg-deep text-paper">
-          <Container className="grid items-center gap-14 py-20 sm:py-28 lg:grid-cols-2">
+          <Container className="grid items-center gap-14 pb-16 pt-20 sm:pb-20 sm:pt-28 lg:grid-cols-2">
             <div className="space-y-8">
               <HeadlineCycle
                 id="outcomes"
@@ -142,7 +171,7 @@ export default function Home() {
             <ScrollTilt>
             <figure className="rounded-card bg-black/30 p-[27px] ring-1 ring-paper/10">
               <figcaption className="flex items-center justify-between gap-3">
-                <span className="text-body-sm text-paper/70">Undo request · order 7f3c…</span>
+                <span className="text-body-sm text-paper/70">Undo request · order 949800eb</span>
                 <span className="inline-flex items-center whitespace-nowrap rounded-tag bg-bad-bg px-2.5 py-1 text-body-sm font-medium text-bad">
                   Agent fault · 1.00
                 </span>
@@ -159,6 +188,34 @@ export default function Home() {
               </div>
             </figure>
             </ScrollTilt>
+          </Container>
+
+          {/* Proof, not promises: one finished sandbox order per outcome, each opening its full event chain */}
+          <Container className="pb-24 sm:pb-32">
+            <div id="cases" className="flex flex-col justify-between gap-2 border-t border-paper/15 pt-8 sm:flex-row sm:items-baseline">
+              <h3 id="cases-title" className="heading-type text-heading-sm">Four finished cases. Open any of them.</h3>
+              <p className="text-body-sm text-paper/70">Real sandbox orders, with every step&apos;s proof.</p>
+            </div>
+            <ul aria-labelledby="cases-title" className="mt-6 grid gap-px overflow-hidden rounded-card bg-paper/15 sm:grid-cols-2 xl:grid-cols-4">
+              {CASES.map((c) => (
+                <li key={c.id} className="flex">
+                  <Link
+                    href={`/orders/${c.id}`}
+                    className="group flex w-full flex-col gap-4 bg-deep p-6 transition-colors duration-200 hover:bg-deep-2 focus-visible:bg-deep-2 sm:p-7"
+                  >
+                    <span className="display-type text-[40px] leading-none text-field">{c.outcome}.</span>
+                    <span className="text-body text-paper/85">{c.story}</span>
+                    <span className="mt-auto flex items-end justify-between gap-3 pt-2">
+                      <span className="font-mono text-caption text-paper/60">{c.money}</span>
+                      <span className="inline-flex shrink-0 items-center gap-1.5 text-body-sm font-medium">
+                        Open <ArrowRight className="size-4 transition-transform duration-200 group-hover:translate-x-1 motion-reduce:transition-none" aria-hidden />
+                        <span className="sr-only">the {c.outcome.toLowerCase()} case</span>
+                      </span>
+                    </span>
+                  </Link>
+                </li>
+              ))}
+            </ul>
           </Container>
         </section>
 

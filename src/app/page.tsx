@@ -4,6 +4,7 @@ import { HeadlineCycle } from "@/components/headline-cycle";
 import { HeroToggle } from "@/components/hero-toggle";
 import { CountdownChip, CtrlZBand, HeroGrid, Reveal } from "@/components/motion";
 import { SiteNav } from "@/components/site-nav";
+import { ScrollTilt } from "@/components/ui/container-scroll-animation";
 import { Container, PillLink, SiteFooter } from "@/components/ui";
 
 const STEPS = [
@@ -121,6 +122,7 @@ export default function Home() {
             </div>
 
             {/* A real verdict from the live sandbox run; evidence lines arrive one by one like the engine's checks */}
+            <ScrollTilt>
             <figure className="rounded-card bg-black/30 p-[27px] ring-1 ring-paper/10">
               <figcaption className="flex items-center justify-between gap-3">
                 <span className="text-body-sm text-paper/70">Undo request · order 7f3c…</span>
@@ -139,6 +141,7 @@ export default function Home() {
                 <span className="font-mono text-body-sm text-paper/70">$0.00 moved · $2.58 fees avoided</span>
               </div>
             </figure>
+            </ScrollTilt>
           </Container>
         </section>
 
@@ -187,6 +190,7 @@ export default function Home() {
                 Open the console <ArrowRight className="arrow size-4" aria-hidden />
               </PillLink>
             </div>
+            <ScrollTilt>
             <figure className="on-deep bg-deep p-8 text-paper shadow-lift sm:p-10">
               <figcaption className="text-body text-paper/80">
                 One wrong-colour pair of shoes, <span className="font-mono">$59.99</span>, from the live sandbox run.
@@ -206,6 +210,7 @@ export default function Home() {
                 </div>
               </div>
             </figure>
+            </ScrollTilt>
           </Container>
         </section>
 

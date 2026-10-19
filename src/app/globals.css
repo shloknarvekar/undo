@@ -210,16 +210,6 @@
     border-radius: 48px;
   }
 }
-@keyframes undo-content-rise {
-  from {
-    opacity: 0.15;
-    transform: translateY(72px);
-  }
-  to {
-    opacity: 1;
-    transform: none;
-  }
-}
 @keyframes undo-track {
   from {
     transform: scaleX(0);
@@ -242,7 +232,8 @@
     /*
      * Section hand-off, driven by scroll position: the section you're leaving recedes (shrinks from its bottom edge,
      * corners round) onto the dark stage behind <main>, while the next colour field arrives with rounded top corners
-     * that flatten and content that rises into place. The hero only recedes; it is already on screen at load.
+     * that flatten. The hero only recedes; it is already on screen at load. Inside sections, only the showcase cards
+     * move (ScrollTilt: they tip back and settle flat), so there is one motion per moment, not several at once.
      */
     .section-lead,
     .section-flow {
@@ -261,12 +252,6 @@
       animation-range:
         entry 0% entry 100%,
         exit 0% exit 100%;
-    }
-    /* The marquee track keeps its own animation, so it is left out of the content rise. */
-    .section-flow > :not(.marquee) {
-      animation: undo-content-rise linear both;
-      animation-timeline: view();
-      animation-range: entry 0% entry 60%;
     }
     .track-fill {
       transform-origin: left center;

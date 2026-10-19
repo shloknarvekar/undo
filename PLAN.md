@@ -104,25 +104,40 @@ Spike 1 ✅ (Oct 16): authorize→void and authorize→capture→refund all COMP
 
 If spike 2 fails completely, merchant-fault path becomes "Undo claim" handled inside Undo + refund — still demoable.
 
-## 6. 27-day schedule (Oct 16 → Nov 11 submit)
+## 6. Schedule
 
-| Days | Dates | Goal | Done when |
-|---|---|---|---|
-| 1–2 | Oct 16–17 | Risk spikes (§5), repo, license, Render skeleton, DB schema | auth/void/capture/refund curl scripts pass; deployed URL live |
-| 3–5 | Oct 18–20 | Mandate service + signing + event chain; Channel3 → Catalog import | mandate card renders signed; products in sandbox catalog |
-| 6–8 | Oct 21–23 | Shopping agent (tools, reasoning trace) + PayPal checkout approval in AUTHORIZE | agent buys a real-catalog item; order authorized |
-| 9–10 | Oct 24–25 | Risk-scored undo window + scheduler capture + time-warp | countdown in UI; auto-capture on expiry |
-| 11–13 | Oct 26–28 | Fault engine (rules + Claude fuzzy + vision) with test fixtures | 3 canonical scenarios give correct verdicts ≥ 9/10 runs |
-| 14–15 | Oct 29–30 | Money router: void / refund / Payouts liability / disputes + evidence | all 4 routes move sandbox money; webhooks sync |
-| 16–18 | Oct 31–Nov 2 | Merchant console in AG Grid (orders, verdicts, evidence drawer, KPIs: fees saved, disputes avoided) | console usable end-to-end |
-| 19–20 | Nov 3–4 | Shopper app polish, empty/error states, mobile layout | full flow feels like a product |
-| 21 | Nov 5 | **Feature freeze.** Judge mode: seeded accounts, reset button, guided tour | a stranger can run the demo in 3 min unaided |
-| 22–23 | Nov 6–7 | README, architecture diagram, Postman collection, "Tools used", screenshots | repo self-explanatory |
-| 24–25 | Nov 8–9 | Record + edit video (script §7), upload to YouTube public | < 3:00, no copyrighted music |
-| 26 | Nov 10 | Devpost write-up, select prize categories, test hosted URL from incognito | form complete |
-| 27 | Nov 11 | **Submit.** Nov 12 = buffer only | submitted |
+### 6a. Done (Oct 16 → Oct 19)
 
-Cut list if behind (in order): WebAuthn passkey → Payouts liability ledger → vision check (keep text-only fuzzy) → make-offer path.
+Everything in the original 27-day plan up to "polish" shipped early: PayPal rails (authorize, void, capture, refund),
+webhooks, signed mandates and the hash chain, the shopping agent, the risk window and scheduler, the fault engine and
+money router, the merchant console, Payouts liability settlement (verified live), the MCP server (verified with real
+Claude), the per-step proof view, rogue agents, the README and license.
+
+### 6b. Win plan (Oct 19 → Nov 11 submit)
+
+One feature per slot, each shipped live and verified before the next starts. Gates in **bold**.
+
+| Dates | Work | Done when |
+|---|---|---|
+| Oct 19 (Mon) | Check Devpost prizes for sponsor categories. Landing page tells the new story (any AI via MCP, operator pays the shop back, rogue agents) | sponsor list known; landing shows all three |
+| Oct 20 (Tue) | "See finished cases" links (one real order per outcome). Quota protection on `/api/rogue` and mandate drafting; 404 page | a judge sees all four outcomes without a PayPal login |
+| Oct 21 (Wed) | Hijacked agent: a real LLM agent reads a listing with a prompt injection; Undo's guard still blocks the cart | ninth rogue agent fooled live, blocked by a named rule |
+| Oct 22 (Thu) | Verify it yourself: re-check the event chain hashes and Ed25519 signatures in the browser, plus a tamper toggle | verification runs with no server call; tamper breaks it |
+| Oct 23 (Fri) | **Vault spike (2 h):** can the sandbox vault a PayPal wallet and charge it merchant-initiated? | go / no-go recorded here |
+| Oct 23–26 (Fri–Mon) | If go: autonomous agent payments with PayPal Vault, inside the mandate, Undo as the safety net. If no-go: trust scores move up and the days become buffer | agent pays with no redirect; undo still works |
+| Oct 27–28 (Tue–Wed) | Agent trust scores + merchant rules (block or lengthen windows by agent record) | rule changes an agent's checkout live |
+| Oct 29–30 (Thu–Fri) | Phone photo by QR for wrong-item cases; desktop verdict updates live | scan, snap, verdict appears on desktop |
+| Oct 31 (Sat) | OpenAPI spec, Postman collection, SDKs generated with APIMatic | collection runs green against the live app |
+| Nov 1 (Sun) | Threat model page; live PayPal webhook feed in the merchant console | both live |
+| Nov 2 (Mon) | Landing, README and video brief updated for every new feature | docs match the app |
+| Nov 3–4 (Tue–Wed) | Full QA: every flow on live, desktop + phone, accessibility pass, all spikes re-run; fix everything found | zero known bugs |
+| Nov 5 (Thu) | **Feature freeze.** Record the Claude MCP clip; send the final brief to the video maker | brief sent |
+| Nov 6–9 (Fri–Mon) | Video made by the video maker; Nov 8: repo public, keepalive on, check everything from an incognito window | video draft reviewed |
+| Nov 10 (Tue) | Devpost write-up, screenshots, prize categories, video uploaded public | form complete |
+| Nov 11 (Wed) | **Submit.** Nov 12 and early Nov 13 are buffer only | submitted |
+
+Cut list if behind (drop from the top first): live webhook feed → threat model page → QR photo → trust scores.
+Never cut: landing story, finished cases, quota protection, QA days, freeze date.
 
 ## 7. 3-minute demo script
 

@@ -30,8 +30,8 @@ The app runs on Render's free plan. After a while without visitors it sleeps; th
 ## Try it (5 minutes)
 
 0. **No PayPal login? Open a finished case.** One real sandbox order per outcome, each with its full event chain:
-   [void](https://undo-1c56.onrender.com/orders/949800eb-309c-4ae1-9d47-c67528b74995) ·
-   [refund + operator payout](https://undo-1c56.onrender.com/orders/dcb22380-412f-4e32-80a5-2e769dc398ba) ·
+   [void](https://undo-1c56.onrender.com/orders/0ea67cb5-229a-49fc-b5d6-92a62bfba1dd) ·
+   [refund + operator payout](https://undo-1c56.onrender.com/orders/edd288bc-42d0-41d3-9b87-14915f3ff2c6) ·
    [merchant claim](https://undo-1c56.onrender.com/orders/42f33fa9-072d-49fc-9012-75d9a886576d) ·
    [return](https://undo-1c56.onrender.com/orders/265e5167-e26f-435a-82e2-9e19b51df39f).
 1. **Watch the guard work.** Open [`/rogue`](https://undo-1c56.onrender.com/rogue) and press *Let the agents

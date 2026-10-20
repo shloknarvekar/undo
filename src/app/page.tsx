@@ -38,15 +38,15 @@ const HERO_TINTS = ["#c6f432", "#d7f86a", "#eefbc9", "#a9d61c", "#ffffff"];
 const CASES = [
   {
     outcome: "Void",
-    id: "949800eb-309c-4ae1-9d47-c67528b74995",
-    story: "The agent bought the wrong colour. Undo voided the hold inside the window.",
-    money: "$59.99 held · $0.00 moved",
+    id: "0ea67cb5-229a-49fc-b5d6-92a62bfba1dd",
+    story: "The agent bought size 10.5, not 10. Undo voided the hold inside the window.",
+    money: "$116.97 held · $0.00 moved",
   },
   {
     outcome: "Refund",
-    id: "dcb22380-412f-4e32-80a5-2e769dc398ba",
-    story: "Wrong colour, money already captured. Refunded in full; the agent's operator paid the shop back.",
-    money: "$59.99 refunded · $59.99 paid out",
+    id: "edd288bc-42d0-41d3-9b87-14915f3ff2c6",
+    story: "Wrong size, money already captured. Refunded in full; the agent's operator paid the shop back.",
+    money: "$116.97 refunded · $116.97 paid out",
   },
   {
     outcome: "Claim",
@@ -171,20 +171,20 @@ export default function Home() {
             <ScrollTilt>
             <figure className="rounded-card bg-black/30 p-[27px] ring-1 ring-paper/10">
               <figcaption className="flex items-center justify-between gap-3">
-                <span className="text-body-sm text-paper/70">Undo request · order 949800eb</span>
+                <span className="text-body-sm text-paper/70">Undo request · order 0ea67cb5</span>
                 <span className="inline-flex items-center whitespace-nowrap rounded-tag bg-bad-bg px-2.5 py-1 text-body-sm font-medium text-bad">
                   Agent fault · 1.00
                 </span>
               </figcaption>
-              <p className="mt-6 heading-type text-heading-sm">Agent bought the wrong colour</p>
+              <p className="mt-6 heading-type text-heading-sm">Agent bought the wrong size</p>
               <Reveal as="ul" className="mt-5 space-y-3 text-body-sm text-paper/85">
-                <li className="flex gap-3"><span className="font-mono text-field">mandate</span> required black, agent bought grey / red / white</li>
+                <li className="flex gap-3"><span className="font-mono text-field">mandate</span> required size 10, agent bought 10.5</li>
                 <li className="flex gap-3"><span className="font-mono text-field">record</span> agent skipped the pre-purchase check</li>
                 <li className="flex gap-3"><span className="font-mono text-field">window</span> still open, no money captured yet</li>
               </Reveal>
               <div className="mt-7 flex flex-wrap items-center justify-between gap-3 rounded-[20px] bg-paper/10 px-5 py-4">
                 <span className="text-body">Authorization voided</span>
-                <span className="font-mono text-body-sm text-paper/70">$0.00 moved · $2.58 fees avoided</span>
+                <span className="font-mono text-body-sm text-paper/70">$0.00 moved · $4.57 fees avoided</span>
               </div>
             </figure>
             </ScrollTilt>
@@ -359,22 +359,22 @@ export default function Home() {
             <ScrollTilt>
             <figure className="on-deep bg-deep p-8 text-paper shadow-lift sm:p-10">
               <figcaption className="text-body text-paper/80">
-                A careless agent bought the wrong colour, <span className="font-mono">$59.99</span>, and the money was captured
+                A careless agent bought the wrong size, <span className="font-mono">$116.97</span>, and the money was captured
                 before anyone noticed. From the live sandbox run.
               </figcaption>
               <div className="mt-8 grid gap-8 sm:grid-cols-2">
                 <div>
                   <p className="text-body-sm text-paper/70">Without Undo</p>
-                  <p className="mt-2 display-type text-[45px] leading-none tabular text-paper/60 line-through decoration-2">$62.57</p>
+                  <p className="mt-2 display-type text-[45px] leading-none tabular text-paper/60 line-through decoration-2">$121.54</p>
                   <p className="mt-3 text-body-sm text-paper/80">
-                    Captured, then charged back: the sale plus <span className="font-mono">$2.58</span> in fees, lost by you.
+                    Captured, then charged back: the sale plus <span className="font-mono">$4.57</span> in fees, lost by you.
                   </p>
                 </div>
                 <div>
                   <p className="text-body-sm text-paper/70">With Undo</p>
                   <p className="mt-2 display-type text-[45px] leading-none tabular text-field">$0.00</p>
-                  <p className="mt-3 text-body-sm text-paper/80">The shopper was refunded in full, then the agent&apos;s operator paid you back $59.99 through PayPal Payouts.</p>
-                  <p className="mt-3 break-all font-mono text-caption text-paper/60">Payouts transaction 6UP83952EE553052N</p>
+                  <p className="mt-3 text-body-sm text-paper/80">The shopper was refunded in full, then the agent&apos;s operator paid you back $116.97 through PayPal Payouts.</p>
+                  <p className="mt-3 break-all font-mono text-caption text-paper/60">Payouts transaction 3JU78306XG5327728</p>
                 </div>
               </div>
             </figure>

@@ -128,15 +128,16 @@ export function MerchantConsole() {
       if (r.verdict) undone++;
       recovered += r.settledAmount ?? 0;
     });
-    setTotals([
-      {
-        product: `${n} order${n === 1 ? "" : "s"} shown`,
-        amount,
-        status: `${money(held)} held now`,
-        verdict: `${undone} undone`,
-        liability: `${money(recovered)} paid back by agents`,
-      },
-    ]);
+    const next: TotalsRow = {
+      product: `${n} order${n === 1 ? "" : "s"} shown`,
+      amount,
+      status: `${money(held)} held now`,
+      verdict: `${undone} undone`,
+      liability: `${money(recovered)} paid back by agents`,
+    };
+    // A new pinned row makes the grid update its model again, which calls this again: keep the old row unless a
+    // number changed, or the two feed each other forever and starve every navigation away from this page.
+    setTotals((prev) => (prev.length && JSON.stringify(prev[0]) === JSON.stringify(next) ? prev : [next]));
   }, []);
 
   const exportCsv = useCallback(() => {

@@ -1,0 +1,1287 @@
+openapi: 3.0.3
+info:
+  title: Undo API
+  version: 1.0.0
+  description: |
+    Ctrl+Z for AI agent purchases, built on PayPal.
+
+    Undo sits between a shopping agent and PayPal. A shopper signs a mandate (what the agent may buy, for how much)
+    with a key that never leaves their device. The agent shops inside it, PayPal only **authorizes** the money, and
+    an undo window opens. Pressing Undo runs a fault check and routes the money: a free void inside the window, or a
+    refund, a merchant claim or a return after capture. When the agent was at fault, its operator pays the merchant
+    back through PayPal Payouts. Every step is written to a hash-chained event log anyone can verify.
+
+    **Signing.** Mandates and undo requests are signed with Ed25519 by the shopper's device key. The API never
+    signs for a shopper. The exact strings to sign are given with each operation.
+
+    **Sandbox.** This deployment runs on the PayPal sandbox; no real money moves. Costly endpoints are rate limited
+    per visitor and answer `429` with a `Retry-After` header when the limit or the free-tier budget is reached.
+
+    **Agents.** Third-party agents usually connect over MCP (Streamable HTTP at `/api/mcp`, JSON-RPC, not described
+    here). This document covers the HTTP API that the web app, agents and merchants call directly.
+  contact:
+    name: Undo
+    url: https://undo-1c56.onrender.com
+  license:
+    name: MIT
+    url: https://opensource.org/licenses/MIT
+servers:
+  - url: https://undo-1c56.onrender.com
+    description: Live sandbox deployment
+# Public sandbox API: no sign-in. Shopper actions are authorized by Ed25519 signatures in the request body instead.
+security: []
+tags:
+  - name: Products
+    description: Live product catalog search and detail, resolved to an exact variant.
+  - name: Mandates
+    description: Drafting, preparing, signing and reading shopper-signed intent mandates.
+  - name: Mandate requests
+    description: The shopper's side of a mandate an outside agent asked for.
+  - name: Shopping
+    description: Let Undo's agent shop inside a mandate and open a PayPal checkout that only authorizes the money.
+  - name: Orders
+    description: Purchases, their undo windows, the Undo button, and the evidence to verify them.
+  - name: Merchant
+    description: The store's view. Sandbox demo store; merchant sign-in comes with production use.
+  - name: Service
+    description: Health and deploy checks.
+
+paths:
+  /api/health:
+    get:
+      tags: [Service]
+      operationId: getHealth
+      summary: Check the service
+      description: Shallow health check. With `deep`, also proves the service can reach PayPal sandbox and the database. Never returns secret values.
+      parameters:
+        - name: deep
+          in: query
+          required: false
+          description: Present (any value) to also check PayPal and the database.
+          schema:
+            type: string
+          example: "1"
+      responses:
+        "200":
+          description: Healthy.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Health"
+              example:
+                ok: true
+                service: undo
+                commit: 319894e
+                configured: { paypal: true, channel3: true, database: true }
+        "503":
+          description: A deep check failed.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Health"
+
+  /api/products/search:
+    post:
+      tags: [Products]
+      operationId: searchProducts
+      summary: Search products
+      description: Searches the live catalog with structured filters. Rate limited per visitor.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ProductSearch"
+            example:
+              query: black hoodie
+              maxPrice: 80
+              color: black
+              limit: 5
+      responses:
+        "200":
+          description: Matching products with an offer.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ProductSearchResult"
+        "400":
+          $ref: "#/components/responses/InvalidRequest"
+        "429":
+          $ref: "#/components/responses/RateLimited"
+        "502":
+          $ref: "#/components/responses/UpstreamError"
+
+  /api/products/{productId}:
+    get:
+      tags: [Products]
+      operationId: getProduct
+      summary: Get a product at a variant
+      description: |
+        Fresh product detail resolved to the requested variant. Pass options as `option_<Name>=<value>` query
+        parameters, for example `option_Size=M&option_Color=Black`. `relaxed` lists any option the catalog could not honor.
+      parameters:
+        - name: productId
+          in: path
+          required: true
+          description: Catalog product id (`channel3Id` from a search).
+          schema:
+            type: string
+          example: w25336I
+        - name: options
+          in: query
+          required: false
+          description: Variant options as `option_<Name>` keys.
+          style: form
+          explode: true
+          schema:
+            type: object
+            additionalProperties:
+              type: string
+          example:
+            option_Size: "10.5"
+            option_Color: Black
+      responses:
+        "200":
+          description: The product at the closest available variant.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ProductDetail"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "502":
+          $ref: "#/components/responses/UpstreamError"
+
+  /api/mandates/draft:
+    post:
+      tags: [Mandates]
+      operationId: draftMandate
+      summary: Draft a mandate from the shopper's words
+      description: Turns a plain request into structured limits for the shopper to review. Nothing is stored. Rate limited per visitor.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [request]
+              properties:
+                request:
+                  type: string
+                  minLength: 3
+                  maxLength: 1000
+                  description: The shopper's own words.
+            example:
+              request: A black hoodie in size M under $80
+      responses:
+        "200":
+          description: The draft and whether it can be signed as is.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DraftResult"
+        "400":
+          $ref: "#/components/responses/InvalidRequest"
+        "429":
+          $ref: "#/components/responses/RateLimited"
+        "502":
+          $ref: "#/components/responses/UpstreamError"
+        "503":
+          $ref: "#/components/responses/Unavailable"
+
+  /api/mandates/prepare:
+    post:
+      tags: [Mandates]
+      operationId: prepareMandate
+      summary: Build the exact mandate to sign
+      description: |
+        Returns the mandate the shopper's device must sign and the exact `signingMessage`
+        (`undo-intent-mandate-v1:<sha256 of the canonical mandate JSON>`). Stateless; nothing is stored.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PrepareMandate"
+      responses:
+        "200":
+          description: The mandate and the string to sign.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PreparedMandate"
+        "400":
+          $ref: "#/components/responses/InvalidRequest"
+        "422":
+          description: The draft still has open questions or no budget.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/NotReady"
+
+  /api/mandates:
+    post:
+      tags: [Mandates]
+      operationId: storeMandate
+      summary: Store a signed mandate
+      description: Re-verifies the signature, freshness, expiry and readiness, then writes the first event of the mandate's hash chain.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SignedMandate"
+      responses:
+        "201":
+          description: Stored.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/StoredMandate"
+        "400":
+          $ref: "#/components/responses/InvalidRequest"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        "422":
+          $ref: "#/components/responses/Unprocessable"
+
+  /api/mandates/{mandateId}:
+    get:
+      tags: [Mandates]
+      operationId: getMandate
+      summary: Get a mandate and check its integrity
+      description: The mandate, its status, the search it permits, and a fresh check of its digest, signature and event chain.
+      parameters:
+        - $ref: "#/components/parameters/MandateId"
+      responses:
+        "200":
+          description: The mandate with a live integrity check.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MandateView"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /api/mandates/{mandateId}/shop:
+    post:
+      tags: [Shopping]
+      operationId: shopMandate
+      summary: Shop inside a mandate
+      description: |
+        Undo's agent searches, checks the cart against the signed limits, and opens a PayPal checkout in AUTHORIZE
+        mode. Without a saved wallet the shopper approves at `approveUrl`; with one (and only if the mandate allows it)
+        the money is held straight away. One live purchase per mandate. Rate limited per visitor.
+      parameters:
+        - $ref: "#/components/parameters/MandateId"
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                simulate:
+                  type: string
+                  enum: [unguarded_wrong_variant]
+                  description: Demo only. A careless third-party agent that skips Undo's checks and buys the wrong variant.
+      responses:
+        "201":
+          description: Checkout opened.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ShopResult"
+        "403":
+          description: The store's rules refused this agent.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          description: The mandate is not active, or a purchase is already open (`orderId` names it).
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "422":
+          description: No product fits the mandate.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "429":
+          $ref: "#/components/responses/RateLimited"
+        "502":
+          $ref: "#/components/responses/UpstreamError"
+        "503":
+          $ref: "#/components/responses/Unavailable"
+
+  /api/mandate-requests/{requestId}:
+    get:
+      tags: [Mandate requests]
+      operationId: getMandateRequest
+      summary: Get a mandate request
+      description: The draft an outside agent asked the shopper to sign, who is asking, and whether it is signed yet.
+      parameters:
+        - $ref: "#/components/parameters/RequestId"
+      responses:
+        "200":
+          description: The request.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MandateRequest"
+        "404":
+          $ref: "#/components/responses/NotFound"
+    post:
+      tags: [Mandate requests]
+      operationId: actOnMandateRequest
+      summary: Answer, prepare or sign a mandate request
+      description: |
+        - `answer`: answers the agent's open questions; the draft is re-read from the new text.
+        - `prepare`: the exact mandate this device's key must sign.
+        - `sign`: stores the signed mandate; it must match the request byte for byte (same words, limits and agent).
+      parameters:
+        - $ref: "#/components/parameters/RequestId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              oneOf:
+                - $ref: "#/components/schemas/AnswerAction"
+                - $ref: "#/components/schemas/PrepareAction"
+                - $ref: "#/components/schemas/SignAction"
+              discriminator:
+                propertyName: action
+                mapping:
+                  answer: "#/components/schemas/AnswerAction"
+                  prepare: "#/components/schemas/PrepareAction"
+                  sign: "#/components/schemas/SignAction"
+      responses:
+        "200":
+          description: Answered (new draft) or prepared (mandate and signing message).
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - $ref: "#/components/schemas/DraftResult"
+                  - $ref: "#/components/schemas/PreparedMandate"
+        "201":
+          description: Signed and stored.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [mandateId, digest]
+                properties:
+                  mandateId: { type: string, format: uuid }
+                  digest: { type: string, description: "SHA-256 of the canonical mandate." }
+        "400":
+          $ref: "#/components/responses/InvalidRequest"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        "422":
+          $ref: "#/components/responses/Unprocessable"
+        "429":
+          $ref: "#/components/responses/RateLimited"
+
+  /api/orders/{orderId}:
+    get:
+      tags: [Orders]
+      operationId: getOrder
+      summary: Get an order
+      description: The purchase, the live undo window, the mandate behind it, and its verified event chain. Each event carries its proof.
+      parameters:
+        - $ref: "#/components/parameters/OrderId"
+      responses:
+        "200":
+          description: The order.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OrderView"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /api/orders/{orderId}/evidence:
+    get:
+      tags: [Orders]
+      operationId: getOrderEvidence
+      summary: Download the evidence for an order
+      description: |
+        Everything needed to check an order without trusting Undo: the raw hash-chained events exactly as hashed and
+        the signed mandate exactly as stored. Nothing is pre-verified, on purpose.
+      parameters:
+        - $ref: "#/components/parameters/OrderId"
+      responses:
+        "200":
+          description: The evidence file (`undo-evidence-v1`).
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Evidence"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /api/orders/{orderId}/undo:
+    post:
+      tags: [Orders]
+      operationId: undoOrder
+      summary: Undo a purchase
+      description: |
+        The Undo button. Must be signed by the mandate's shopper key over
+        `undo-request-v1:<orderId>:<sha256 hex of reason>:<sha256 hex of photo bytes, or ->:<requestedAt>`.
+        `requestedAt` must be within 15 minutes of now. Runs the fault check, then routes the money: a void inside
+        the window, or a refund, merchant claim, return or human review after capture. Rate limited per visitor.
+      parameters:
+        - $ref: "#/components/parameters/OrderId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UndoRequest"
+      responses:
+        "200":
+          description: The verdict and what happened to the money.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UndoResult"
+        "400":
+          $ref: "#/components/responses/InvalidRequest"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        "413":
+          description: The photo is over 4 MB.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "422":
+          $ref: "#/components/responses/Unprocessable"
+        "429":
+          $ref: "#/components/responses/RateLimited"
+        "502":
+          $ref: "#/components/responses/UpstreamError"
+
+  /api/orders/{orderId}/resolve:
+    post:
+      tags: [Merchant]
+      operationId: resolveOrder
+      summary: Resolve an order as the merchant
+      description: The merchant's side of an Undo. Sandbox only.
+      parameters:
+        - $ref: "#/components/parameters/OrderId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [action]
+              properties:
+                action:
+                  type: string
+                  enum: [accept_claim, return_received, retry_settlement]
+      responses:
+        "200":
+          description: Done; the body describes the PayPal actions taken.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [orderId]
+                properties:
+                  orderId: { type: string, format: uuid }
+                additionalProperties: true
+        "400":
+          $ref: "#/components/responses/InvalidRequest"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        "502":
+          $ref: "#/components/responses/UpstreamError"
+
+  /api/merchant/orders:
+    get:
+      tags: [Merchant]
+      operationId: listMerchantOrders
+      summary: List agent orders
+      description: Every agent order (latest 300) with its verdict, who pays and any agent payout, plus headline numbers.
+      responses:
+        "200":
+          description: Orders and KPIs.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MerchantOrders"
+
+  /api/merchant/agents:
+    get:
+      tags: [Merchant]
+      operationId: listMerchantAgents
+      summary: List agents and their trust scores
+      description: Every agent that has shopped here, its record and trust score with every point explained, and what the store's rules do to it.
+      responses:
+        "200":
+          description: Agents and the store's rules.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MerchantAgents"
+
+  /api/merchant/rules:
+    get:
+      tags: [Merchant]
+      operationId: getMerchantRules
+      summary: Get the store's agent rules
+      responses:
+        "200":
+          description: The rules.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MerchantRules"
+    put:
+      tags: [Merchant]
+      operationId: updateMerchantRules
+      summary: Update the store's agent rules
+      description: Applies from the next checkout, for Undo's agent and every MCP agent. Each change is recorded in the store's event chain.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/MerchantRules"
+            example:
+              blockBelow: null
+              extendBelow: 50
+              extendMinutes: 360
+              blockUnverified: false
+      responses:
+        "200":
+          description: The rules now in force.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MerchantRules"
+        "400":
+          $ref: "#/components/responses/InvalidRequest"
+        "429":
+          $ref: "#/components/responses/RateLimited"
+
+  /api/merchant/activity:
+    get:
+      tags: [Merchant]
+      operationId: listMerchantActivity
+      summary: Stream the store's activity
+      description: Every step Undo records, newest first (up to 60). Pass `after` to get only events newer than that id.
+      parameters:
+        - name: after
+          in: query
+          required: false
+          description: Only events with an id greater than this.
+          schema:
+            type: integer
+            minimum: 0
+      responses:
+        "200":
+          description: Activity events.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [events]
+                properties:
+                  events:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/ActivityEvent"
+
+components:
+  parameters:
+    MandateId:
+      name: mandateId
+      in: path
+      required: true
+      description: Mandate id.
+      schema: { type: string, format: uuid }
+    RequestId:
+      name: requestId
+      in: path
+      required: true
+      description: Mandate request id.
+      schema: { type: string, format: uuid }
+    OrderId:
+      name: orderId
+      in: path
+      required: true
+      description: Undo order id.
+      schema: { type: string, format: uuid }
+      example: edd288bc-42d0-41d3-9b87-14915f3ff2c6
+
+  responses:
+    InvalidRequest:
+      description: The body failed validation; `issues` lists each problem.
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/Error" }
+    NotFound:
+      description: Not found.
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/Error" }
+          example: { error: not_found }
+    Forbidden:
+      description: Refused, for example a bad signature.
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/Error" }
+    Conflict:
+      description: The resource is not in a state that allows this.
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/Error" }
+    Unprocessable:
+      description: Valid shape, but the content can't be accepted.
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/Error" }
+    RateLimited:
+      description: Too many requests from this visitor, or the free-tier budget is spent.
+      headers:
+        Retry-After:
+          description: Seconds to wait.
+          schema: { type: integer }
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/RateLimited" }
+    UpstreamError:
+      description: PayPal, the catalog or the AI model failed.
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/Error" }
+    Unavailable:
+      description: The AI model is unavailable right now.
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/Error" }
+
+  schemas:
+    Error:
+      type: object
+      required: [error]
+      properties:
+        error:
+          type: string
+          description: Machine-readable code, for example `not_found`, `bad_signature`, `purchase_already_open`.
+        detail:
+          type: string
+          description: Human-readable detail, when there is one.
+        issues:
+          type: array
+          description: Validation problems, on `invalid_request`.
+          items:
+            type: object
+            additionalProperties: true
+      additionalProperties: true
+
+    RateLimited:
+      type: object
+      required: [error, detail, retryAfter]
+      properties:
+        error: { type: string, enum: [rate_limited] }
+        detail: { type: string }
+        retryAfter: { type: integer, description: "Seconds to wait." }
+
+    Health:
+      type: object
+      required: [ok, service, commit, configured]
+      properties:
+        ok: { type: boolean }
+        service: { type: string }
+        commit: { type: string, description: "Deployed commit, or `local`." }
+        configured:
+          type: object
+          required: [paypal, channel3, database]
+          properties:
+            paypal: { type: boolean }
+            channel3: { type: boolean }
+            database: { type: boolean }
+        paypal: { type: string, description: "With `deep`, `reachable` or the error." }
+        database:
+          type: object
+          additionalProperties: true
+        usage:
+          type: object
+          additionalProperties: true
+
+    ProductSearch:
+      type: object
+      required: [query]
+      properties:
+        query: { type: string, minLength: 1, maxLength: 500 }
+        maxPrice: { type: number, minimum: 0.01 }
+        minPrice: { type: number, minimum: 0 }
+        color: { type: string, maxLength: 30 }
+        category: { type: string, maxLength: 60, description: "Plain-words category, resolved server-side." }
+        gender: { type: string, enum: [male, female] }
+        limit: { type: integer, minimum: 1, maximum: 30 }
+        mode: { type: string, enum: [default, agentic] }
+
+    ProductSearchResult:
+      type: object
+      required: [products]
+      properties:
+        category: { type: string, nullable: true, description: "The catalog category the search was narrowed to." }
+        products:
+          type: array
+          items: { $ref: "#/components/schemas/Product" }
+
+    Product:
+      type: object
+      required: [channel3Id, title, price, currency, sourceUrl, sourceDomain, colors, attributes, variant, variantOptions]
+      properties:
+        channel3Id: { type: string }
+        title: { type: string }
+        brand: { type: string, nullable: true }
+        description: { type: string, nullable: true }
+        price: { type: number }
+        currency: { type: string, example: USD }
+        imageUrl: { type: string, nullable: true }
+        sourceUrl: { type: string }
+        sourceDomain: { type: string }
+        colors: { type: array, items: { type: string } }
+        attributes:
+          type: object
+          additionalProperties:
+            type: array
+            items: { type: string }
+        variant:
+          type: object
+          description: 'The exact variant this offer resolves to, for example Size M and Color Black.'
+          additionalProperties: { type: string }
+        variantOptions:
+          type: array
+          items:
+            type: object
+            required: [name, values]
+            properties:
+              name: { type: string }
+              values: { type: array, items: { type: string } }
+
+    ProductDetail:
+      type: object
+      required: [product, relaxed]
+      properties:
+        product: { $ref: "#/components/schemas/Product" }
+        relaxed:
+          type: array
+          description: Requested options the catalog could not honor.
+          items:
+            type: object
+            additionalProperties: true
+
+    IntentDraft:
+      type: object
+      description: The shopper's limits in structured form.
+      required: [item, maxPrice]
+      properties:
+        item: { type: string, maxLength: 120, example: hoodie }
+        category: { type: string, maxLength: 60 }
+        quantity: { type: integer, minimum: 1, maximum: 20, default: 1 }
+        maxPrice: { type: number, minimum: 0, description: "Ceiling per item; 0 means no budget was given." }
+        currency: { type: string, minLength: 3, maxLength: 3, default: USD }
+        attributes:
+          type: object
+          description: Required attribute values, keys lowercase.
+          additionalProperties: { type: string }
+          example: { size: M, color: black }
+        gender: { type: string, enum: [male, female] }
+        brands: { type: array, maxItems: 10, items: { type: string } }
+        deadline: { type: string, description: "ISO date the item must arrive by." }
+        notes: { type: string, maxLength: 300 }
+        mustAsk:
+          type: array
+          maxItems: 5
+          description: Questions to answer before the draft can be signed.
+          items: { type: string }
+
+    ReadyCheck:
+      type: object
+      required: [ok]
+      properties:
+        ok: { type: boolean }
+        reason: { type: string, enum: [open_questions, missing_budget] }
+
+    DraftResult:
+      type: object
+      required: [draft, ready]
+      properties:
+        request: { type: string, description: "The request text, when it was extended with answers." }
+        draft: { $ref: "#/components/schemas/IntentDraft" }
+        ready: { $ref: "#/components/schemas/ReadyCheck" }
+
+    NotReady:
+      type: object
+      required: [error]
+      properties:
+        error: { type: string, enum: [open_questions, missing_budget] }
+        mustAsk: { type: array, items: { type: string } }
+
+    AgentRef:
+      type: object
+      required: [name, verified]
+      properties:
+        name: { type: string, maxLength: 80 }
+        verified: { type: boolean, description: "The agent presented a registered operator key." }
+
+    IntentMandate:
+      type: object
+      description: What the shopper signs. Its canonical JSON (sorted keys) is hashed with SHA-256 for the signing message.
+      required: [version, id, createdAt, expiresAt, shopperKey, request, intent]
+      properties:
+        version: { type: integer, enum: [1] }
+        id: { type: string, format: uuid }
+        createdAt: { type: string, format: date-time }
+        expiresAt: { type: string, format: date-time }
+        shopperKey: { type: string, description: "Base64 Ed25519 public key (32 bytes)." }
+        request: { type: string, maxLength: 1000, description: "The shopper's own words, verbatim." }
+        intent: { $ref: "#/components/schemas/IntentDraft" }
+        agent: { $ref: "#/components/schemas/AgentRef" }
+        payWith:
+          type: string
+          enum: [saved_wallet]
+          description: Present only if the shopper allowed the agent to pay with their saved PayPal wallet.
+
+    PrepareMandate:
+      type: object
+      required: [request, draft, shopperKey]
+      properties:
+        request: { type: string, minLength: 3, maxLength: 1000 }
+        draft: { $ref: "#/components/schemas/IntentDraft" }
+        shopperKey: { type: string, minLength: 40, maxLength: 60, description: "Base64 Ed25519 public key." }
+        payWith: { type: string, enum: [saved_wallet] }
+
+    PreparedMandate:
+      type: object
+      required: [mandate, signingMessage]
+      properties:
+        mandate: { $ref: "#/components/schemas/IntentMandate" }
+        signingMessage:
+          type: string
+          description: Sign these exact UTF-8 bytes with the shopper's Ed25519 key.
+          example: "undo-intent-mandate-v1:3f1c0e9a…"
+
+    SignedMandate:
+      type: object
+      required: [mandate, signature]
+      properties:
+        mandate: { $ref: "#/components/schemas/IntentMandate" }
+        signature: { type: string, minLength: 80, maxLength: 100, description: "Base64 Ed25519 signature of the signing message." }
+
+    StoredMandate:
+      type: object
+      required: [id, digest, event]
+      properties:
+        id: { type: string, format: uuid }
+        digest: { type: string }
+        event:
+          type: object
+          required: [seq, hash]
+          properties:
+            seq: { type: integer }
+            hash: { type: string }
+
+    ChainEventSummary:
+      type: object
+      required: [seq, type, createdAt, hash]
+      properties:
+        seq: { type: integer }
+        type: { type: string, example: MANDATE_SIGNED }
+        createdAt: { type: string, format: date-time }
+        hash: { type: string }
+
+    MandateView:
+      type: object
+      required: [mandate, status, search, integrity, events]
+      properties:
+        mandate: { $ref: "#/components/schemas/IntentMandate" }
+        status: { type: string, enum: [ACTIVE, FULFILLED, REVOKED, EXPIRED] }
+        search:
+          type: object
+          description: The product search this mandate permits.
+          additionalProperties: true
+        integrity:
+          type: object
+          required: [digestMatches, signatureValid, chainIntact]
+          properties:
+            digestMatches: { type: boolean }
+            signatureValid: { type: boolean }
+            chainIntact: { type: boolean }
+            chainBrokenAt: { type: integer }
+        events:
+          type: array
+          items: { $ref: "#/components/schemas/ChainEventSummary" }
+
+    UndoWindow:
+      type: object
+      required: [minutes, factors]
+      properties:
+        minutes: { type: integer, description: "Total window length." }
+        factors:
+          type: array
+          description: Why the window is this long, factor by factor.
+          items:
+            type: object
+            required: [factor, minutes]
+            properties:
+              factor: { type: string }
+              minutes: { type: integer }
+
+    Trust:
+      type: object
+      required: [score, tier]
+      properties:
+        score: { type: integer, minimum: 0, maximum: 100 }
+        tier: { type: string, enum: [trusted, neutral, risky] }
+        factors:
+          type: array
+          items:
+            type: object
+            required: [label, points]
+            properties:
+              label: { type: string }
+              points: { type: integer }
+
+    ShopResult:
+      type: object
+      required: [orderId, status, cart, agent, undoWindow, trust, paidWith]
+      properties:
+        orderId: { type: string, format: uuid }
+        approveUrl: { type: string, nullable: true, description: "Where the shopper approves the payment in PayPal (absent when paid with a saved wallet)." }
+        status: { type: string, enum: [CHECKOUT_CREATED, AUTHORIZED] }
+        windowEndsAt: { type: string, format: date-time, nullable: true }
+        paidWith: { type: string, enum: [approval, saved_wallet] }
+        walletNote: { type: string, description: "Why a saved wallet was not used, when the mandate allowed one." }
+        cart:
+          type: object
+          required: [title, variant, price, currency, quantity]
+          properties:
+            title: { type: string }
+            brand: { type: string, nullable: true }
+            variant: { type: object, additionalProperties: { type: string } }
+            price: { type: number }
+            currency: { type: string }
+            quantity: { type: integer }
+            retailer: { type: string }
+            imageUrl: { type: string, nullable: true }
+        agent:
+          type: object
+          description: The agent's reasoning, confidence and the guard's checks.
+          additionalProperties: true
+        undoWindow: { $ref: "#/components/schemas/UndoWindow" }
+        trust: { $ref: "#/components/schemas/Trust" }
+
+    MandateRequest:
+      type: object
+      required: [id, request, draft, ready, agent, status, expiresAt]
+      properties:
+        id: { type: string, format: uuid }
+        request: { type: string }
+        draft: { $ref: "#/components/schemas/IntentDraft" }
+        ready: { $ref: "#/components/schemas/ReadyCheck" }
+        agent: { $ref: "#/components/schemas/AgentRef" }
+        status: { type: string, enum: [PENDING, SIGNED, EXPIRED] }
+        mandateId: { type: string, format: uuid, nullable: true }
+        expiresAt: { type: string, format: date-time }
+
+    AnswerAction:
+      type: object
+      required: [action, answers]
+      properties:
+        action: { type: string, enum: [answer] }
+        answers:
+          type: object
+          description: Each open question (exactly as asked) mapped to the shopper's answer.
+          additionalProperties: { type: string, maxLength: 200 }
+
+    PrepareAction:
+      type: object
+      required: [action, shopperKey]
+      properties:
+        action: { type: string, enum: [prepare] }
+        shopperKey: { type: string, minLength: 40, maxLength: 60 }
+        payWith: { type: string, enum: [saved_wallet] }
+
+    SignAction:
+      type: object
+      required: [action, mandate, signature]
+      properties:
+        action: { type: string, enum: [sign] }
+        mandate: { $ref: "#/components/schemas/IntentMandate" }
+        signature: { type: string, minLength: 80, maxLength: 100 }
+
+    OrderStatus:
+      type: string
+      enum: [CHECKOUT_CREATED, CANCELLED, AUTHORIZED, VOIDED, CAPTURED, REFUNDED, PARTIALLY_REFUNDED, CLAIM_OPEN, RETURN_PENDING, REVIEW, DISPUTED, FAILED]
+
+    ChainEvent:
+      type: object
+      required: [seq, type, createdAt, hash, proof]
+      properties:
+        seq: { type: integer }
+        type: { type: string }
+        createdAt: { type: string, format: date-time }
+        hash: { type: string }
+        proof:
+          type: object
+          description: How this step was decided, and the PayPal call or id behind it.
+          additionalProperties: true
+
+    OrderView:
+      type: object
+      required: [order, undoWindow, chain]
+      properties:
+        order:
+          type: object
+          required: [id, status, amount, currency, quantity, product, paypal]
+          properties:
+            id: { type: string, format: uuid }
+            status: { $ref: "#/components/schemas/OrderStatus" }
+            amount: { type: string, example: "116.97" }
+            currency: { type: string }
+            quantity: { type: integer }
+            product: { $ref: "#/components/schemas/Product" }
+            agent:
+              type: object
+              additionalProperties: true
+            paypal:
+              type: object
+              properties:
+                orderId: { type: string, nullable: true }
+                authorizationId: { type: string, nullable: true }
+                captureId: { type: string, nullable: true }
+            resolution:
+              type: object
+              nullable: true
+              description: The latest Undo, with verdict, evidence, money action and any agent payout.
+              additionalProperties: true
+        undoWindow:
+          allOf:
+            - $ref: "#/components/schemas/UndoWindow"
+            - type: object
+              required: [open]
+              properties:
+                endsAt: { type: string, format: date-time, nullable: true }
+                open: { type: boolean }
+                minutesLeft: { type: integer, nullable: true }
+        mandate:
+          type: object
+          nullable: true
+          properties:
+            id: { type: string, format: uuid }
+            request: { type: string }
+            intent: { $ref: "#/components/schemas/IntentDraft" }
+            status: { type: string }
+            shopperKey: { type: string }
+        chain:
+          type: object
+          required: [intact, events]
+          properties:
+            intact: { type: boolean }
+            events:
+              type: array
+              items: { $ref: "#/components/schemas/ChainEvent" }
+
+    Evidence:
+      type: object
+      required: [format, orderId, mandate, events]
+      properties:
+        format: { type: string, enum: [undo-evidence-v1] }
+        orderId: { type: string, format: uuid }
+        mandate:
+          type: object
+          nullable: true
+          description: The signed mandate exactly as stored.
+          additionalProperties: true
+        events:
+          type: array
+          description: Raw events exactly as hashed. Each hash covers the previous hash and the canonical payload.
+          items:
+            type: object
+            additionalProperties: true
+
+    UndoRequest:
+      type: object
+      required: [reason, requestedAt, signature]
+      properties:
+        reason: { type: string, minLength: 3, maxLength: 500, example: "This isn't what I asked for." }
+        photo:
+          type: string
+          description: Optional photo of what arrived, as a base64 JPEG, PNG or WebP data URL (max 4 MB).
+          pattern: "^data:image/(jpeg|png|webp);base64,[A-Za-z0-9+/=]+$"
+        requestedAt: { type: string, format: date-time }
+        signature: { type: string, minLength: 80, maxLength: 100, description: "Base64 Ed25519 signature of the undo signing message." }
+
+    Decision:
+      type: object
+      required: [verdict, confidence, liability, evidence]
+      properties:
+        verdict: { type: string, enum: [AGENT_FAULT, MERCHANT_FAULT, SHOPPER_CHANGED_MIND, INCONCLUSIVE] }
+        confidence: { type: number, minimum: 0, maximum: 1 }
+        liability:
+          type: string
+          nullable: true
+          description: Who pays. Null when a person still has to decide.
+          enum: [agent_operator, merchant, shopper]
+        evidence:
+          type: array
+          items:
+            type: object
+            required: [source, finding]
+            properties:
+              source: { type: string, enum: [mandate_check, agent_record, delivered_photo, ai_judgement, shopper] }
+              finding: { type: string }
+
+    MoneyAction:
+      type: object
+      required: [type, reason]
+      properties:
+        type: { type: string, enum: [VOID, REFUND_FULL, OPEN_CLAIM, AUTHORIZE_RETURN, REVIEW, NONE] }
+        reason: { type: string }
+        refundOnReturn: { type: string, description: "On AUTHORIZE_RETURN, the amount refunded when the item comes back." }
+        restockingFee: { type: string, description: "On AUTHORIZE_RETURN." }
+
+    UndoResult:
+      type: object
+      required: [orderId, decision, outcome]
+      properties:
+        orderId: { type: string, format: uuid }
+        decision: { $ref: "#/components/schemas/Decision" }
+        outcome:
+          type: object
+          required: [action, status, paypal]
+          properties:
+            action: { $ref: "#/components/schemas/MoneyAction" }
+            status: { $ref: "#/components/schemas/OrderStatus" }
+            paypal:
+              type: object
+              description: The PayPal ids behind the money movement.
+              additionalProperties: { type: string, nullable: true }
+            evidenceDigest: { type: string }
+
+    MerchantRules:
+      type: object
+      required: [blockBelow, extendBelow, extendMinutes, blockUnverified]
+      properties:
+        blockBelow: { type: integer, minimum: 1, maximum: 100, nullable: true, description: "Refuse agents scoring below this. Null turns it off." }
+        extendBelow: { type: integer, minimum: 1, maximum: 100, nullable: true, description: "Give agents scoring below this a longer window. Null turns it off." }
+        extendMinutes: { type: integer, minimum: 15, maximum: 1440, description: "How much longer." }
+        blockUnverified: { type: boolean, description: "Refuse agents without a registered operator key." }
+
+    MerchantOrder:
+      type: object
+      required: [id, createdAt, status, amount, currency, product, agentName, agentVerified]
+      properties:
+        id: { type: string, format: uuid }
+        createdAt: { type: string, format: date-time }
+        status: { $ref: "#/components/schemas/OrderStatus" }
+        amount: { type: number }
+        currency: { type: string }
+        product: { type: string }
+        brand: { type: string, nullable: true }
+        variant: { type: string }
+        imageUrl: { type: string, nullable: true }
+        retailer: { type: string, nullable: true }
+        request: { type: string, nullable: true }
+        agentConfidence: { type: number, nullable: true }
+        guardBypassed: { type: boolean }
+        simulated: { type: string, nullable: true }
+        agentName: { type: string }
+        agentVerified: { type: boolean }
+        agentVia: { type: string }
+        verdict: { type: string, nullable: true }
+        verdictConfidence: { type: number, nullable: true }
+        liability: { type: string, nullable: true }
+        settlement: { type: string, nullable: true }
+        settledAmount: { type: number, description: "Money that arrived from an agent operator through PayPal Payouts." }
+        action: { type: string, nullable: true }
+        windowEndsAt: { type: string, format: date-time, nullable: true }
+        windowMinutesLeft: { type: integer, nullable: true }
+        paypalRef: { type: string, nullable: true }
+
+    MerchantOrders:
+      type: object
+      required: [kpis, orders]
+      properties:
+        kpis:
+          type: object
+          required: [agentOrders, undone, feesAvoided, billedToAgents, merchantProtected, needsAction, heldNow]
+          properties:
+            agentOrders: { type: integer }
+            undone: { type: integer }
+            feesAvoided: { type: number, description: "Estimated PayPal fees avoided by voiding instead of refunding." }
+            billedToAgents: { type: number }
+            merchantProtected: { type: integer }
+            needsAction: { type: integer }
+            heldNow: { type: number }
+        orders:
+          type: array
+          items: { $ref: "#/components/schemas/MerchantOrder" }
+
+    MerchantAgents:
+      type: object
+      required: [rules, agents]
+      properties:
+        rules: { $ref: "#/components/schemas/MerchantRules" }
+        agents:
+          type: array
+          items:
+            type: object
+            required: [name, verified, trust, effect]
+            properties:
+              name: { type: string }
+              verified: { type: boolean }
+              via: { type: string, nullable: true }
+              purchases: { type: integer }
+              faults: { type: integer }
+              trust: { $ref: "#/components/schemas/Trust" }
+              effect:
+                type: object
+                required: [blocked, extraMinutes]
+                properties:
+                  blocked: { type: string, nullable: true }
+                  extraMinutes: { type: integer }
+                  reason: { type: string, nullable: true }
+            additionalProperties: true
+
+    ActivityEvent:
+      type: object
+      required: [id, at, type, kind, how]
+      properties:
+        id: { type: integer }
+        at: { type: string, format: date-time }
+        type: { type: string, example: PAYMENT_VOIDED }
+        kind: { type: string }
+        how: { type: string }
+        orderId: { type: string, nullable: true }
+        amount: { type: number, nullable: true }
+        agent: { type: string, nullable: true }
+        ref: { type: string, nullable: true }

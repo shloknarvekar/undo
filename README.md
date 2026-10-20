@@ -158,6 +158,21 @@ On claude.ai or Claude Desktop, add a custom connector with the same URL. Agents
 
 ---
 
+## HTTP API
+
+Everything the web app does goes through a plain JSON API, described in OpenAPI 3.0 at
+[`/openapi.yaml`](https://undo-1c56.onrender.com/openapi.yaml) (source: [`public/openapi.yaml`](public/openapi.yaml)):
+products, mandates (draft, prepare, store, read), shopping inside a mandate, orders and their evidence, the Undo
+button, and the merchant's orders, agents, rules and activity. There's no sign-in; shopper actions carry an Ed25519
+signature instead, and the exact string to sign is in each operation's description. The spec is checked against
+live responses: every read endpoint's real output validates against its schema.
+
+```bash
+curl -s https://undo-1c56.onrender.com/api/orders/edd288bc-42d0-41d3-9b87-14915f3ff2c6 | head -c 400
+```
+
+---
+
 ## Tech stack
 
 | Layer | Tool |

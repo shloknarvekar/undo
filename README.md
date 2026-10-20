@@ -59,7 +59,9 @@ The app runs on Render's free plan. After a while without visitors it sleeps; th
    its verdict, who pays, and any payout from an agent operator, built on AG Grid Community: changed cells flash on
    each refresh, a pinned row totals whatever the filters leave on screen, every column has a typed filter, the layout
    is remembered, and *Export CSV* downloads what you see. *Live activity* streams every step from the event log into
-   a second grid as row transactions, with a pause control. Under it, *Agent trust* scores every agent from its
+   a second grid as row transactions, with a pause control. *Undo windows* is a Bryntum Scheduler timeline: a row per
+   agent, a bar per order running from purchase to the moment its undo window closes, and a line for now, so the
+   purchases a shopper can still undo are the bars crossing it. Click a bar to open the order. Under it, *Agent trust* scores every agent from its
    record (clean purchases, faults, refused carts, skipped checks, every point shown), and the store's rules act on
    it at checkout: block agents below a score, give low-trust agents a longer undo window, or accept only registered
    operators. Change a rule and the next checkout follows it, for Undo's agent and every MCP agent.
@@ -165,11 +167,11 @@ On claude.ai or Claude Desktop, add a custom connector with the same URL. Agents
 | AI in the product | Gemini (`gemini-flash-lite-latest`) through the Vercel AI SDK: request parsing, agent ranking, fault checks |
 | Agent protocol | MCP server via `mcp-handler` + `@modelcontextprotocol/server` |
 | Data | Neon Postgres (serverless driver) + Drizzle ORM |
-| Merchant console | AG Grid Community |
+| Merchant console | AG Grid Community, Bryntum Scheduler (undo-window timeline) |
 | Motion | CSS scroll timelines, `framer-motion` |
 | Hosting | Render (free web service, Blueprint in `render.yaml`) |
 
-Everything above runs on free plans or free tiers.
+Everything above runs on free plans or free tiers, except Bryntum Scheduler, which runs on its free trial package.
 
 ---
 

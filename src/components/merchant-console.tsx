@@ -3,6 +3,7 @@
 import { AllCommunityModule, ModuleRegistry, type ColDef, type GridState, type ICellRendererParams } from "ag-grid-community";
 import { AgGridReact } from "ag-grid-react";
 import { AlertTriangle, Download, ExternalLink, FastForward, Loader2, PackageCheck, RefreshCw, Search, ShieldCheck, X } from "lucide-react";
+import dynamic from "next/dynamic";
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { EVENT_LABEL } from "./order-app";
@@ -13,6 +14,16 @@ import { AgentTrust } from "./agent-trust";
 import { gridTheme } from "./grid-theme";
 
 ModuleRegistry.registerModules([AllCommunityModule]);
+
+// Bryntum touches the DOM as soon as it loads, so the timeline only ever renders in the browser.
+const UndoTimeline = dynamic(() => import("./undo-timeline").then((m) => m.UndoTimeline), {
+  ssr: false,
+  loading: () => (
+    <p className="flex h-[440px] items-center gap-3 p-10 text-subheading" role="status">
+      <Loader2 className="size-5 animate-spin" aria-hidden /> Loading timeline…
+    </p>
+  ),
+});
 
 type Row = {
   id: string;
@@ -36,6 +47,7 @@ type Row = {
   verdictConfidence: number | null;
   liability: string | null;
   action: string | null;
+  windowEndsAt: string | null;
   windowMinutesLeft: number | null;
   paypalRef: string | null;
   settledAmount: number;
@@ -362,6 +374,31 @@ export function MerchantConsole() {
         <p className="mt-3 text-body-sm text-muted">
           Click an order, or press Enter on it, to see the evidence and act. Updates every 15 seconds; changed cells flash. Column filters are in each header.
         </p>
+
+        <section aria-labelledby="timeline-title" className="mt-16">
+          <div className="flex flex-col justify-between gap-2 sm:flex-row sm:items-end">
+            <div>
+              <h2 id="timeline-title" className="heading-type text-heading-sm sm:text-[30px]">Undo windows</h2>
+              <p className="mt-1 text-body text-muted">
+                Each bar runs from purchase to the moment its undo window closes. Bars crossing the red line can still be undone.
+              </p>
+            </div>
+            <ul className="flex flex-wrap gap-x-4 gap-y-1 text-body-sm text-muted" aria-label="Bar colours">
+              {[
+                ["bg-held", "Held"],
+                ["bg-ok", "Undone"],
+                ["bg-neutral", "Captured"],
+                ["bg-warn", "Needs you"],
+              ].map(([c, label]) => (
+                <li key={label} className="flex items-center gap-1.5"><span className={cx("size-2.5 rounded-full", c)} aria-hidden />{label}</li>
+              ))}
+            </ul>
+          </div>
+          <div className="mt-6 overflow-hidden rounded-card bg-paper">
+            {rows === null ? null : <UndoTimeline orders={rows} onOpen={(id) => setSelected(rows.find((r) => r.id === id) ?? null)} />}
+          </div>
+          <p className="mt-3 text-body-sm text-muted">Hover a bar for details, click it to open the order. Scroll sideways to move through time.</p>
+        </section>
 
         <ActivityFeed />
 

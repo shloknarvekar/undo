@@ -1,3 +1,4 @@
+# Undo HTTP API. Checked against live responses; keep it in step with src/app/api.
 openapi: 3.0.3
 info:
   title: Undo API
@@ -28,7 +29,6 @@ info:
 servers:
   - url: https://undo-1c56.onrender.com
     description: Live sandbox deployment
-# Public sandbox API: no sign-in. Shopper actions are authorized by Ed25519 signatures in the request body instead.
 security: []
 tags:
   - name: Products
@@ -45,14 +45,16 @@ tags:
     description: The store's view. Sandbox demo store; merchant sign-in comes with production use.
   - name: Service
     description: Health and deploy checks.
-
 paths:
   /api/health:
     get:
-      tags: [Service]
+      tags:
+        - Service
       operationId: getHealth
       summary: Check the service
-      description: Shallow health check. With `deep`, also proves the service can reach PayPal sandbox and the database. Never returns secret values.
+      description: >-
+        Shallow health check. With `deep`, also proves the service can reach PayPal sandbox and the database. Never
+        returns secret values.
       parameters:
         - name: deep
           in: query
@@ -72,17 +74,29 @@ paths:
                 ok: true
                 service: undo
                 commit: 319894e
-                configured: { paypal: true, channel3: true, database: true }
+                configured:
+                  paypal: true
+                  channel3: true
+                  database: true
         "503":
           description: A deep check failed.
           content:
             application/json:
               schema:
                 $ref: "#/components/schemas/Health"
-
+              example:
+                ok: false
+                service: undo
+                commit: a1dd1af
+                configured:
+                  paypal: true
+                  channel3: true
+                  database: true
+                paypal: Client Authentication failed
   /api/products/search:
     post:
-      tags: [Products]
+      tags:
+        - Products
       operationId: searchProducts
       summary: Search products
       description: Searches the live catalog with structured filters. Rate limited per visitor.
@@ -104,21 +118,82 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ProductSearchResult"
+              example:
+                category: hoodies
+                products:
+                  - channel3Id: w25336I
+                    title: UA Infinite Pro Men's Running Shoes
+                    brand: Under Armour
+                    description: >-
+                      These men's running shoes from Under Armour, the UA Infinite Pro, are designed for endurance with
+                      a focus on comfort and support. They feature a breathable e…
+                    price: 116.97
+                    currency: USD
+                    imageUrl: >-
+                      https://cdn.trychannel3.com/aed9ec20-0e99-49b6-b011-2425732889be?aid=01M5D44F1Y9VDE34RVPPTF1H15&mid=oKaH
+                    sourceUrl: >-
+                      https://buy.trychannel3.com/w25336I-oKaH-Wqce8l?o=01KVATPXMQW09XVTMRDEW2Q1Y9&aid=01M5D44F1Y9VDE34RVPPTF1H15
+                    sourceDomain: underarmour.com
+                    colors:
+                      - "#1e1e20"
+                      - "#d5d4d8"
+                    attributes:
+                      activity:
+                        - Running
+                      pattern:
+                        - Texture
+                        - Geometric
+                      closure-type:
+                        - Straps
+                        - Lace-up
+                      heel-height-type:
+                        - Flat
+                        - Low
+                      footwear-material:
+                        - Mesh
+                        - Polyester
+                      shoe-fit:
+                        - Regular
+                      shoe-features:
+                        - Breathable design
+                        - Cushioned
+                      toe-style:
+                        - Round
+                      outsole-material:
+                        - Rubber
+                      footwear-support-type:
+                        - Neutral
+                        - Stability
+                      lining-material:
+                        - Synthetic
+                    variant:
+                      Size: "10.5"
+                    variantOptions:
+                      - name: Color
+                        values:
+                          - Black
+                          - White
+                      - name: Size
+                        values:
+                          - "7"
+                          - "8"
         "400":
           $ref: "#/components/responses/InvalidRequest"
         "429":
           $ref: "#/components/responses/RateLimited"
         "502":
           $ref: "#/components/responses/UpstreamError"
-
   /api/products/{productId}:
     get:
-      tags: [Products]
+      tags:
+        - Products
       operationId: getProduct
       summary: Get a product at a variant
-      description: |
+      description: >
         Fresh product detail resolved to the requested variant. Pass options as `option_<Name>=<value>` query
-        parameters, for example `option_Size=M&option_Color=Black`. `relaxed` lists any option the catalog could not honor.
+
+        parameters, for example `option_Size=M&option_Color=Black`. `relaxed` lists any option the catalog could not
+        honor.
       parameters:
         - name: productId
           in: path
@@ -147,24 +222,86 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ProductDetail"
+              example:
+                product:
+                  channel3Id: w25336I
+                  title: UA Infinite Pro Men's Running Shoes
+                  brand: Under Armour
+                  description: >-
+                    These men's running shoes from Under Armour, the UA Infinite Pro, are designed for endurance with a
+                    focus on comfort and support. They feature a breathable e…
+                  price: 116.97
+                  currency: USD
+                  imageUrl: >-
+                    https://cdn.trychannel3.com/aed9ec20-0e99-49b6-b011-2425732889be?aid=01M5D44F1Y9VDE34RVPPTF1H15&mid=oKaH
+                  sourceUrl: >-
+                    https://buy.trychannel3.com/w25336I-oKaH-Wqce8l?o=01KVATPXMQW09XVTMRDEW2Q1Y9&aid=01M5D44F1Y9VDE34RVPPTF1H15
+                  sourceDomain: underarmour.com
+                  colors:
+                    - "#1e1e20"
+                    - "#d5d4d8"
+                  attributes:
+                    activity:
+                      - Running
+                    pattern:
+                      - Texture
+                      - Geometric
+                    closure-type:
+                      - Straps
+                      - Lace-up
+                    heel-height-type:
+                      - Flat
+                      - Low
+                    footwear-material:
+                      - Mesh
+                      - Polyester
+                    shoe-fit:
+                      - Regular
+                    shoe-features:
+                      - Breathable design
+                      - Cushioned
+                    toe-style:
+                      - Round
+                    outsole-material:
+                      - Rubber
+                    footwear-support-type:
+                      - Neutral
+                      - Stability
+                    lining-material:
+                      - Synthetic
+                  variant:
+                    Size: "10.5"
+                  variantOptions:
+                    - name: Color
+                      values:
+                        - Black
+                        - White
+                    - name: Size
+                      values:
+                        - "7"
+                        - "8"
+                relaxed: []
         "404":
           $ref: "#/components/responses/NotFound"
         "502":
           $ref: "#/components/responses/UpstreamError"
-
   /api/mandates/draft:
     post:
-      tags: [Mandates]
+      tags:
+        - Mandates
       operationId: draftMandate
       summary: Draft a mandate from the shopper's words
-      description: Turns a plain request into structured limits for the shopper to review. Nothing is stored. Rate limited per visitor.
+      description: >-
+        Turns a plain request into structured limits for the shopper to review. Nothing is stored. Rate limited per
+        visitor.
       requestBody:
         required: true
         content:
           application/json:
             schema:
               type: object
-              required: [request]
+              required:
+                - request
               properties:
                 request:
                   type: string
@@ -180,6 +317,19 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/DraftResult"
+              example:
+                draft:
+                  item: black hoodie
+                  category: hoodie
+                  quantity: 1
+                  maxPrice: 80
+                  currency: USD
+                  attributes:
+                    color: black
+                    size: M
+                  mustAsk: []
+                ready:
+                  ok: true
         "400":
           $ref: "#/components/responses/InvalidRequest"
         "429":
@@ -188,10 +338,10 @@ paths:
           $ref: "#/components/responses/UpstreamError"
         "503":
           $ref: "#/components/responses/Unavailable"
-
   /api/mandates/prepare:
     post:
-      tags: [Mandates]
+      tags:
+        - Mandates
       operationId: prepareMandate
       summary: Build the exact mandate to sign
       description: |
@@ -210,6 +360,26 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/PreparedMandate"
+              example:
+                mandate:
+                  version: 1
+                  id: 2f4069f0-2367-4f08-acc6-d9cf1cf6669a
+                  createdAt: "2026-10-20T04:18:17.928Z"
+                  expiresAt: "2026-11-03T04:18:17.928Z"
+                  shopperKey: aHBQ5B27O2BiDV0oWgOigpsXZKjOfhcYYMch5pZ5H0c=
+                  request: Buy me black men's running shoes, size 10, under $120
+                  intent:
+                    item: running shoes
+                    category: running shoes
+                    quantity: 1
+                    maxPrice: 120
+                    currency: USD
+                    attributes:
+                      size: "10"
+                      color: black
+                    gender: male
+                    mustAsk: []
+                signingMessage: undo-intent-mandate-v1:7bf66d54681f2b73e2f05ee0d49b5a68776908620751daaf0102b9f0b17fcac6
         "400":
           $ref: "#/components/responses/InvalidRequest"
         "422":
@@ -218,13 +388,19 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/NotReady"
-
+              example:
+                error: open_questions
+                mustAsk:
+                  - What size?
   /api/mandates:
     post:
-      tags: [Mandates]
+      tags:
+        - Mandates
       operationId: storeMandate
       summary: Store a signed mandate
-      description: Re-verifies the signature, freshness, expiry and readiness, then writes the first event of the mandate's hash chain.
+      description: >-
+        Re-verifies the signature, freshness, expiry and readiness, then writes the first event of the mandate's hash
+        chain.
       requestBody:
         required: true
         content:
@@ -238,6 +414,12 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/StoredMandate"
+              example:
+                id: 2f4069f0-2367-4f08-acc6-d9cf1cf6669a
+                digest: 7bf66d54681f2b73e2f05ee0d49b5a68776908620751daaf0102b9f0b17fcac6
+                event:
+                  seq: 1
+                  hash: 91b50424c310c5106b3c9873427ada9d3ffccf45c9834d1c2df342316b5a25d8
         "400":
           $ref: "#/components/responses/InvalidRequest"
         "403":
@@ -246,10 +428,10 @@ paths:
           $ref: "#/components/responses/Conflict"
         "422":
           $ref: "#/components/responses/Unprocessable"
-
   /api/mandates/{mandateId}:
     get:
-      tags: [Mandates]
+      tags:
+        - Mandates
       operationId: getMandate
       summary: Get a mandate and check its integrity
       description: The mandate, its status, the search it permits, and a fresh check of its digest, signature and event chain.
@@ -262,12 +444,51 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/MandateView"
+              example:
+                mandate:
+                  version: 1
+                  id: 2f4069f0-2367-4f08-acc6-d9cf1cf6669a
+                  createdAt: "2026-10-20T04:18:17.928Z"
+                  expiresAt: "2026-11-03T04:18:17.928Z"
+                  shopperKey: aHBQ5B27O2BiDV0oWgOigpsXZKjOfhcYYMch5pZ5H0c=
+                  request: Buy me black men's running shoes, size 10, under $120
+                  intent:
+                    item: running shoes
+                    category: running shoes
+                    quantity: 1
+                    maxPrice: 120
+                    currency: USD
+                    attributes:
+                      size: "10"
+                      color: black
+                    gender: male
+                    mustAsk: []
+                status: FULFILLED
+                search:
+                  query: black running shoes
+                  category: running shoes
+                  maxPrice: 120
+                  color: black
+                  gender: male
+                integrity:
+                  digestMatches: true
+                  signatureValid: true
+                  chainIntact: true
+                events:
+                  - seq: 0
+                    type: MANDATE_SIGNED
+                    createdAt: "2026-10-20T04:18:18.268Z"
+                    hash: 91b50424c310c5106b3c9873427ada9d3ffccf45c9834d1c2df342316b5a25d8
+                  - seq: 1
+                    type: CART_PROPOSED
+                    createdAt: "2026-10-20T04:18:18.832Z"
+                    hash: 89f7646662727852af27cbdf1e326a17b6cc76c2bd462031bbf8f1f29622e323
         "404":
           $ref: "#/components/responses/NotFound"
-
   /api/mandates/{mandateId}/shop:
     post:
-      tags: [Shopping]
+      tags:
+        - Shopping
       operationId: shopMandate
       summary: Shop inside a mandate
       description: |
@@ -285,7 +506,8 @@ paths:
               properties:
                 simulate:
                   type: string
-                  enum: [unguarded_wrong_variant]
+                  enum:
+                    - unguarded_wrong_variant
                   description: Demo only. A careless third-party agent that skips Undo's checks and buys the wrong variant.
       responses:
         "201":
@@ -294,12 +516,59 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ShopResult"
+              example:
+                orderId: edd288bc-42d0-41d3-9b87-14915f3ff2c6
+                approveUrl: https://www.sandbox.paypal.com/checkoutnow?token=1X507517Y8961004F
+                status: CHECKOUT_CREATED
+                windowEndsAt: null
+                paidWith: approval
+                cart:
+                  title: UA Infinite Pro Men's Running Shoes
+                  brand: Under Armour
+                  variant:
+                    Size: "10.5"
+                    Color: Black
+                  price: 116.97
+                  currency: USD
+                  quantity: 1
+                  retailer: underarmour.com
+                  imageUrl: >-
+                    https://cdn.trychannel3.com/aed9ec20-0e99-49b6-b011-2425732889be?aid=01M5BRG5D3YC8J46QPWBYB58RG&mid=oKaH
+                agent:
+                  reasoning: Picked UA Infinite Pro Men's Running Shoes in Black / 10.5 — looked like the best match.
+                  confidence: 0.9
+                  unverified: []
+                  guard:
+                    relaxed: []
+                    bypassed: true
+                    violations:
+                      - rule: attribute:size
+                        actual: "10.5"
+                        expected: "10"
+                  considered:
+                    - id: w25336I
+                      ok: false
+                      price: 116.97
+                      title: UA Infinite Pro Men's Running Shoes
+                undoWindow:
+                  minutes: 1080
+                  factors:
+                    - factor: order total $116.97
+                      minutes: 360
+                    - factor: agent bypassed Undo's pre-purchase check
+                      minutes: 720
+                trust:
+                  score: 50
+                  tier: neutral
         "403":
           description: The store's rules refused this agent.
           content:
             application/json:
               schema:
                 $ref: "#/components/schemas/Error"
+              example:
+                error: agent_blocked
+                detail: This store only accepts registered agent operators.
         "404":
           $ref: "#/components/responses/NotFound"
         "409":
@@ -308,22 +577,28 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/Error"
+              example:
+                error: purchase_already_open
+                orderId: edd288bc-42d0-41d3-9b87-14915f3ff2c6
         "422":
           description: No product fits the mandate.
           content:
             application/json:
               schema:
                 $ref: "#/components/schemas/Error"
+              example:
+                error: no_compliant_product
+                considered: 8
         "429":
           $ref: "#/components/responses/RateLimited"
         "502":
           $ref: "#/components/responses/UpstreamError"
         "503":
           $ref: "#/components/responses/Unavailable"
-
   /api/mandate-requests/{requestId}:
     get:
-      tags: [Mandate requests]
+      tags:
+        - Mandate requests
       operationId: getMandateRequest
       summary: Get a mandate request
       description: The draft an outside agent asked the shopper to sign, who is asking, and whether it is signed yet.
@@ -336,10 +611,32 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/MandateRequest"
+              example:
+                id: 7d1f0c2a-3b4e-4f5a-9c6d-8e7f1a2b3c4d
+                request: A black hoodie in size M under $80
+                draft:
+                  item: black hoodie
+                  category: hoodie
+                  quantity: 1
+                  maxPrice: 80
+                  currency: USD
+                  attributes:
+                    color: black
+                    size: M
+                  mustAsk: []
+                ready:
+                  ok: true
+                agent:
+                  name: Claude
+                  verified: false
+                status: PENDING
+                mandateId: null
+                expiresAt: "2026-10-21T18:00:00.000Z"
         "404":
           $ref: "#/components/responses/NotFound"
     post:
-      tags: [Mandate requests]
+      tags:
+        - Mandate requests
       operationId: actOnMandateRequest
       summary: Answer, prepare or sign a mandate request
       description: |
@@ -372,16 +669,49 @@ paths:
                 oneOf:
                   - $ref: "#/components/schemas/DraftResult"
                   - $ref: "#/components/schemas/PreparedMandate"
+              example:
+                mandate:
+                  version: 1
+                  id: 2f4069f0-2367-4f08-acc6-d9cf1cf6669a
+                  createdAt: "2026-10-20T04:18:17.928Z"
+                  expiresAt: "2026-11-03T04:18:17.928Z"
+                  shopperKey: aHBQ5B27O2BiDV0oWgOigpsXZKjOfhcYYMch5pZ5H0c=
+                  request: Buy me black men's running shoes, size 10, under $120
+                  intent:
+                    item: running shoes
+                    category: running shoes
+                    quantity: 1
+                    maxPrice: 120
+                    currency: USD
+                    attributes:
+                      size: "10"
+                      color: black
+                    gender: male
+                    mustAsk: []
+                  agent:
+                    name: Claude
+                    verified: false
+                signingMessage: undo-intent-mandate-v1:7bf66d54681f2b73e2f05ee0d49b5a68776908620751daaf0102b9f0b17fcac6
         "201":
           description: Signed and stored.
           content:
             application/json:
               schema:
                 type: object
-                required: [mandateId, digest]
+                required:
+                  - mandateId
+                  - digest
                 properties:
-                  mandateId: { type: string, format: uuid }
-                  digest: { type: string, description: "SHA-256 of the canonical mandate." }
+                  mandateId:
+                    type: string
+                    format: uuid
+                    description: The stored mandate's id.
+                  digest:
+                    type: string
+                    description: SHA-256 of the canonical mandate.
+              example:
+                mandateId: 2f4069f0-2367-4f08-acc6-d9cf1cf6669a
+                digest: 7bf66d54681f2b73e2f05ee0d49b5a68776908620751daaf0102b9f0b17fcac6
         "400":
           $ref: "#/components/responses/InvalidRequest"
         "404":
@@ -392,13 +722,15 @@ paths:
           $ref: "#/components/responses/Unprocessable"
         "429":
           $ref: "#/components/responses/RateLimited"
-
   /api/orders/{orderId}:
     get:
-      tags: [Orders]
+      tags:
+        - Orders
       operationId: getOrder
       summary: Get an order
-      description: The purchase, the live undo window, the mandate behind it, and its verified event chain. Each event carries its proof.
+      description: >-
+        The purchase, the live undo window, the mandate behind it, and its verified event chain. Each event carries its
+        proof.
       parameters:
         - $ref: "#/components/parameters/OrderId"
       responses:
@@ -408,12 +740,184 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/OrderView"
+              example:
+                order:
+                  id: edd288bc-42d0-41d3-9b87-14915f3ff2c6
+                  status: REFUNDED
+                  amount: "116.97"
+                  currency: USD
+                  quantity: 1
+                  product:
+                    brand: Under Armour
+                    price: 116.97
+                    title: UA Infinite Pro Men's Running Shoes
+                    colors:
+                      - "#1e1e20"
+                      - "#d5d4d8"
+                    variant:
+                      Size: "10.5"
+                      Color: Black
+                    currency: USD
+                    imageUrl: >-
+                      https://cdn.trychannel3.com/aed9ec20-0e99-49b6-b011-2425732889be?aid=01M5BRG5D3YC8J46QPWBYB58RG&mid=oKaH
+                    sourceUrl: >-
+                      https://buy.trychannel3.com/w25336I-oKaH-Wqce8l?o=01KVATPXMQW09XVTMRDEW2Q1Y9&aid=01M5BRG5D3YC8J46QPWBYB58RG
+                    attributes:
+                      pattern:
+                        - Texture
+                        - Geometric
+                      activity:
+                        - Running
+                      shoe-fit:
+                        - Regular
+                      toe-style:
+                        - Round
+                      closure-type:
+                        - Straps
+                        - Lace-up
+                      shoe-features:
+                        - Breathable design
+                        - Cushioned
+                      lining-material:
+                        - Synthetic
+                      heel-height-type:
+                        - Flat
+                        - Low
+                      outsole-material:
+                        - Rubber
+                      footwear-material:
+                        - Mesh
+                        - Polyester
+                      footwear-support-type:
+                        - Neutral
+                        - Stability
+                    channel3Id: w25336I
+                    description: >-
+                      These men's running shoes from Under Armour, the UA Infinite Pro, are designed for endurance with
+                      a focus on comfort and support. They feature a breathable e…
+                    sourceDomain: underarmour.com
+                    variantOptions:
+                      - name: Color
+                        values:
+                          - Black
+                          - White
+                      - name: Size
+                        values:
+                          - "7"
+                          - "8"
+                  agent:
+                    guard:
+                      relaxed: []
+                      bypassed: true
+                      violations:
+                        - rule: attribute:size
+                          actual: "10.5"
+                          expected: "10"
+                    model: null
+                    operator:
+                      via: web
+                      name: Careless demo agent
+                      verified: false
+                    searches:
+                      - query: black running shoes
+                        filters: price+gender+category_ids+colors
+                    reasoning: Picked UA Infinite Pro Men's Running Shoes in Black / 10.5 — looked like the best match.
+                    requested:
+                      Size: "10"
+                      Color: Black
+                    simulated: unguarded_wrong_variant
+                    confidence: 0.9
+                    considered:
+                      - id: w25336I
+                        ok: false
+                        price: 116.97
+                        title: UA Infinite Pro Men's Running Shoes
+                    unverified: []
+                    approximate: []
+                  paypal:
+                    orderId: 1X507517Y8961004F
+                    authorizationId: 4LD43914UL8743542
+                    captureId: 4087729233507714F
+                  resolution:
+                    at: "2026-10-20T04:36:46.194Z"
+                    action:
+                      type: REFUND_FULL
+                      reason: "agent broke the mandate: full refund, liability on the agent operator"
+                    decision:
+                      verdict: AGENT_FAULT
+                      evidence:
+                        - source: shopper
+                          finding: This isn't what I asked for.
+                        - source: mandate_check
+                          finding: "attribute:size: mandate required 10, agent bought 10.5"
+                      liability: agent_operator
+                      confidence: 1
+                    settlement:
+                      at: "2026-10-20T04:36:47.717Z"
+                      to: 8QKQG7YKAEQLW
+                      from: Careless demo agent
+                      amount: "116.97"
+                      status: SUCCESS
+                      attempt: 1
+                      currency: USD
+                      payoutItemId: Z8UUKQLA3ERPQ
+                      payoutBatchId: Q2GJQLQFMJWTY
+                      transactionId: 3JU78306XG5327728
+                undoWindow:
+                  factors:
+                    - factor: order total $116.97
+                      minutes: 360
+                    - factor: agent bypassed Undo's pre-purchase check
+                      minutes: 720
+                  minutes: 1080
+                  endsAt: "2026-10-20T04:36:44.167Z"
+                  open: false
+                  minutesLeft: 0
+                mandate:
+                  id: 2f4069f0-2367-4f08-acc6-d9cf1cf6669a
+                  request: Buy me black men's running shoes, size 10, under $120
+                  intent:
+                    item: running shoes
+                    category: running shoes
+                    quantity: 1
+                    maxPrice: 120
+                    currency: USD
+                    attributes:
+                      size: "10"
+                      color: black
+                    gender: male
+                    mustAsk: []
+                  status: FULFILLED
+                  shopperKey: aHBQ5B27O2BiDV0oWgOigpsXZKjOfhcYYMch5pZ5H0c=
+                chain:
+                  intact: true
+                  events:
+                    - seq: 0
+                      type: MANDATE_SIGNED
+                      createdAt: "2026-10-20T04:18:18.268Z"
+                      hash: 91b50424c310c5106b3c9873427ada9d3ffccf45c9834d1c2df342316b5a25d8
+                      proof:
+                        kind: signature
+                        how: Ed25519 signature from the shopper's device verified against the mandate's exact bytes.
+                        ref: 7bf66d54681f2b73e2f05ee0d49b5a68776908620751daaf0102b9f0b17fcac6
+                    - seq: 1
+                      type: CART_PROPOSED
+                      createdAt: "2026-10-20T04:18:18.832Z"
+                      hash: 89f7646662727852af27cbdf1e326a17b6cc76c2bd462031bbf8f1f29622e323
+                      proof:
+                        kind: rule
+                        how: Proposed without Undo's guard.
+                        checks:
+                          - by: rule
+                            text: The agent skipped Undo's pre-purchase guard (careless demo agent).
+                          - by: rule
+                            text: "Breaks the mandate: size should be 10, is 10.5."
         "404":
           $ref: "#/components/responses/NotFound"
-
   /api/orders/{orderId}/evidence:
     get:
-      tags: [Orders]
+      tags:
+        - Orders
       operationId: getOrderEvidence
       summary: Download the evidence for an order
       description: |
@@ -428,12 +932,146 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/Evidence"
+              example:
+                format: undo-evidence-v1
+                orderId: edd288bc-42d0-41d3-9b87-14915f3ff2c6
+                mandate:
+                  id: 2f4069f0-2367-4f08-acc6-d9cf1cf6669a
+                  intent:
+                    item: running shoes
+                    gender: male
+                    mustAsk: []
+                    category: running shoes
+                    currency: USD
+                    maxPrice: 120
+                    quantity: 1
+                    attributes:
+                      size: "10"
+                      color: black
+                  request: Buy me black men's running shoes, size 10, under $120
+                  version: 1
+                  createdAt: "2026-10-20T04:18:17.928Z"
+                  expiresAt: "2026-11-03T04:18:17.928Z"
+                  shopperKey: aHBQ5B27O2BiDV0oWgOigpsXZKjOfhcYYMch5pZ5H0c=
+                events:
+                  - subjectId: 2f4069f0-2367-4f08-acc6-d9cf1cf6669a
+                    seq: 0
+                    type: MANDATE_SIGNED
+                    payload:
+                      digest: 7bf66d54681f2b73e2f05ee0d49b5a68776908620751daaf0102b9f0b17fcac6
+                      signature: derQBgmEoL8kvl3vfHVsmqTVAkGTSvb2ShqDoVFKdSC5U5PpGkYAUsDzgSd80QyEpGEPh4966mrEQ9CzBw0IDA==
+                    createdAt: "2026-10-20T04:18:18.268Z"
+                    prevHash: "0000000000000000000000000000000000000000000000000000000000000000"
+                    hash: 91b50424c310c5106b3c9873427ada9d3ffccf45c9834d1c2df342316b5a25d8
+                  - subjectId: 2f4069f0-2367-4f08-acc6-d9cf1cf6669a
+                    seq: 1
+                    type: CART_PROPOSED
+                    payload:
+                      risk:
+                        factors:
+                          - factor: order total $116.97
+                            minutes: 360
+                          - factor: agent bypassed Undo's pre-purchase check
+                            minutes: 720
+                        minutes: 1080
+                      agent:
+                        guard:
+                          relaxed: []
+                          bypassed: true
+                          violations:
+                            - rule: attribute:size
+                              actual: "10.5"
+                              expected: "10"
+                        model: null
+                        operator:
+                          via: web
+                          name: Careless demo agent
+                          verified: false
+                        searches:
+                          - query: black running shoes
+                            filters: price+gender+category_ids+colors
+                        reasoning: Picked UA Infinite Pro Men's Running Shoes in Black / 10.5 — looked like the best match.
+                        requested:
+                          Size: "10"
+                          Color: Black
+                        simulated: unguarded_wrong_variant
+                        confidence: 0.9
+                        considered:
+                          - id: w25336I
+                            ok: false
+                            price: 116.97
+                            title: UA Infinite Pro Men's Running Shoes
+                        unverified: []
+                        approximate: []
+                      orderId: edd288bc-42d0-41d3-9b87-14915f3ff2c6
+                      product:
+                        brand: Under Armour
+                        price: 116.97
+                        title: UA Infinite Pro Men's Running Shoes
+                        colors:
+                          - "#1e1e20"
+                          - "#d5d4d8"
+                        variant:
+                          Size: "10.5"
+                          Color: Black
+                        currency: USD
+                        imageUrl: >-
+                          https://cdn.trychannel3.com/aed9ec20-0e99-49b6-b011-2425732889be?aid=01M5BRG5D3YC8J46QPWBYB58RG&mid=oKaH
+                        sourceUrl: >-
+                          https://buy.trychannel3.com/w25336I-oKaH-Wqce8l?o=01KVATPXMQW09XVTMRDEW2Q1Y9&aid=01M5BRG5D3YC8J46QPWBYB58RG
+                        attributes:
+                          pattern:
+                            - Texture
+                            - Geometric
+                          activity:
+                            - Running
+                          shoe-fit:
+                            - Regular
+                          toe-style:
+                            - Round
+                          closure-type:
+                            - Straps
+                            - Lace-up
+                          shoe-features:
+                            - Breathable design
+                            - Cushioned
+                          lining-material:
+                            - Synthetic
+                          heel-height-type:
+                            - Flat
+                            - Low
+                          outsole-material:
+                            - Rubber
+                          footwear-material:
+                            - Mesh
+                            - Polyester
+                          footwear-support-type:
+                            - Neutral
+                            - Stability
+                        channel3Id: w25336I
+                        description: >-
+                          These men's running shoes from Under Armour, the UA Infinite Pro, are designed for endurance
+                          with a focus on comfort and support. They feature a breathable e…
+                        sourceDomain: underarmour.com
+                        variantOptions:
+                          - name: Color
+                            values:
+                              - Black
+                              - White
+                          - name: Size
+                            values:
+                              - "7"
+                              - "8"
+                      quantity: 1
+                    createdAt: "2026-10-20T04:18:18.832Z"
+                    prevHash: 91b50424c310c5106b3c9873427ada9d3ffccf45c9834d1c2df342316b5a25d8
+                    hash: 89f7646662727852af27cbdf1e326a17b6cc76c2bd462031bbf8f1f29622e323
         "404":
           $ref: "#/components/responses/NotFound"
-
   /api/orders/{orderId}/undo:
     post:
-      tags: [Orders]
+      tags:
+        - Orders
       operationId: undoOrder
       summary: Undo a purchase
       description: |
@@ -456,6 +1094,23 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/UndoResult"
+              example:
+                orderId: edd288bc-42d0-41d3-9b87-14915f3ff2c6
+                decision:
+                  verdict: AGENT_FAULT
+                  evidence:
+                    - source: shopper
+                      finding: This isn't what I asked for.
+                    - source: mandate_check
+                      finding: "attribute:size: mandate required 10, agent bought 10.5"
+                  liability: agent_operator
+                  confidence: 1
+                outcome:
+                  action:
+                    type: REFUND_FULL
+                    reason: "agent broke the mandate: full refund, liability on the agent operator"
+                  status: REFUNDED
+                  paypal: {}
         "400":
           $ref: "#/components/responses/InvalidRequest"
         "403":
@@ -470,16 +1125,19 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/Error"
+              example:
+                error: photo_too_large
+                maxBytes: 4194304
         "422":
           $ref: "#/components/responses/Unprocessable"
         "429":
           $ref: "#/components/responses/RateLimited"
         "502":
           $ref: "#/components/responses/UpstreamError"
-
   /api/orders/{orderId}/resolve:
     post:
-      tags: [Merchant]
+      tags:
+        - Merchant
       operationId: resolveOrder
       summary: Resolve an order as the merchant
       description: The merchant's side of an Undo. Sandbox only.
@@ -491,11 +1149,18 @@ paths:
           application/json:
             schema:
               type: object
-              required: [action]
+              required:
+                - action
               properties:
                 action:
                   type: string
-                  enum: [accept_claim, return_received, retry_settlement]
+                  enum:
+                    - accept_claim
+                    - return_received
+                    - retry_settlement
+                  description: >-
+                    accept_claim refunds a merchant-fault claim; return_received refunds a return minus the restocking
+                    fee; retry_settlement retries a failed agent payout.
       responses:
         "200":
           description: Done; the body describes the PayPal actions taken.
@@ -503,10 +1168,27 @@ paths:
             application/json:
               schema:
                 type: object
-                required: [orderId]
+                required:
+                  - orderId
                 properties:
-                  orderId: { type: string, format: uuid }
+                  orderId:
+                    type: string
+                    format: uuid
+                    description: The order that was resolved.
                 additionalProperties: true
+              example:
+                orderId: edd288bc-42d0-41d3-9b87-14915f3ff2c6
+                settlement:
+                  at: "2026-10-20T04:36:47.717Z"
+                  to: 8QKQG7YKAEQLW
+                  from: Careless demo agent
+                  amount: "116.97"
+                  status: SUCCESS
+                  attempt: 1
+                  currency: USD
+                  payoutItemId: Z8UUKQLA3ERPQ
+                  payoutBatchId: Q2GJQLQFMJWTY
+                  transactionId: 3JU78306XG5327728
         "400":
           $ref: "#/components/responses/InvalidRequest"
         "403":
@@ -517,10 +1199,10 @@ paths:
           $ref: "#/components/responses/Conflict"
         "502":
           $ref: "#/components/responses/UpstreamError"
-
   /api/merchant/orders:
     get:
-      tags: [Merchant]
+      tags:
+        - Merchant
       operationId: listMerchantOrders
       summary: List agent orders
       description: Every agent order (latest 300) with its verdict, who pays and any agent payout, plus headline numbers.
@@ -531,13 +1213,79 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/MerchantOrders"
-
+              example:
+                kpis:
+                  agentOrders: 22
+                  undone: 16
+                  feesAvoided: 54.209861000000004
+                  billedToAgents: 293.93
+                  merchantProtected: 3
+                  needsAction: 0
+                  heldNow: 0
+                orders:
+                  - id: 0b1b3bb1-f411-406a-87b7-0bf32f55ed61
+                    createdAt: "2026-10-20T12:14:48.268Z"
+                    status: VOIDED
+                    amount: 59.99
+                    currency: USD
+                    product: Mens Boxy Hoodie
+                    brand: Cernucci
+                    variant: Size M
+                    imageUrl: >-
+                      https://cdn.trychannel3.com/b9e090b6-615d-4117-a827-c1dad96f2a12?aid=01M5CKRKZAQ4Z7XXEQEKMJVC9V&mid=m7kZ
+                    retailer: us.cernucci.com
+                    request: A black hoodie, size M, under $80
+                    agentConfidence: 0.8
+                    guardBypassed: false
+                    simulated: null
+                    agentName: Undo web agent
+                    agentVerified: true
+                    agentVia: web
+                    verdict: MERCHANT_FAULT
+                    verdictConfidence: 1
+                    liability: merchant
+                    settlement: null
+                    settledAmount: 0
+                    action: VOID
+                    windowEndsAt: "2026-10-20T19:15:15.261Z"
+                    windowMinutesLeft: null
+                    paypalRef: 8L594057D91511610
+                  - id: f4e45935-229f-48f8-918a-be44a4997a9f
+                    createdAt: "2026-10-20T07:49:05.299Z"
+                    status: VOIDED
+                    amount: 116.97
+                    currency: USD
+                    product: UA Infinite Pro Men's Running Shoes
+                    brand: Under Armour
+                    variant: Size 10.5 · Color Black
+                    imageUrl: >-
+                      https://cdn.trychannel3.com/aed9ec20-0e99-49b6-b011-2425732889be?aid=01M5C4J3G46ER2Y26PBPQ3QGZB&mid=oKaH
+                    retailer: underarmour.com
+                    request: Black men's running shoes, size 10, under $120
+                    agentConfidence: 0.9
+                    guardBypassed: true
+                    simulated: unguarded_wrong_variant
+                    agentName: Careless demo agent
+                    agentVerified: false
+                    agentVia: web
+                    verdict: AGENT_FAULT
+                    verdictConfidence: 1
+                    liability: agent_operator
+                    settlement: null
+                    settledAmount: 0
+                    action: VOID
+                    windowEndsAt: "2026-10-21T07:49:23.031Z"
+                    windowMinutesLeft: null
+                    paypalRef: 3LJ53399FX105624A
   /api/merchant/agents:
     get:
-      tags: [Merchant]
+      tags:
+        - Merchant
       operationId: listMerchantAgents
       summary: List agents and their trust scores
-      description: Every agent that has shopped here, its record and trust score with every point explained, and what the store's rules do to it.
+      description: >-
+        Every agent that has shopped here, its record and trust score with every point explained, and what the store's
+        rules do to it.
       responses:
         "200":
           description: Agents and the store's rules.
@@ -545,10 +1293,57 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/MerchantAgents"
-
+              example:
+                rules:
+                  blockBelow: null
+                  extendBelow: 50
+                  extendMinutes: 360
+                  blockUnverified: false
+                agents:
+                  - name: Careless demo agent
+                    verified: false
+                    via: web
+                    purchases: 11
+                    faults: 9
+                    refused: 0
+                    bypassed: 11
+                    lastSeen: "2026-10-20T07:49:05.299Z"
+                    trust:
+                      score: 0
+                      tier: risky
+                      factors:
+                        - label: unregistered name
+                          points: 50
+                        - label: 2 clean purchases
+                          points: 6
+                    effect:
+                      blocked: null
+                      extraMinutes: 360
+                      reason: "merchant rule: Careless demo agent trust 0, below 50"
+                  - name: Spike Agent
+                    verified: false
+                    via: mcp
+                    purchases: 0
+                    faults: 0
+                    refused: 4
+                    bypassed: 0
+                    lastSeen: "2026-10-18T07:44:53.243Z"
+                    trust:
+                      score: 30
+                      tier: risky
+                      factors:
+                        - label: unregistered name
+                          points: 50
+                        - label: 4 carts refused by the guard
+                          points: -20
+                    effect:
+                      blocked: null
+                      extraMinutes: 360
+                      reason: "merchant rule: Spike Agent trust 30, below 50"
   /api/merchant/rules:
     get:
-      tags: [Merchant]
+      tags:
+        - Merchant
       operationId: getMerchantRules
       summary: Get the store's agent rules
       responses:
@@ -558,11 +1353,22 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/MerchantRules"
+              example:
+                blockBelow: null
+                extendBelow: 50
+                extendMinutes: 360
+                blockUnverified: false
+      description: >-
+        The rules the store applies to agents at checkout: block below a trust score, lengthen the undo window below a
+        score, or accept only registered operators.
     put:
-      tags: [Merchant]
+      tags:
+        - Merchant
       operationId: updateMerchantRules
       summary: Update the store's agent rules
-      description: Applies from the next checkout, for Undo's agent and every MCP agent. Each change is recorded in the store's event chain.
+      description: >-
+        Applies from the next checkout, for Undo's agent and every MCP agent. Each change is recorded in the store's
+        event chain.
       requestBody:
         required: true
         content:
@@ -581,14 +1387,19 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/MerchantRules"
+              example:
+                blockBelow: null
+                extendBelow: 50
+                extendMinutes: 360
+                blockUnverified: false
         "400":
           $ref: "#/components/responses/InvalidRequest"
         "429":
           $ref: "#/components/responses/RateLimited"
-
   /api/merchant/activity:
     get:
-      tags: [Merchant]
+      tags:
+        - Merchant
       operationId: listMerchantActivity
       summary: Stream the store's activity
       description: Every step Undo records, newest first (up to 60). Pass `after` to get only events newer than that id.
@@ -607,13 +1418,34 @@ paths:
             application/json:
               schema:
                 type: object
-                required: [events]
+                required:
+                  - events
                 properties:
                   events:
                     type: array
                     items:
                       $ref: "#/components/schemas/ActivityEvent"
-
+                    description: Events, newest first.
+              example:
+                events:
+                  - id: 226
+                    at: "2026-10-20T12:38:24.861Z"
+                    type: MERCHANT_RULES_CHANGED
+                    kind: record
+                    how: Recorded in the chain.
+                    orderId: null
+                    amount: null
+                    agent: null
+                    ref: null
+                  - id: 225
+                    at: "2026-10-20T12:17:27.554Z"
+                    type: PAYMENT_VOIDED
+                    kind: paypal
+                    how: "Authorization voided: no money moved and no fees."
+                    orderId: 0b1b3bb1-f411-406a-87b7-0bf32f55ed61
+                    amount: null
+                    agent: null
+                    ref: 8L594057D91511610
 components:
   parameters:
     MandateId:
@@ -621,72 +1453,89 @@ components:
       in: path
       required: true
       description: Mandate id.
-      schema: { type: string, format: uuid }
+      schema:
+        type: string
+        format: uuid
+      example: 2f4069f0-2367-4f08-acc6-d9cf1cf6669a
     RequestId:
       name: requestId
       in: path
       required: true
       description: Mandate request id.
-      schema: { type: string, format: uuid }
+      schema:
+        type: string
+        format: uuid
+      example: 7d1f0c2a-3b4e-4f5a-9c6d-8e7f1a2b3c4d
     OrderId:
       name: orderId
       in: path
       required: true
       description: Undo order id.
-      schema: { type: string, format: uuid }
+      schema:
+        type: string
+        format: uuid
       example: edd288bc-42d0-41d3-9b87-14915f3ff2c6
-
   responses:
     InvalidRequest:
       description: The body failed validation; `issues` lists each problem.
       content:
         application/json:
-          schema: { $ref: "#/components/schemas/Error" }
+          schema:
+            $ref: "#/components/schemas/Error"
     NotFound:
       description: Not found.
       content:
         application/json:
-          schema: { $ref: "#/components/schemas/Error" }
-          example: { error: not_found }
+          schema:
+            $ref: "#/components/schemas/Error"
+          example:
+            error: not_found
     Forbidden:
       description: Refused, for example a bad signature.
       content:
         application/json:
-          schema: { $ref: "#/components/schemas/Error" }
+          schema:
+            $ref: "#/components/schemas/Error"
     Conflict:
       description: The resource is not in a state that allows this.
       content:
         application/json:
-          schema: { $ref: "#/components/schemas/Error" }
+          schema:
+            $ref: "#/components/schemas/Error"
     Unprocessable:
       description: Valid shape, but the content can't be accepted.
       content:
         application/json:
-          schema: { $ref: "#/components/schemas/Error" }
+          schema:
+            $ref: "#/components/schemas/Error"
     RateLimited:
       description: Too many requests from this visitor, or the free-tier budget is spent.
       headers:
         Retry-After:
           description: Seconds to wait.
-          schema: { type: integer }
+          schema:
+            type: integer
       content:
         application/json:
-          schema: { $ref: "#/components/schemas/RateLimited" }
+          schema:
+            $ref: "#/components/schemas/RateLimited"
     UpstreamError:
       description: PayPal, the catalog or the AI model failed.
       content:
         application/json:
-          schema: { $ref: "#/components/schemas/Error" }
+          schema:
+            $ref: "#/components/schemas/Error"
     Unavailable:
       description: The AI model is unavailable right now.
       content:
         application/json:
-          schema: { $ref: "#/components/schemas/Error" }
-
+          schema:
+            $ref: "#/components/schemas/Error"
   schemas:
     Error:
       type: object
-      required: [error]
+      required:
+        - error
       properties:
         error:
           type: string
@@ -701,421 +1550,1610 @@ components:
             type: object
             additionalProperties: true
       additionalProperties: true
-
+      description: An error. error is a stable machine-readable code; detail explains it.
+      example:
+        error: not_found
     RateLimited:
       type: object
-      required: [error, detail, retryAfter]
+      required:
+        - error
+        - detail
+        - retryAfter
       properties:
-        error: { type: string, enum: [rate_limited] }
-        detail: { type: string }
-        retryAfter: { type: integer, description: "Seconds to wait." }
-
+        error:
+          type: string
+          enum:
+            - rate_limited
+          description: Always rate_limited.
+        detail:
+          type: string
+          description: What happened and how long to wait, in plain words.
+        retryAfter:
+          type: integer
+          description: Seconds to wait.
+      description: Returned with 429 when this visitor made too many requests or a free-tier budget is spent.
+      example:
+        error: rate_limited
+        detail: That's a lot of tries in a short time. Give it 2 minutes and try again.
+        retryAfter: 120
     Health:
       type: object
-      required: [ok, service, commit, configured]
+      required:
+        - ok
+        - service
+        - commit
+        - configured
       properties:
-        ok: { type: boolean }
-        service: { type: string }
-        commit: { type: string, description: "Deployed commit, or `local`." }
+        ok:
+          type: boolean
+          description: True when every check that ran passed.
+        service:
+          type: string
+          description: Always undo.
+        commit:
+          type: string
+          description: Deployed commit, or `local`.
         configured:
           type: object
-          required: [paypal, channel3, database]
+          required:
+            - paypal
+            - channel3
+            - database
           properties:
-            paypal: { type: boolean }
-            channel3: { type: boolean }
-            database: { type: boolean }
-        paypal: { type: string, description: "With `deep`, `reachable` or the error." }
+            paypal:
+              type: boolean
+              description: PayPal sandbox client id and secret are set.
+            channel3:
+              type: boolean
+              description: The product catalog key is set.
+            database:
+              type: boolean
+              description: The Postgres connection string is set.
+          description: Which integrations have credentials set. Never the values.
+        paypal:
+          type: string
+          description: With `deep`, `reachable` or the error.
         database:
           type: object
           additionalProperties: true
+          description: >-
+            With deep: whether a live query worked, how long it took, and the shape of the connection URL (never
+            credentials).
         usage:
           type: object
           additionalProperties: true
-
+          description: "With deep: free-tier budget used so far today and this month."
+      description: Service health. Never includes secret values.
+      example:
+        ok: true
+        service: undo
+        commit: a1dd1af
+        configured:
+          paypal: true
+          channel3: true
+          database: true
     ProductSearch:
       type: object
-      required: [query]
+      required:
+        - query
       properties:
-        query: { type: string, minLength: 1, maxLength: 500 }
-        maxPrice: { type: number, minimum: 0.01 }
-        minPrice: { type: number, minimum: 0 }
-        color: { type: string, maxLength: 30 }
-        category: { type: string, maxLength: 60, description: "Plain-words category, resolved server-side." }
-        gender: { type: string, enum: [male, female] }
-        limit: { type: integer, minimum: 1, maximum: 30 }
-        mode: { type: string, enum: [default, agentic] }
-
+        query:
+          type: string
+          minLength: 1
+          maxLength: 500
+          description: What to search for, in plain words.
+        maxPrice:
+          type: number
+          minimum: 0.01
+          description: Highest price per item.
+        minPrice:
+          type: number
+          minimum: 0
+          description: Lowest price per item.
+        color:
+          type: string
+          maxLength: 30
+          description: Color name, for example black.
+        category:
+          type: string
+          maxLength: 60
+          description: Plain-words category, resolved server-side.
+        gender:
+          type: string
+          enum:
+            - male
+            - female
+          description: Limit to men's or women's products.
+        limit:
+          type: integer
+          minimum: 1
+          maximum: 30
+          description: How many products to return.
+        mode:
+          type: string
+          enum:
+            - default
+            - agentic
+          description: agentic lets the catalog rewrite the query for better matches.
+      description: A catalog search with structured filters.
+      example:
+        query: black hoodie
+        maxPrice: 80
+        color: black
+        limit: 5
     ProductSearchResult:
       type: object
-      required: [products]
+      required:
+        - products
       properties:
-        category: { type: string, nullable: true, description: "The catalog category the search was narrowed to." }
+        category:
+          type: string
+          nullable: true
+          description: The catalog category the search was narrowed to.
         products:
           type: array
-          items: { $ref: "#/components/schemas/Product" }
-
+          items:
+            $ref: "#/components/schemas/Product"
+          description: Products that have at least one offer.
+      description: Search results.
+      example:
+        category: hoodies
+        products:
+          - channel3Id: w25336I
+            title: UA Infinite Pro Men's Running Shoes
+            brand: Under Armour
+            description: >-
+              These men's running shoes from Under Armour, the UA Infinite Pro, are designed for endurance with a focus
+              on comfort and support. They feature a breathable e…
+            price: 116.97
+            currency: USD
+            imageUrl: https://cdn.trychannel3.com/aed9ec20-0e99-49b6-b011-2425732889be?aid=01M5D44F1Y9VDE34RVPPTF1H15&mid=oKaH
+            sourceUrl: >-
+              https://buy.trychannel3.com/w25336I-oKaH-Wqce8l?o=01KVATPXMQW09XVTMRDEW2Q1Y9&aid=01M5D44F1Y9VDE34RVPPTF1H15
+            sourceDomain: underarmour.com
+            colors:
+              - "#1e1e20"
+              - "#d5d4d8"
+            attributes:
+              activity:
+                - Running
+              pattern:
+                - Texture
+                - Geometric
+              closure-type:
+                - Straps
+                - Lace-up
+              heel-height-type:
+                - Flat
+                - Low
+              footwear-material:
+                - Mesh
+                - Polyester
+              shoe-fit:
+                - Regular
+              shoe-features:
+                - Breathable design
+                - Cushioned
+              toe-style:
+                - Round
+              outsole-material:
+                - Rubber
+              footwear-support-type:
+                - Neutral
+                - Stability
+              lining-material:
+                - Synthetic
+            variant:
+              Size: "10.5"
+            variantOptions:
+              - name: Color
+                values:
+                  - Black
+                  - White
+              - name: Size
+                values:
+                  - "7"
+                  - "8"
     Product:
       type: object
-      required: [channel3Id, title, price, currency, sourceUrl, sourceDomain, colors, attributes, variant, variantOptions]
+      required:
+        - channel3Id
+        - title
+        - price
+        - currency
+        - sourceUrl
+        - sourceDomain
+        - colors
+        - attributes
+        - variant
+        - variantOptions
       properties:
-        channel3Id: { type: string }
-        title: { type: string }
-        brand: { type: string, nullable: true }
-        description: { type: string, nullable: true }
-        price: { type: number }
-        currency: { type: string, example: USD }
-        imageUrl: { type: string, nullable: true }
-        sourceUrl: { type: string }
-        sourceDomain: { type: string }
-        colors: { type: array, items: { type: string } }
+        channel3Id:
+          type: string
+          description: Catalog product id. Use it with getProduct.
+        title:
+          type: string
+          description: Product title.
+        brand:
+          type: string
+          nullable: true
+          description: Brand name, when known.
+        description:
+          type: string
+          nullable: true
+          description: Product description from the retailer, when there is one.
+        price:
+          type: number
+          description: Price of the chosen offer, per item.
+        currency:
+          type: string
+          example: USD
+          description: ISO 4217 currency code.
+        imageUrl:
+          type: string
+          nullable: true
+          description: Product image URL, when there is one.
+        sourceUrl:
+          type: string
+          description: Where the product is sold.
+        sourceDomain:
+          type: string
+          description: The retailer's domain.
+        colors:
+          type: array
+          items:
+            type: string
+          description: Colors of the product as hex codes.
         attributes:
           type: object
           additionalProperties:
             type: array
-            items: { type: string }
+            items:
+              type: string
+          description: Catalog attributes, each with one or more values.
         variant:
           type: object
-          description: 'The exact variant this offer resolves to, for example Size M and Color Black.'
-          additionalProperties: { type: string }
+          description: The exact variant this offer resolves to, for example Size M and Color Black.
+          additionalProperties:
+            type: string
         variantOptions:
           type: array
           items:
             type: object
-            required: [name, values]
+            required:
+              - name
+              - values
             properties:
-              name: { type: string }
-              values: { type: array, items: { type: string } }
-
+              name:
+                type: string
+                description: Option name, for example Size.
+              values:
+                type: array
+                items:
+                  type: string
+                description: Available values, for example S, M, L.
+          description: Every option the product comes in, with its values.
+      description: A catalog product resolved to one offer and one exact variant.
+      example:
+        channel3Id: w25336I
+        title: UA Infinite Pro Men's Running Shoes
+        brand: Under Armour
+        description: >-
+          These men's running shoes from Under Armour, the UA Infinite Pro, are designed for endurance with a focus on
+          comfort and support. They feature a breathable e…
+        price: 116.97
+        currency: USD
+        imageUrl: https://cdn.trychannel3.com/aed9ec20-0e99-49b6-b011-2425732889be?aid=01M5D44F1Y9VDE34RVPPTF1H15&mid=oKaH
+        sourceUrl: https://buy.trychannel3.com/w25336I-oKaH-Wqce8l?o=01KVATPXMQW09XVTMRDEW2Q1Y9&aid=01M5D44F1Y9VDE34RVPPTF1H15
+        sourceDomain: underarmour.com
+        colors:
+          - "#1e1e20"
+          - "#d5d4d8"
+        attributes:
+          activity:
+            - Running
+          pattern:
+            - Texture
+            - Geometric
+          closure-type:
+            - Straps
+            - Lace-up
+          heel-height-type:
+            - Flat
+            - Low
+          footwear-material:
+            - Mesh
+            - Polyester
+          shoe-fit:
+            - Regular
+          shoe-features:
+            - Breathable design
+            - Cushioned
+          toe-style:
+            - Round
+          outsole-material:
+            - Rubber
+          footwear-support-type:
+            - Neutral
+            - Stability
+          lining-material:
+            - Synthetic
+        variant:
+          Size: "10.5"
+        variantOptions:
+          - name: Color
+            values:
+              - Black
+              - White
+          - name: Size
+            values:
+              - "7"
+              - "8"
     ProductDetail:
       type: object
-      required: [product, relaxed]
+      required:
+        - product
+        - relaxed
       properties:
-        product: { $ref: "#/components/schemas/Product" }
+        product:
+          $ref: "#/components/schemas/Product"
         relaxed:
           type: array
           description: Requested options the catalog could not honor.
           items:
             type: object
             additionalProperties: true
-
+      description: A product at the requested variant, plus any option the catalog couldn't honor.
+      example:
+        product:
+          channel3Id: w25336I
+          title: UA Infinite Pro Men's Running Shoes
+          brand: Under Armour
+          description: >-
+            These men's running shoes from Under Armour, the UA Infinite Pro, are designed for endurance with a focus on
+            comfort and support. They feature a breathable e…
+          price: 116.97
+          currency: USD
+          imageUrl: https://cdn.trychannel3.com/aed9ec20-0e99-49b6-b011-2425732889be?aid=01M5D44F1Y9VDE34RVPPTF1H15&mid=oKaH
+          sourceUrl: https://buy.trychannel3.com/w25336I-oKaH-Wqce8l?o=01KVATPXMQW09XVTMRDEW2Q1Y9&aid=01M5D44F1Y9VDE34RVPPTF1H15
+          sourceDomain: underarmour.com
+          colors:
+            - "#1e1e20"
+            - "#d5d4d8"
+          attributes:
+            activity:
+              - Running
+            pattern:
+              - Texture
+              - Geometric
+            closure-type:
+              - Straps
+              - Lace-up
+            heel-height-type:
+              - Flat
+              - Low
+            footwear-material:
+              - Mesh
+              - Polyester
+            shoe-fit:
+              - Regular
+            shoe-features:
+              - Breathable design
+              - Cushioned
+            toe-style:
+              - Round
+            outsole-material:
+              - Rubber
+            footwear-support-type:
+              - Neutral
+              - Stability
+            lining-material:
+              - Synthetic
+          variant:
+            Size: "10.5"
+          variantOptions:
+            - name: Color
+              values:
+                - Black
+                - White
+            - name: Size
+              values:
+                - "7"
+                - "8"
+        relaxed: []
     IntentDraft:
       type: object
       description: The shopper's limits in structured form.
-      required: [item, maxPrice]
+      required:
+        - item
+        - maxPrice
       properties:
-        item: { type: string, maxLength: 120, example: hoodie }
-        category: { type: string, maxLength: 60 }
-        quantity: { type: integer, minimum: 1, maximum: 20, default: 1 }
-        maxPrice: { type: number, minimum: 0, description: "Ceiling per item; 0 means no budget was given." }
-        currency: { type: string, minLength: 3, maxLength: 3, default: USD }
+        item:
+          type: string
+          maxLength: 120
+          example: hoodie
+          description: What to buy, as a short noun phrase.
+        category:
+          type: string
+          maxLength: 60
+          description: Product category in plain words.
+        quantity:
+          type: integer
+          minimum: 1
+          maximum: 20
+          default: 1
+          description: How many to buy.
+        maxPrice:
+          type: number
+          minimum: 0
+          description: Ceiling per item; 0 means no budget was given.
+        currency:
+          type: string
+          minLength: 3
+          maxLength: 3
+          default: USD
+          description: Currency of maxPrice.
         attributes:
           type: object
           description: Required attribute values, keys lowercase.
-          additionalProperties: { type: string }
-          example: { size: M, color: black }
-        gender: { type: string, enum: [male, female] }
-        brands: { type: array, maxItems: 10, items: { type: string } }
-        deadline: { type: string, description: "ISO date the item must arrive by." }
-        notes: { type: string, maxLength: 300 }
+          additionalProperties:
+            type: string
+          example:
+            size: M
+            color: black
+        gender:
+          type: string
+          enum:
+            - male
+            - female
+          description: Men's or women's, if the shopper said.
+        brands:
+          type: array
+          maxItems: 10
+          items:
+            type: string
+          description: Only these brands, if the shopper named any.
+        deadline:
+          type: string
+          description: ISO date the item must arrive by.
+        notes:
+          type: string
+          maxLength: 300
+          description: Soft preferences that are not hard limits.
         mustAsk:
           type: array
           maxItems: 5
           description: Questions to answer before the draft can be signed.
-          items: { type: string }
-
+          items:
+            type: string
+      example:
+        item: black hoodie
+        category: hoodie
+        quantity: 1
+        maxPrice: 80
+        currency: USD
+        attributes:
+          color: black
+          size: M
+        mustAsk: []
     ReadyCheck:
       type: object
-      required: [ok]
+      required:
+        - ok
       properties:
-        ok: { type: boolean }
-        reason: { type: string, enum: [open_questions, missing_budget] }
-
+        ok:
+          type: boolean
+          description: True when the draft can be signed as is.
+        reason:
+          type: string
+          enum:
+            - open_questions
+            - missing_budget
+          description: "Why it can't be signed yet: open questions remain, or no budget was given."
+      description: Whether a draft can be signed as is.
+      example:
+        ok: false
+        reason: open_questions
     DraftResult:
       type: object
-      required: [draft, ready]
+      required:
+        - draft
+        - ready
       properties:
-        request: { type: string, description: "The request text, when it was extended with answers." }
-        draft: { $ref: "#/components/schemas/IntentDraft" }
-        ready: { $ref: "#/components/schemas/ReadyCheck" }
-
+        request:
+          type: string
+          description: The request text, when it was extended with answers.
+        draft:
+          $ref: "#/components/schemas/IntentDraft"
+        ready:
+          $ref: "#/components/schemas/ReadyCheck"
+      description: A structured draft of the shopper's limits, ready for review.
+      example:
+        draft:
+          item: black hoodie
+          category: hoodie
+          quantity: 1
+          maxPrice: 80
+          currency: USD
+          attributes:
+            color: black
+            size: M
+          mustAsk: []
+        ready:
+          ok: true
     NotReady:
       type: object
-      required: [error]
+      required:
+        - error
       properties:
-        error: { type: string, enum: [open_questions, missing_budget] }
-        mustAsk: { type: array, items: { type: string } }
-
+        error:
+          type: string
+          enum:
+            - open_questions
+            - missing_budget
+          description: Why the mandate can't be prepared yet.
+        mustAsk:
+          type: array
+          items:
+            type: string
+          description: The questions still to answer.
+      description: The draft can't be turned into a mandate yet.
+      example:
+        error: missing_budget
+        mustAsk: []
     AgentRef:
       type: object
-      required: [name, verified]
+      required:
+        - name
+        - verified
       properties:
-        name: { type: string, maxLength: 80 }
-        verified: { type: boolean, description: "The agent presented a registered operator key." }
-
+        name:
+          type: string
+          maxLength: 80
+          description: The agent's name as it introduced itself.
+        verified:
+          type: boolean
+          description: The agent presented a registered operator key.
+      description: The agent a mandate authorizes. Inside the signed bytes, so liability follows the name.
+      example:
+        name: Claude
+        verified: false
     IntentMandate:
       type: object
       description: What the shopper signs. Its canonical JSON (sorted keys) is hashed with SHA-256 for the signing message.
-      required: [version, id, createdAt, expiresAt, shopperKey, request, intent]
+      required:
+        - version
+        - id
+        - createdAt
+        - expiresAt
+        - shopperKey
+        - request
+        - intent
       properties:
-        version: { type: integer, enum: [1] }
-        id: { type: string, format: uuid }
-        createdAt: { type: string, format: date-time }
-        expiresAt: { type: string, format: date-time }
-        shopperKey: { type: string, description: "Base64 Ed25519 public key (32 bytes)." }
-        request: { type: string, maxLength: 1000, description: "The shopper's own words, verbatim." }
-        intent: { $ref: "#/components/schemas/IntentDraft" }
-        agent: { $ref: "#/components/schemas/AgentRef" }
+        version:
+          type: integer
+          enum:
+            - 1
+          description: Mandate format version.
+        id:
+          type: string
+          format: uuid
+          description: Mandate id, chosen when it was prepared.
+        createdAt:
+          type: string
+          format: date-time
+          description: When the mandate was prepared.
+        expiresAt:
+          type: string
+          format: date-time
+          description: When the mandate stops working (14 days after it was prepared).
+        shopperKey:
+          type: string
+          description: Base64 Ed25519 public key (32 bytes).
+        request:
+          type: string
+          maxLength: 1000
+          description: The shopper's own words, verbatim.
+        intent:
+          $ref: "#/components/schemas/IntentDraft"
+        agent:
+          $ref: "#/components/schemas/AgentRef"
         payWith:
           type: string
-          enum: [saved_wallet]
+          enum:
+            - saved_wallet
           description: Present only if the shopper allowed the agent to pay with their saved PayPal wallet.
-
+      example:
+        version: 1
+        id: 2f4069f0-2367-4f08-acc6-d9cf1cf6669a
+        createdAt: "2026-10-20T04:18:17.928Z"
+        expiresAt: "2026-11-03T04:18:17.928Z"
+        shopperKey: aHBQ5B27O2BiDV0oWgOigpsXZKjOfhcYYMch5pZ5H0c=
+        request: Buy me black men's running shoes, size 10, under $120
+        intent:
+          item: running shoes
+          category: running shoes
+          quantity: 1
+          maxPrice: 120
+          currency: USD
+          attributes:
+            size: "10"
+            color: black
+          gender: male
+          mustAsk: []
     PrepareMandate:
       type: object
-      required: [request, draft, shopperKey]
+      required:
+        - request
+        - draft
+        - shopperKey
       properties:
-        request: { type: string, minLength: 3, maxLength: 1000 }
-        draft: { $ref: "#/components/schemas/IntentDraft" }
-        shopperKey: { type: string, minLength: 40, maxLength: 60, description: "Base64 Ed25519 public key." }
-        payWith: { type: string, enum: [saved_wallet] }
-
+        request:
+          type: string
+          minLength: 3
+          maxLength: 1000
+          description: The shopper's request in their own words, kept verbatim inside the mandate.
+        draft:
+          $ref: "#/components/schemas/IntentDraft"
+        shopperKey:
+          type: string
+          minLength: 40
+          maxLength: 60
+          description: Base64 Ed25519 public key.
+        payWith:
+          type: string
+          enum:
+            - saved_wallet
+          description: >-
+            Set to saved_wallet to let the agent pay with the shopper's saved PayPal wallet, with no PayPal click. Leave
+            out to have the shopper approve in PayPal.
+      description: What's needed to build the exact mandate a device will sign.
+      example:
+        request: A black hoodie in size M under $80
+        draft:
+          item: black hoodie
+          category: hoodie
+          quantity: 1
+          maxPrice: 80
+          currency: USD
+          attributes:
+            color: black
+            size: M
+          mustAsk: []
+        shopperKey: aHBQ5B27O2BiDV0oWgOigpsXZKjOfhcYYMch5pZ5H0c=
     PreparedMandate:
       type: object
-      required: [mandate, signingMessage]
+      required:
+        - mandate
+        - signingMessage
       properties:
-        mandate: { $ref: "#/components/schemas/IntentMandate" }
+        mandate:
+          $ref: "#/components/schemas/IntentMandate"
         signingMessage:
           type: string
           description: Sign these exact UTF-8 bytes with the shopper's Ed25519 key.
-          example: "undo-intent-mandate-v1:3f1c0e9a…"
-
+          example: undo-intent-mandate-v1:3f1c0e9a…
+      description: The mandate to sign and the exact string to sign.
+      example:
+        mandate:
+          version: 1
+          id: 2f4069f0-2367-4f08-acc6-d9cf1cf6669a
+          createdAt: "2026-10-20T04:18:17.928Z"
+          expiresAt: "2026-11-03T04:18:17.928Z"
+          shopperKey: aHBQ5B27O2BiDV0oWgOigpsXZKjOfhcYYMch5pZ5H0c=
+          request: Buy me black men's running shoes, size 10, under $120
+          intent:
+            item: running shoes
+            category: running shoes
+            quantity: 1
+            maxPrice: 120
+            currency: USD
+            attributes:
+              size: "10"
+              color: black
+            gender: male
+            mustAsk: []
+        signingMessage: undo-intent-mandate-v1:7bf66d54681f2b73e2f05ee0d49b5a68776908620751daaf0102b9f0b17fcac6
     SignedMandate:
       type: object
-      required: [mandate, signature]
+      required:
+        - mandate
+        - signature
       properties:
-        mandate: { $ref: "#/components/schemas/IntentMandate" }
-        signature: { type: string, minLength: 80, maxLength: 100, description: "Base64 Ed25519 signature of the signing message." }
-
+        mandate:
+          $ref: "#/components/schemas/IntentMandate"
+        signature:
+          type: string
+          minLength: 80
+          maxLength: 100
+          description: Base64 Ed25519 signature of the signing message.
+      description: A mandate and the shopper's signature over its signing message.
+      example:
+        mandate:
+          version: 1
+          id: 2f4069f0-2367-4f08-acc6-d9cf1cf6669a
+          createdAt: "2026-10-20T04:18:17.928Z"
+          expiresAt: "2026-11-03T04:18:17.928Z"
+          shopperKey: aHBQ5B27O2BiDV0oWgOigpsXZKjOfhcYYMch5pZ5H0c=
+          request: Buy me black men's running shoes, size 10, under $120
+          intent:
+            item: running shoes
+            category: running shoes
+            quantity: 1
+            maxPrice: 120
+            currency: USD
+            attributes:
+              size: "10"
+              color: black
+            gender: male
+            mustAsk: []
+        signature: derQBgmEoL8kvl3vfHVsmqTVAkGTSvb2ShqDoVFKdSC5U5PpGkYAUsDzgSd80QyEpGEPh4966mrEQ9CzBw0IDA==
     StoredMandate:
       type: object
-      required: [id, digest, event]
+      required:
+        - id
+        - digest
+        - event
       properties:
-        id: { type: string, format: uuid }
-        digest: { type: string }
+        id:
+          type: string
+          format: uuid
+          description: The stored mandate's id.
+        digest:
+          type: string
+          description: SHA-256 (hex) of the mandate's canonical JSON.
         event:
           type: object
-          required: [seq, hash]
+          required:
+            - seq
+            - hash
           properties:
-            seq: { type: integer }
-            hash: { type: string }
-
+            seq:
+              type: integer
+              description: Position in the hash chain, starting at 1.
+            hash:
+              type: string
+              description: SHA-256 of this event chained to the previous event's hash.
+          description: The first event in the mandate's hash chain (MANDATE_SIGNED).
+      description: A stored mandate and the first event of its hash chain.
+      example:
+        id: 2f4069f0-2367-4f08-acc6-d9cf1cf6669a
+        digest: 7bf66d54681f2b73e2f05ee0d49b5a68776908620751daaf0102b9f0b17fcac6
+        event:
+          seq: 1
+          hash: 91b50424c310c5106b3c9873427ada9d3ffccf45c9834d1c2df342316b5a25d8
     ChainEventSummary:
       type: object
-      required: [seq, type, createdAt, hash]
+      required:
+        - seq
+        - type
+        - createdAt
+        - hash
       properties:
-        seq: { type: integer }
-        type: { type: string, example: MANDATE_SIGNED }
-        createdAt: { type: string, format: date-time }
-        hash: { type: string }
-
+        seq:
+          type: integer
+          description: Position in the hash chain, starting at 1.
+        type:
+          type: string
+          example: MANDATE_SIGNED
+          description: Event type, for example MANDATE_SIGNED or PAYMENT_VOIDED.
+        createdAt:
+          type: string
+          format: date-time
+          description: When it was created (ISO 8601, UTC).
+        hash:
+          type: string
+          description: SHA-256 of this event chained to the previous event's hash.
+      description: One event in a mandate's hash chain, without its payload.
+      example:
+        seq: 0
+        type: MANDATE_SIGNED
+        createdAt: "2026-10-20T04:18:18.268Z"
+        hash: 91b50424c310c5106b3c9873427ada9d3ffccf45c9834d1c2df342316b5a25d8
     MandateView:
       type: object
-      required: [mandate, status, search, integrity, events]
+      required:
+        - mandate
+        - status
+        - search
+        - integrity
+        - events
       properties:
-        mandate: { $ref: "#/components/schemas/IntentMandate" }
-        status: { type: string, enum: [ACTIVE, FULFILLED, REVOKED, EXPIRED] }
+        mandate:
+          $ref: "#/components/schemas/IntentMandate"
+        status:
+          type: string
+          enum:
+            - ACTIVE
+            - FULFILLED
+            - REVOKED
+            - EXPIRED
+          description: ACTIVE until it is used, revoked or past expiresAt.
         search:
           type: object
           description: The product search this mandate permits.
           additionalProperties: true
         integrity:
           type: object
-          required: [digestMatches, signatureValid, chainIntact]
+          required:
+            - digestMatches
+            - signatureValid
+            - chainIntact
           properties:
-            digestMatches: { type: boolean }
-            signatureValid: { type: boolean }
-            chainIntact: { type: boolean }
-            chainBrokenAt: { type: integer }
+            digestMatches:
+              type: boolean
+              description: The stored digest matches the mandate recomputed now.
+            signatureValid:
+              type: boolean
+              description: The shopper's signature verifies against the mandate.
+            chainIntact:
+              type: boolean
+              description: Every event's hash links correctly to the one before.
+            chainBrokenAt:
+              type: integer
+              description: The first event whose hash doesn't link, when the chain is broken.
+          description: A fresh check, run on every read.
         events:
           type: array
-          items: { $ref: "#/components/schemas/ChainEventSummary" }
-
+          items:
+            $ref: "#/components/schemas/ChainEventSummary"
+          description: The mandate's event chain, oldest first.
+      description: A mandate with its status, the search it permits, and a fresh integrity check.
+      example:
+        mandate:
+          version: 1
+          id: 2f4069f0-2367-4f08-acc6-d9cf1cf6669a
+          createdAt: "2026-10-20T04:18:17.928Z"
+          expiresAt: "2026-11-03T04:18:17.928Z"
+          shopperKey: aHBQ5B27O2BiDV0oWgOigpsXZKjOfhcYYMch5pZ5H0c=
+          request: Buy me black men's running shoes, size 10, under $120
+          intent:
+            item: running shoes
+            category: running shoes
+            quantity: 1
+            maxPrice: 120
+            currency: USD
+            attributes:
+              size: "10"
+              color: black
+            gender: male
+            mustAsk: []
+        status: FULFILLED
+        search:
+          query: black running shoes
+          category: running shoes
+          maxPrice: 120
+          color: black
+          gender: male
+        integrity:
+          digestMatches: true
+          signatureValid: true
+          chainIntact: true
+        events:
+          - seq: 0
+            type: MANDATE_SIGNED
+            createdAt: "2026-10-20T04:18:18.268Z"
+            hash: 91b50424c310c5106b3c9873427ada9d3ffccf45c9834d1c2df342316b5a25d8
+          - seq: 1
+            type: CART_PROPOSED
+            createdAt: "2026-10-20T04:18:18.832Z"
+            hash: 89f7646662727852af27cbdf1e326a17b6cc76c2bd462031bbf8f1f29622e323
     UndoWindow:
       type: object
-      required: [minutes, factors]
+      required:
+        - minutes
+        - factors
       properties:
-        minutes: { type: integer, description: "Total window length." }
+        minutes:
+          type: integer
+          description: Total window length.
         factors:
           type: array
           description: Why the window is this long, factor by factor.
           items:
             type: object
-            required: [factor, minutes]
+            required:
+              - factor
+              - minutes
             properties:
-              factor: { type: string }
-              minutes: { type: integer }
-
+              factor:
+                type: string
+                description: What added time, in plain words.
+              minutes:
+                type: integer
+                description: Minutes it added.
+      description: How long the shopper can undo for free, and why.
+      example:
+        minutes: 1080
+        factors:
+          - factor: order total $116.97
+            minutes: 360
+          - factor: agent bypassed Undo's pre-purchase check
+            minutes: 720
     Trust:
       type: object
-      required: [score, tier]
+      required:
+        - score
+        - tier
       properties:
-        score: { type: integer, minimum: 0, maximum: 100 }
-        tier: { type: string, enum: [trusted, neutral, risky] }
+        score:
+          type: integer
+          minimum: 0
+          maximum: 100
+          description: 0 to 100, from the agent's record at this store.
+        tier:
+          type: string
+          enum:
+            - trusted
+            - neutral
+            - risky
+          description: trusted from 80, neutral from 50, risky below.
         factors:
           type: array
           items:
             type: object
-            required: [label, points]
+            required:
+              - label
+              - points
             properties:
-              label: { type: string }
-              points: { type: integer }
-
+              label:
+                type: string
+                description: What earned or cost points.
+              points:
+                type: integer
+                description: Points added (negative when taken away).
+          description: Every point in the score, explained.
+      description: An agent's trust score at this store, with every point explained.
+      example:
+        score: 62
+        tier: neutral
+        factors:
+          - label: unregistered name
+            points: 50
+          - label: 4 clean purchases
+            points: 12
     ShopResult:
       type: object
-      required: [orderId, status, cart, agent, undoWindow, trust, paidWith]
+      required:
+        - orderId
+        - status
+        - cart
+        - agent
+        - undoWindow
+        - trust
+        - paidWith
       properties:
-        orderId: { type: string, format: uuid }
-        approveUrl: { type: string, nullable: true, description: "Where the shopper approves the payment in PayPal (absent when paid with a saved wallet)." }
-        status: { type: string, enum: [CHECKOUT_CREATED, AUTHORIZED] }
-        windowEndsAt: { type: string, format: date-time, nullable: true }
-        paidWith: { type: string, enum: [approval, saved_wallet] }
-        walletNote: { type: string, description: "Why a saved wallet was not used, when the mandate allowed one." }
+        orderId:
+          type: string
+          format: uuid
+          description: The new order. Read it with getOrder.
+        approveUrl:
+          type: string
+          nullable: true
+          description: Where the shopper approves the payment in PayPal (absent when paid with a saved wallet).
+        status:
+          type: string
+          enum:
+            - CHECKOUT_CREATED
+            - AUTHORIZED
+          description: >-
+            CHECKOUT_CREATED while the shopper still has to approve; AUTHORIZED when a saved wallet held the money
+            straight away.
+        windowEndsAt:
+          type: string
+          format: date-time
+          nullable: true
+          description: When the undo window closes, once the money is held.
+        paidWith:
+          type: string
+          enum:
+            - approval
+            - saved_wallet
+          description: approval when the shopper approves in PayPal; saved_wallet when the agent paid with the saved wallet.
+        walletNote:
+          type: string
+          description: Why a saved wallet was not used, when the mandate allowed one.
         cart:
           type: object
-          required: [title, variant, price, currency, quantity]
+          required:
+            - title
+            - variant
+            - price
+            - currency
+            - quantity
           properties:
-            title: { type: string }
-            brand: { type: string, nullable: true }
-            variant: { type: object, additionalProperties: { type: string } }
-            price: { type: number }
-            currency: { type: string }
-            quantity: { type: integer }
-            retailer: { type: string }
-            imageUrl: { type: string, nullable: true }
+            title:
+              type: string
+              description: Product title.
+            brand:
+              type: string
+              nullable: true
+              description: Brand name, when known.
+            variant:
+              type: object
+              additionalProperties:
+                type: string
+              description: The exact variant bought.
+            price:
+              type: number
+              description: Price per item in currency units.
+            currency:
+              type: string
+              description: ISO 4217 currency code.
+            quantity:
+              type: integer
+              description: Number of items.
+            retailer:
+              type: string
+              description: The retailer's domain.
+            imageUrl:
+              type: string
+              nullable: true
+              description: Product image URL, when there is one.
+          description: What the agent put in the cart.
         agent:
           type: object
           description: The agent's reasoning, confidence and the guard's checks.
           additionalProperties: true
-        undoWindow: { $ref: "#/components/schemas/UndoWindow" }
-        trust: { $ref: "#/components/schemas/Trust" }
-
+        undoWindow:
+          $ref: "#/components/schemas/UndoWindow"
+        trust:
+          $ref: "#/components/schemas/Trust"
+      description: A checkout opened by Undo's agent inside a mandate.
+      example:
+        orderId: edd288bc-42d0-41d3-9b87-14915f3ff2c6
+        approveUrl: https://www.sandbox.paypal.com/checkoutnow?token=1X507517Y8961004F
+        status: CHECKOUT_CREATED
+        windowEndsAt: null
+        paidWith: approval
+        cart:
+          title: UA Infinite Pro Men's Running Shoes
+          brand: Under Armour
+          variant:
+            Size: "10.5"
+            Color: Black
+          price: 116.97
+          currency: USD
+          quantity: 1
+          retailer: underarmour.com
+          imageUrl: https://cdn.trychannel3.com/aed9ec20-0e99-49b6-b011-2425732889be?aid=01M5BRG5D3YC8J46QPWBYB58RG&mid=oKaH
+        agent:
+          reasoning: Picked UA Infinite Pro Men's Running Shoes in Black / 10.5 — looked like the best match.
+          confidence: 0.9
+          unverified: []
+          guard:
+            relaxed: []
+            bypassed: true
+            violations:
+              - rule: attribute:size
+                actual: "10.5"
+                expected: "10"
+          considered:
+            - id: w25336I
+              ok: false
+              price: 116.97
+              title: UA Infinite Pro Men's Running Shoes
+        undoWindow:
+          minutes: 1080
+          factors:
+            - factor: order total $116.97
+              minutes: 360
+            - factor: agent bypassed Undo's pre-purchase check
+              minutes: 720
+        trust:
+          score: 50
+          tier: neutral
     MandateRequest:
       type: object
-      required: [id, request, draft, ready, agent, status, expiresAt]
+      required:
+        - id
+        - request
+        - draft
+        - ready
+        - agent
+        - status
+        - expiresAt
       properties:
-        id: { type: string, format: uuid }
-        request: { type: string }
-        draft: { $ref: "#/components/schemas/IntentDraft" }
-        ready: { $ref: "#/components/schemas/ReadyCheck" }
-        agent: { $ref: "#/components/schemas/AgentRef" }
-        status: { type: string, enum: [PENDING, SIGNED, EXPIRED] }
-        mandateId: { type: string, format: uuid, nullable: true }
-        expiresAt: { type: string, format: date-time }
-
+        id:
+          type: string
+          format: uuid
+          description: Mandate request id.
+        request:
+          type: string
+          description: The request as the agent passed it on, plus any answers.
+        draft:
+          $ref: "#/components/schemas/IntentDraft"
+        ready:
+          $ref: "#/components/schemas/ReadyCheck"
+        agent:
+          $ref: "#/components/schemas/AgentRef"
+        status:
+          type: string
+          enum:
+            - PENDING
+            - SIGNED
+            - EXPIRED
+          description: PENDING until the shopper signs; SIGNED after; EXPIRED if never signed.
+        mandateId:
+          type: string
+          format: uuid
+          nullable: true
+          description: The signed mandate, once there is one.
+        expiresAt:
+          type: string
+          format: date-time
+          description: When the request stops accepting a signature.
+      description: A mandate an outside agent asked the shopper to sign.
+      example:
+        id: 7d1f0c2a-3b4e-4f5a-9c6d-8e7f1a2b3c4d
+        request: A black hoodie in size M under $80
+        draft:
+          item: black hoodie
+          category: hoodie
+          quantity: 1
+          maxPrice: 80
+          currency: USD
+          attributes:
+            color: black
+            size: M
+          mustAsk: []
+        ready:
+          ok: true
+        agent:
+          name: Claude
+          verified: false
+        status: PENDING
+        mandateId: null
+        expiresAt: "2026-10-21T18:00:00.000Z"
     AnswerAction:
       type: object
-      required: [action, answers]
+      required:
+        - action
+        - answers
       properties:
-        action: { type: string, enum: [answer] }
+        action:
+          type: string
+          enum:
+            - answer
+          description: answer
         answers:
           type: object
           description: Each open question (exactly as asked) mapped to the shopper's answer.
-          additionalProperties: { type: string, maxLength: 200 }
-
+          additionalProperties:
+            type: string
+            maxLength: 200
+      description: Answer the agent's open questions.
+      example:
+        action: answer
+        answers:
+          What size?: M
     PrepareAction:
       type: object
-      required: [action, shopperKey]
+      required:
+        - action
+        - shopperKey
       properties:
-        action: { type: string, enum: [prepare] }
-        shopperKey: { type: string, minLength: 40, maxLength: 60 }
-        payWith: { type: string, enum: [saved_wallet] }
-
+        action:
+          type: string
+          enum:
+            - prepare
+          description: prepare
+        shopperKey:
+          type: string
+          minLength: 40
+          maxLength: 60
+          description: Base64 Ed25519 public key of the device that will sign.
+        payWith:
+          type: string
+          enum:
+            - saved_wallet
+          description: >-
+            Set to saved_wallet to let the agent pay with the shopper's saved PayPal wallet, with no PayPal click. Leave
+            out to have the shopper approve in PayPal.
+      description: Build the exact mandate this device will sign.
+      example:
+        action: prepare
+        shopperKey: aHBQ5B27O2BiDV0oWgOigpsXZKjOfhcYYMch5pZ5H0c=
     SignAction:
       type: object
-      required: [action, mandate, signature]
+      required:
+        - action
+        - mandate
+        - signature
       properties:
-        action: { type: string, enum: [sign] }
-        mandate: { $ref: "#/components/schemas/IntentMandate" }
-        signature: { type: string, minLength: 80, maxLength: 100 }
-
+        action:
+          type: string
+          enum:
+            - sign
+          description: sign
+        mandate:
+          $ref: "#/components/schemas/IntentMandate"
+        signature:
+          type: string
+          minLength: 80
+          maxLength: 100
+          description: Base64 Ed25519 signature of the signingMessage returned by prepare.
+      description: Store the signed mandate.
+      example:
+        action: sign
+        mandate:
+          version: 1
+          id: 2f4069f0-2367-4f08-acc6-d9cf1cf6669a
+          createdAt: "2026-10-20T04:18:17.928Z"
+          expiresAt: "2026-11-03T04:18:17.928Z"
+          shopperKey: aHBQ5B27O2BiDV0oWgOigpsXZKjOfhcYYMch5pZ5H0c=
+          request: Buy me black men's running shoes, size 10, under $120
+          intent:
+            item: running shoes
+            category: running shoes
+            quantity: 1
+            maxPrice: 120
+            currency: USD
+            attributes:
+              size: "10"
+              color: black
+            gender: male
+            mustAsk: []
+        signature: derQBgmEoL8kvl3vfHVsmqTVAkGTSvb2ShqDoVFKdSC5U5PpGkYAUsDzgSd80QyEpGEPh4966mrEQ9CzBw0IDA==
     OrderStatus:
       type: string
-      enum: [CHECKOUT_CREATED, CANCELLED, AUTHORIZED, VOIDED, CAPTURED, REFUNDED, PARTIALLY_REFUNDED, CLAIM_OPEN, RETURN_PENDING, REVIEW, DISPUTED, FAILED]
-
+      enum:
+        - CHECKOUT_CREATED
+        - CANCELLED
+        - AUTHORIZED
+        - VOIDED
+        - CAPTURED
+        - REFUNDED
+        - PARTIALLY_REFUNDED
+        - CLAIM_OPEN
+        - RETURN_PENDING
+        - REVIEW
+        - DISPUTED
+        - FAILED
+      description: Where an order stands. AUTHORIZED means the money is only held and Undo is a free void.
+      example: AUTHORIZED
     ChainEvent:
       type: object
-      required: [seq, type, createdAt, hash, proof]
+      required:
+        - seq
+        - type
+        - createdAt
+        - hash
+        - proof
       properties:
-        seq: { type: integer }
-        type: { type: string }
-        createdAt: { type: string, format: date-time }
-        hash: { type: string }
+        seq:
+          type: integer
+          description: Position in the hash chain, starting at 1.
+        type:
+          type: string
+          description: Event type, for example MANDATE_SIGNED or PAYMENT_VOIDED.
+        createdAt:
+          type: string
+          format: date-time
+          description: When it was created (ISO 8601, UTC).
+        hash:
+          type: string
+          description: SHA-256 of this event chained to the previous event's hash.
         proof:
           type: object
           description: How this step was decided, and the PayPal call or id behind it.
           additionalProperties: true
-
+      description: One event in the hash chain, with the proof of how it was decided.
+      example:
+        seq: 0
+        type: MANDATE_SIGNED
+        createdAt: "2026-10-20T04:18:18.268Z"
+        hash: 91b50424c310c5106b3c9873427ada9d3ffccf45c9834d1c2df342316b5a25d8
+        proof:
+          kind: signature
+          how: Ed25519 signature from the shopper's device verified against the mandate's exact bytes.
+          ref: 7bf66d54681f2b73e2f05ee0d49b5a68776908620751daaf0102b9f0b17fcac6
     OrderView:
       type: object
-      required: [order, undoWindow, chain]
+      required:
+        - order
+        - undoWindow
+        - chain
       properties:
         order:
           type: object
-          required: [id, status, amount, currency, quantity, product, paypal]
+          required:
+            - id
+            - status
+            - amount
+            - currency
+            - quantity
+            - product
+            - paypal
           properties:
-            id: { type: string, format: uuid }
-            status: { $ref: "#/components/schemas/OrderStatus" }
-            amount: { type: string, example: "116.97" }
-            currency: { type: string }
-            quantity: { type: integer }
-            product: { $ref: "#/components/schemas/Product" }
+            id:
+              type: string
+              format: uuid
+              description: Undo order id.
+            status:
+              $ref: "#/components/schemas/OrderStatus"
+            amount:
+              type: string
+              example: "116.97"
+              description: Total held or charged, as a decimal string.
+            currency:
+              type: string
+              description: ISO 4217 currency code.
+            quantity:
+              type: integer
+              description: Number of items.
+            product:
+              $ref: "#/components/schemas/Product"
             agent:
               type: object
               additionalProperties: true
+              description: The agent's reasoning, confidence, guard checks and operator, as recorded at checkout.
             paypal:
               type: object
               properties:
-                orderId: { type: string, nullable: true }
-                authorizationId: { type: string, nullable: true }
-                captureId: { type: string, nullable: true }
+                orderId:
+                  type: string
+                  nullable: true
+                  description: PayPal Orders v2 id.
+                authorizationId:
+                  type: string
+                  nullable: true
+                  description: PayPal authorization id, once the money is held.
+                captureId:
+                  type: string
+                  nullable: true
+                  description: PayPal capture id, once the money is taken.
+              description: The PayPal ids behind this order.
             resolution:
               type: object
               nullable: true
               description: The latest Undo, with verdict, evidence, money action and any agent payout.
               additionalProperties: true
+          description: The purchase.
         undoWindow:
           allOf:
             - $ref: "#/components/schemas/UndoWindow"
             - type: object
-              required: [open]
+              required:
+                - open
               properties:
-                endsAt: { type: string, format: date-time, nullable: true }
-                open: { type: boolean }
-                minutesLeft: { type: integer, nullable: true }
+                endsAt:
+                  type: string
+                  format: date-time
+                  nullable: true
+                  description: When the window closes.
+                open:
+                  type: boolean
+                  description: "True while the money is only held and the window hasn't closed: Undo is a free void."
+                minutesLeft:
+                  type: integer
+                  nullable: true
+                  description: Minutes until the window closes.
+          description: "The undo window: how long, why, and whether it is still open."
         mandate:
           type: object
           nullable: true
           properties:
-            id: { type: string, format: uuid }
-            request: { type: string }
-            intent: { $ref: "#/components/schemas/IntentDraft" }
-            status: { type: string }
-            shopperKey: { type: string }
+            id:
+              type: string
+              format: uuid
+              description: Mandate id.
+            request:
+              type: string
+              description: The shopper's request in their own words.
+            intent:
+              $ref: "#/components/schemas/IntentDraft"
+            status:
+              type: string
+              description: Mandate status.
+            shopperKey:
+              type: string
+              description: The shopper's public key. Undo requests must be signed by it.
+          description: The mandate this purchase was made under.
         chain:
           type: object
-          required: [intact, events]
+          required:
+            - intact
+            - events
           properties:
-            intact: { type: boolean }
+            intact:
+              type: boolean
+              description: Every hash links correctly.
             events:
               type: array
-              items: { $ref: "#/components/schemas/ChainEvent" }
-
+              items:
+                $ref: "#/components/schemas/ChainEvent"
+              description: Events, oldest first.
+          description: The mandate's event chain, with a proof on every step.
+      description: An order, its undo window, its mandate and its verified event chain.
+      example:
+        order:
+          id: edd288bc-42d0-41d3-9b87-14915f3ff2c6
+          status: REFUNDED
+          amount: "116.97"
+          currency: USD
+          quantity: 1
+          product:
+            brand: Under Armour
+            price: 116.97
+            title: UA Infinite Pro Men's Running Shoes
+            colors:
+              - "#1e1e20"
+              - "#d5d4d8"
+            variant:
+              Size: "10.5"
+              Color: Black
+            currency: USD
+            imageUrl: https://cdn.trychannel3.com/aed9ec20-0e99-49b6-b011-2425732889be?aid=01M5BRG5D3YC8J46QPWBYB58RG&mid=oKaH
+            sourceUrl: >-
+              https://buy.trychannel3.com/w25336I-oKaH-Wqce8l?o=01KVATPXMQW09XVTMRDEW2Q1Y9&aid=01M5BRG5D3YC8J46QPWBYB58RG
+            attributes:
+              pattern:
+                - Texture
+                - Geometric
+              activity:
+                - Running
+              shoe-fit:
+                - Regular
+              toe-style:
+                - Round
+              closure-type:
+                - Straps
+                - Lace-up
+              shoe-features:
+                - Breathable design
+                - Cushioned
+              lining-material:
+                - Synthetic
+              heel-height-type:
+                - Flat
+                - Low
+              outsole-material:
+                - Rubber
+              footwear-material:
+                - Mesh
+                - Polyester
+              footwear-support-type:
+                - Neutral
+                - Stability
+            channel3Id: w25336I
+            description: >-
+              These men's running shoes from Under Armour, the UA Infinite Pro, are designed for endurance with a focus
+              on comfort and support. They feature a breathable e…
+            sourceDomain: underarmour.com
+            variantOptions:
+              - name: Color
+                values:
+                  - Black
+                  - White
+              - name: Size
+                values:
+                  - "7"
+                  - "8"
+          agent:
+            guard:
+              relaxed: []
+              bypassed: true
+              violations:
+                - rule: attribute:size
+                  actual: "10.5"
+                  expected: "10"
+            model: null
+            operator:
+              via: web
+              name: Careless demo agent
+              verified: false
+            searches:
+              - query: black running shoes
+                filters: price+gender+category_ids+colors
+            reasoning: Picked UA Infinite Pro Men's Running Shoes in Black / 10.5 — looked like the best match.
+            requested:
+              Size: "10"
+              Color: Black
+            simulated: unguarded_wrong_variant
+            confidence: 0.9
+            considered:
+              - id: w25336I
+                ok: false
+                price: 116.97
+                title: UA Infinite Pro Men's Running Shoes
+            unverified: []
+            approximate: []
+          paypal:
+            orderId: 1X507517Y8961004F
+            authorizationId: 4LD43914UL8743542
+            captureId: 4087729233507714F
+          resolution:
+            at: "2026-10-20T04:36:46.194Z"
+            action:
+              type: REFUND_FULL
+              reason: "agent broke the mandate: full refund, liability on the agent operator"
+            decision:
+              verdict: AGENT_FAULT
+              evidence:
+                - source: shopper
+                  finding: This isn't what I asked for.
+                - source: mandate_check
+                  finding: "attribute:size: mandate required 10, agent bought 10.5"
+              liability: agent_operator
+              confidence: 1
+            settlement:
+              at: "2026-10-20T04:36:47.717Z"
+              to: 8QKQG7YKAEQLW
+              from: Careless demo agent
+              amount: "116.97"
+              status: SUCCESS
+              attempt: 1
+              currency: USD
+              payoutItemId: Z8UUKQLA3ERPQ
+              payoutBatchId: Q2GJQLQFMJWTY
+              transactionId: 3JU78306XG5327728
+        undoWindow:
+          factors:
+            - factor: order total $116.97
+              minutes: 360
+            - factor: agent bypassed Undo's pre-purchase check
+              minutes: 720
+          minutes: 1080
+          endsAt: "2026-10-20T04:36:44.167Z"
+          open: false
+          minutesLeft: 0
+        mandate:
+          id: 2f4069f0-2367-4f08-acc6-d9cf1cf6669a
+          request: Buy me black men's running shoes, size 10, under $120
+          intent:
+            item: running shoes
+            category: running shoes
+            quantity: 1
+            maxPrice: 120
+            currency: USD
+            attributes:
+              size: "10"
+              color: black
+            gender: male
+            mustAsk: []
+          status: FULFILLED
+          shopperKey: aHBQ5B27O2BiDV0oWgOigpsXZKjOfhcYYMch5pZ5H0c=
+        chain:
+          intact: true
+          events:
+            - seq: 0
+              type: MANDATE_SIGNED
+              createdAt: "2026-10-20T04:18:18.268Z"
+              hash: 91b50424c310c5106b3c9873427ada9d3ffccf45c9834d1c2df342316b5a25d8
+              proof:
+                kind: signature
+                how: Ed25519 signature from the shopper's device verified against the mandate's exact bytes.
+                ref: 7bf66d54681f2b73e2f05ee0d49b5a68776908620751daaf0102b9f0b17fcac6
+            - seq: 1
+              type: CART_PROPOSED
+              createdAt: "2026-10-20T04:18:18.832Z"
+              hash: 89f7646662727852af27cbdf1e326a17b6cc76c2bd462031bbf8f1f29622e323
+              proof:
+                kind: rule
+                how: Proposed without Undo's guard.
+                checks:
+                  - by: rule
+                    text: The agent skipped Undo's pre-purchase guard (careless demo agent).
+                  - by: rule
+                    text: "Breaks the mandate: size should be 10, is 10.5."
     Evidence:
       type: object
-      required: [format, orderId, mandate, events]
+      required:
+        - format
+        - orderId
+        - mandate
+        - events
       properties:
-        format: { type: string, enum: [undo-evidence-v1] }
-        orderId: { type: string, format: uuid }
+        format:
+          type: string
+          enum:
+            - undo-evidence-v1
+          description: Evidence file format.
+        orderId:
+          type: string
+          format: uuid
+          description: The order this evidence is for.
         mandate:
           type: object
           nullable: true
@@ -1127,161 +3165,742 @@ components:
           items:
             type: object
             additionalProperties: true
-
+      description: Everything needed to verify an order without trusting Undo.
+      example:
+        format: undo-evidence-v1
+        orderId: edd288bc-42d0-41d3-9b87-14915f3ff2c6
+        mandate:
+          id: 2f4069f0-2367-4f08-acc6-d9cf1cf6669a
+          intent:
+            item: running shoes
+            gender: male
+            mustAsk: []
+            category: running shoes
+            currency: USD
+            maxPrice: 120
+            quantity: 1
+            attributes:
+              size: "10"
+              color: black
+          request: Buy me black men's running shoes, size 10, under $120
+          version: 1
+          createdAt: "2026-10-20T04:18:17.928Z"
+          expiresAt: "2026-11-03T04:18:17.928Z"
+          shopperKey: aHBQ5B27O2BiDV0oWgOigpsXZKjOfhcYYMch5pZ5H0c=
+        events:
+          - subjectId: 2f4069f0-2367-4f08-acc6-d9cf1cf6669a
+            seq: 0
+            type: MANDATE_SIGNED
+            payload:
+              digest: 7bf66d54681f2b73e2f05ee0d49b5a68776908620751daaf0102b9f0b17fcac6
+              signature: derQBgmEoL8kvl3vfHVsmqTVAkGTSvb2ShqDoVFKdSC5U5PpGkYAUsDzgSd80QyEpGEPh4966mrEQ9CzBw0IDA==
+            createdAt: "2026-10-20T04:18:18.268Z"
+            prevHash: "0000000000000000000000000000000000000000000000000000000000000000"
+            hash: 91b50424c310c5106b3c9873427ada9d3ffccf45c9834d1c2df342316b5a25d8
+          - subjectId: 2f4069f0-2367-4f08-acc6-d9cf1cf6669a
+            seq: 1
+            type: CART_PROPOSED
+            payload:
+              risk:
+                factors:
+                  - factor: order total $116.97
+                    minutes: 360
+                  - factor: agent bypassed Undo's pre-purchase check
+                    minutes: 720
+                minutes: 1080
+              agent:
+                guard:
+                  relaxed: []
+                  bypassed: true
+                  violations:
+                    - rule: attribute:size
+                      actual: "10.5"
+                      expected: "10"
+                model: null
+                operator:
+                  via: web
+                  name: Careless demo agent
+                  verified: false
+                searches:
+                  - query: black running shoes
+                    filters: price+gender+category_ids+colors
+                reasoning: Picked UA Infinite Pro Men's Running Shoes in Black / 10.5 — looked like the best match.
+                requested:
+                  Size: "10"
+                  Color: Black
+                simulated: unguarded_wrong_variant
+                confidence: 0.9
+                considered:
+                  - id: w25336I
+                    ok: false
+                    price: 116.97
+                    title: UA Infinite Pro Men's Running Shoes
+                unverified: []
+                approximate: []
+              orderId: edd288bc-42d0-41d3-9b87-14915f3ff2c6
+              product:
+                brand: Under Armour
+                price: 116.97
+                title: UA Infinite Pro Men's Running Shoes
+                colors:
+                  - "#1e1e20"
+                  - "#d5d4d8"
+                variant:
+                  Size: "10.5"
+                  Color: Black
+                currency: USD
+                imageUrl: >-
+                  https://cdn.trychannel3.com/aed9ec20-0e99-49b6-b011-2425732889be?aid=01M5BRG5D3YC8J46QPWBYB58RG&mid=oKaH
+                sourceUrl: >-
+                  https://buy.trychannel3.com/w25336I-oKaH-Wqce8l?o=01KVATPXMQW09XVTMRDEW2Q1Y9&aid=01M5BRG5D3YC8J46QPWBYB58RG
+                attributes:
+                  pattern:
+                    - Texture
+                    - Geometric
+                  activity:
+                    - Running
+                  shoe-fit:
+                    - Regular
+                  toe-style:
+                    - Round
+                  closure-type:
+                    - Straps
+                    - Lace-up
+                  shoe-features:
+                    - Breathable design
+                    - Cushioned
+                  lining-material:
+                    - Synthetic
+                  heel-height-type:
+                    - Flat
+                    - Low
+                  outsole-material:
+                    - Rubber
+                  footwear-material:
+                    - Mesh
+                    - Polyester
+                  footwear-support-type:
+                    - Neutral
+                    - Stability
+                channel3Id: w25336I
+                description: >-
+                  These men's running shoes from Under Armour, the UA Infinite Pro, are designed for endurance with a
+                  focus on comfort and support. They feature a breathable e…
+                sourceDomain: underarmour.com
+                variantOptions:
+                  - name: Color
+                    values:
+                      - Black
+                      - White
+                  - name: Size
+                    values:
+                      - "7"
+                      - "8"
+              quantity: 1
+            createdAt: "2026-10-20T04:18:18.832Z"
+            prevHash: 91b50424c310c5106b3c9873427ada9d3ffccf45c9834d1c2df342316b5a25d8
+            hash: 89f7646662727852af27cbdf1e326a17b6cc76c2bd462031bbf8f1f29622e323
     UndoRequest:
       type: object
-      required: [reason, requestedAt, signature]
+      required:
+        - reason
+        - requestedAt
+        - signature
       properties:
-        reason: { type: string, minLength: 3, maxLength: 500, example: "This isn't what I asked for." }
+        reason:
+          type: string
+          minLength: 3
+          maxLength: 500
+          example: This isn't what I asked for.
+          description: What went wrong, in the shopper's words.
         photo:
           type: string
           description: Optional photo of what arrived, as a base64 JPEG, PNG or WebP data URL (max 4 MB).
-          pattern: "^data:image/(jpeg|png|webp);base64,[A-Za-z0-9+/=]+$"
-        requestedAt: { type: string, format: date-time }
-        signature: { type: string, minLength: 80, maxLength: 100, description: "Base64 Ed25519 signature of the undo signing message." }
-
+          pattern: ^data:image/(jpeg|png|webp);base64,[A-Za-z0-9+/=]+$
+        requestedAt:
+          type: string
+          format: date-time
+          description: When the shopper pressed Undo. Must be within 15 minutes of the server's clock.
+        signature:
+          type: string
+          minLength: 80
+          maxLength: 100
+          description: Base64 Ed25519 signature of the undo signing message.
+      description: An Undo, signed by the shopper's device key.
+      example:
+        reason: This isn't what I asked for.
+        requestedAt: "2026-10-20T16:30:00.000Z"
+        signature: derQBgmEoL8kvl3vfHVsmqTVAkGTSvb2ShqDoVFKdSC5U5PpGkYAUsDzgSd80QyEpGEPh4966mrEQ9CzBw0IDA==
     Decision:
       type: object
-      required: [verdict, confidence, liability, evidence]
+      required:
+        - verdict
+        - confidence
+        - liability
+        - evidence
       properties:
-        verdict: { type: string, enum: [AGENT_FAULT, MERCHANT_FAULT, SHOPPER_CHANGED_MIND, INCONCLUSIVE] }
-        confidence: { type: number, minimum: 0, maximum: 1 }
+        verdict:
+          type: string
+          enum:
+            - AGENT_FAULT
+            - MERCHANT_FAULT
+            - SHOPPER_CHANGED_MIND
+            - INCONCLUSIVE
+          description: Who was at fault.
+        confidence:
+          type: number
+          minimum: 0
+          maximum: 1
+          description: How sure the fault check is, from 0 to 1. Below 0.7 goes to a person.
         liability:
           type: string
           nullable: true
           description: Who pays. Null when a person still has to decide.
-          enum: [agent_operator, merchant, shopper]
+          enum:
+            - agent_operator
+            - merchant
+            - shopper
         evidence:
           type: array
           items:
             type: object
-            required: [source, finding]
+            required:
+              - source
+              - finding
             properties:
-              source: { type: string, enum: [mandate_check, agent_record, delivered_photo, ai_judgement, shopper] }
-              finding: { type: string }
-
+              source:
+                type: string
+                enum:
+                  - mandate_check
+                  - agent_record
+                  - delivered_photo
+                  - ai_judgement
+                  - shopper
+                description: Where the finding came from.
+              finding:
+                type: string
+                description: The finding, in plain words.
+          description: Each finding behind the verdict and where it came from.
+      description: The fault check's verdict, who pays, and the evidence behind it.
+      example:
+        verdict: AGENT_FAULT
+        evidence:
+          - source: shopper
+            finding: This isn't what I asked for.
+          - source: mandate_check
+            finding: "attribute:size: mandate required 10, agent bought 10.5"
+        liability: agent_operator
+        confidence: 1
     MoneyAction:
       type: object
-      required: [type, reason]
+      required:
+        - type
+        - reason
       properties:
-        type: { type: string, enum: [VOID, REFUND_FULL, OPEN_CLAIM, AUTHORIZE_RETURN, REVIEW, NONE] }
-        reason: { type: string }
-        refundOnReturn: { type: string, description: "On AUTHORIZE_RETURN, the amount refunded when the item comes back." }
-        restockingFee: { type: string, description: "On AUTHORIZE_RETURN." }
-
+        type:
+          type: string
+          enum:
+            - VOID
+            - REFUND_FULL
+            - OPEN_CLAIM
+            - AUTHORIZE_RETURN
+            - REVIEW
+            - NONE
+          description: What happened to the money.
+        reason:
+          type: string
+          description: Why, in plain words.
+        refundOnReturn:
+          type: string
+          description: On AUTHORIZE_RETURN, the amount refunded when the item comes back.
+        restockingFee:
+          type: string
+          description: On AUTHORIZE_RETURN.
+      description: What happens to the money after the verdict.
+      example:
+        type: REFUND_FULL
+        reason: "agent broke the mandate: full refund, liability on the agent operator"
     UndoResult:
       type: object
-      required: [orderId, decision, outcome]
+      required:
+        - orderId
+        - decision
+        - outcome
       properties:
-        orderId: { type: string, format: uuid }
-        decision: { $ref: "#/components/schemas/Decision" }
+        orderId:
+          type: string
+          format: uuid
+          description: The order that was undone.
+        decision:
+          $ref: "#/components/schemas/Decision"
         outcome:
           type: object
-          required: [action, status, paypal]
+          required:
+            - action
+            - status
+            - paypal
           properties:
-            action: { $ref: "#/components/schemas/MoneyAction" }
-            status: { $ref: "#/components/schemas/OrderStatus" }
+            action:
+              $ref: "#/components/schemas/MoneyAction"
+            status:
+              $ref: "#/components/schemas/OrderStatus"
             paypal:
               type: object
               description: The PayPal ids behind the money movement.
-              additionalProperties: { type: string, nullable: true }
-            evidenceDigest: { type: string }
-
+              additionalProperties:
+                type: string
+                nullable: true
+            evidenceDigest:
+              type: string
+              description: SHA-256 of the evidence pack sent with a merchant claim.
+          description: What happened to the money and the order's new status.
+      description: The verdict and what happened to the money.
+      example:
+        orderId: edd288bc-42d0-41d3-9b87-14915f3ff2c6
+        decision:
+          verdict: AGENT_FAULT
+          evidence:
+            - source: shopper
+              finding: This isn't what I asked for.
+            - source: mandate_check
+              finding: "attribute:size: mandate required 10, agent bought 10.5"
+          liability: agent_operator
+          confidence: 1
+        outcome:
+          action:
+            type: REFUND_FULL
+            reason: "agent broke the mandate: full refund, liability on the agent operator"
+          status: REFUNDED
+          paypal: {}
     MerchantRules:
       type: object
-      required: [blockBelow, extendBelow, extendMinutes, blockUnverified]
+      required:
+        - blockBelow
+        - extendBelow
+        - extendMinutes
+        - blockUnverified
       properties:
-        blockBelow: { type: integer, minimum: 1, maximum: 100, nullable: true, description: "Refuse agents scoring below this. Null turns it off." }
-        extendBelow: { type: integer, minimum: 1, maximum: 100, nullable: true, description: "Give agents scoring below this a longer window. Null turns it off." }
-        extendMinutes: { type: integer, minimum: 15, maximum: 1440, description: "How much longer." }
-        blockUnverified: { type: boolean, description: "Refuse agents without a registered operator key." }
-
+        blockBelow:
+          type: integer
+          minimum: 1
+          maximum: 100
+          nullable: true
+          description: Refuse agents scoring below this. Null turns it off.
+        extendBelow:
+          type: integer
+          minimum: 1
+          maximum: 100
+          nullable: true
+          description: Give agents scoring below this a longer window. Null turns it off.
+        extendMinutes:
+          type: integer
+          minimum: 15
+          maximum: 1440
+          description: How much longer.
+        blockUnverified:
+          type: boolean
+          description: Refuse agents without a registered operator key.
+      description: The store's rules for agents. They apply from the next checkout.
+      example:
+        blockBelow: null
+        extendBelow: 50
+        extendMinutes: 360
+        blockUnverified: false
     MerchantOrder:
       type: object
-      required: [id, createdAt, status, amount, currency, product, agentName, agentVerified]
+      required:
+        - id
+        - createdAt
+        - status
+        - amount
+        - currency
+        - product
+        - agentName
+        - agentVerified
       properties:
-        id: { type: string, format: uuid }
-        createdAt: { type: string, format: date-time }
-        status: { $ref: "#/components/schemas/OrderStatus" }
-        amount: { type: number }
-        currency: { type: string }
-        product: { type: string }
-        brand: { type: string, nullable: true }
-        variant: { type: string }
-        imageUrl: { type: string, nullable: true }
-        retailer: { type: string, nullable: true }
-        request: { type: string, nullable: true }
-        agentConfidence: { type: number, nullable: true }
-        guardBypassed: { type: boolean }
-        simulated: { type: string, nullable: true }
-        agentName: { type: string }
-        agentVerified: { type: boolean }
-        agentVia: { type: string }
-        verdict: { type: string, nullable: true }
-        verdictConfidence: { type: number, nullable: true }
-        liability: { type: string, nullable: true }
-        settlement: { type: string, nullable: true }
-        settledAmount: { type: number, description: "Money that arrived from an agent operator through PayPal Payouts." }
-        action: { type: string, nullable: true }
-        windowEndsAt: { type: string, format: date-time, nullable: true }
-        windowMinutesLeft: { type: integer, nullable: true }
-        paypalRef: { type: string, nullable: true }
-
+        id:
+          type: string
+          format: uuid
+          description: Undo order id.
+        createdAt:
+          type: string
+          format: date-time
+          description: When the agent placed the order.
+        status:
+          $ref: "#/components/schemas/OrderStatus"
+        amount:
+          type: number
+          description: Order total.
+        currency:
+          type: string
+          description: ISO 4217 currency code.
+        product:
+          type: string
+          description: Product title.
+        brand:
+          type: string
+          nullable: true
+          description: Brand name, when known.
+        variant:
+          type: string
+          description: The variant bought, for example Size M · Color Black.
+        imageUrl:
+          type: string
+          nullable: true
+          description: Product image URL, when there is one.
+        retailer:
+          type: string
+          nullable: true
+          description: The retailer's domain.
+        request:
+          type: string
+          nullable: true
+          description: The shopper's mandate, in their words.
+        agentConfidence:
+          type: number
+          nullable: true
+          description: How sure the agent was that the item fits, from 0 to 1.
+        guardBypassed:
+          type: boolean
+          description: True when the agent skipped Undo's checks before buying.
+        simulated:
+          type: string
+          nullable: true
+          description: Set on demo orders from the careless test agent.
+        agentName:
+          type: string
+          description: The agent operator's name.
+        agentVerified:
+          type: boolean
+          description: Whether the operator presented a registered key.
+        agentVia:
+          type: string
+          description: "How the agent connected: web or mcp."
+        verdict:
+          type: string
+          nullable: true
+          description: The fault check's verdict, after an Undo.
+        verdictConfidence:
+          type: number
+          nullable: true
+          description: How sure the verdict is, from 0 to 1.
+        liability:
+          type: string
+          nullable: true
+          description: "Who pays: agent_operator, merchant or shopper."
+        settlement:
+          type: string
+          nullable: true
+          description: Status of the agent operator's payout to the store, when one was due.
+        settledAmount:
+          type: number
+          description: Money that arrived from an agent operator through PayPal Payouts.
+        action:
+          type: string
+          nullable: true
+          description: What happened to the money, for example VOID or REFUND_FULL.
+        windowEndsAt:
+          type: string
+          format: date-time
+          nullable: true
+          description: When the undo window closes or closed.
+        windowMinutesLeft:
+          type: integer
+          nullable: true
+          description: Minutes left in the undo window, while the money is held.
+        paypalRef:
+          type: string
+          nullable: true
+          description: "The most specific PayPal id: capture, then authorization, then order."
+      description: One agent order as the store sees it.
+      example:
+        id: 0b1b3bb1-f411-406a-87b7-0bf32f55ed61
+        createdAt: "2026-10-20T12:14:48.268Z"
+        status: VOIDED
+        amount: 59.99
+        currency: USD
+        product: Mens Boxy Hoodie
+        brand: Cernucci
+        variant: Size M
+        imageUrl: https://cdn.trychannel3.com/b9e090b6-615d-4117-a827-c1dad96f2a12?aid=01M5CKRKZAQ4Z7XXEQEKMJVC9V&mid=m7kZ
+        retailer: us.cernucci.com
+        request: A black hoodie, size M, under $80
+        agentConfidence: 0.8
+        guardBypassed: false
+        simulated: null
+        agentName: Undo web agent
+        agentVerified: true
+        agentVia: web
+        verdict: MERCHANT_FAULT
+        verdictConfidence: 1
+        liability: merchant
+        settlement: null
+        settledAmount: 0
+        action: VOID
+        windowEndsAt: "2026-10-20T19:15:15.261Z"
+        windowMinutesLeft: null
+        paypalRef: 8L594057D91511610
     MerchantOrders:
       type: object
-      required: [kpis, orders]
+      required:
+        - kpis
+        - orders
       properties:
         kpis:
           type: object
-          required: [agentOrders, undone, feesAvoided, billedToAgents, merchantProtected, needsAction, heldNow]
+          required:
+            - agentOrders
+            - undone
+            - feesAvoided
+            - billedToAgents
+            - merchantProtected
+            - needsAction
+            - heldNow
           properties:
-            agentOrders: { type: integer }
-            undone: { type: integer }
-            feesAvoided: { type: number, description: "Estimated PayPal fees avoided by voiding instead of refunding." }
-            billedToAgents: { type: number }
-            merchantProtected: { type: integer }
-            needsAction: { type: integer }
-            heldNow: { type: number }
+            agentOrders:
+              type: integer
+              description: Orders placed by agents (not counting abandoned checkouts).
+            undone:
+              type: integer
+              description: Orders that were undone.
+            feesAvoided:
+              type: number
+              description: Estimated PayPal fees avoided by voiding instead of refunding.
+            billedToAgents:
+              type: number
+              description: Money paid back to the store by agent operators through PayPal Payouts.
+            merchantProtected:
+              type: integer
+              description: Undos where the shopper changed their mind and the store was protected.
+            needsAction:
+              type: integer
+              description: Orders waiting for the store's decision.
+            heldNow:
+              type: number
+              description: Money held right now with an undo window open.
+          description: Headline numbers for the store.
         orders:
           type: array
-          items: { $ref: "#/components/schemas/MerchantOrder" }
-
+          items:
+            $ref: "#/components/schemas/MerchantOrder"
+          description: Agent orders, newest first.
+      description: The store's agent orders and headline numbers.
+      example:
+        kpis:
+          agentOrders: 22
+          undone: 16
+          feesAvoided: 54.209861000000004
+          billedToAgents: 293.93
+          merchantProtected: 3
+          needsAction: 0
+          heldNow: 0
+        orders:
+          - id: 0b1b3bb1-f411-406a-87b7-0bf32f55ed61
+            createdAt: "2026-10-20T12:14:48.268Z"
+            status: VOIDED
+            amount: 59.99
+            currency: USD
+            product: Mens Boxy Hoodie
+            brand: Cernucci
+            variant: Size M
+            imageUrl: https://cdn.trychannel3.com/b9e090b6-615d-4117-a827-c1dad96f2a12?aid=01M5CKRKZAQ4Z7XXEQEKMJVC9V&mid=m7kZ
+            retailer: us.cernucci.com
+            request: A black hoodie, size M, under $80
+            agentConfidence: 0.8
+            guardBypassed: false
+            simulated: null
+            agentName: Undo web agent
+            agentVerified: true
+            agentVia: web
+            verdict: MERCHANT_FAULT
+            verdictConfidence: 1
+            liability: merchant
+            settlement: null
+            settledAmount: 0
+            action: VOID
+            windowEndsAt: "2026-10-20T19:15:15.261Z"
+            windowMinutesLeft: null
+            paypalRef: 8L594057D91511610
+          - id: f4e45935-229f-48f8-918a-be44a4997a9f
+            createdAt: "2026-10-20T07:49:05.299Z"
+            status: VOIDED
+            amount: 116.97
+            currency: USD
+            product: UA Infinite Pro Men's Running Shoes
+            brand: Under Armour
+            variant: Size 10.5 · Color Black
+            imageUrl: https://cdn.trychannel3.com/aed9ec20-0e99-49b6-b011-2425732889be?aid=01M5C4J3G46ER2Y26PBPQ3QGZB&mid=oKaH
+            retailer: underarmour.com
+            request: Black men's running shoes, size 10, under $120
+            agentConfidence: 0.9
+            guardBypassed: true
+            simulated: unguarded_wrong_variant
+            agentName: Careless demo agent
+            agentVerified: false
+            agentVia: web
+            verdict: AGENT_FAULT
+            verdictConfidence: 1
+            liability: agent_operator
+            settlement: null
+            settledAmount: 0
+            action: VOID
+            windowEndsAt: "2026-10-21T07:49:23.031Z"
+            windowMinutesLeft: null
+            paypalRef: 3LJ53399FX105624A
     MerchantAgents:
       type: object
-      required: [rules, agents]
+      required:
+        - rules
+        - agents
       properties:
-        rules: { $ref: "#/components/schemas/MerchantRules" }
+        rules:
+          $ref: "#/components/schemas/MerchantRules"
         agents:
           type: array
           items:
             type: object
-            required: [name, verified, trust, effect]
+            required:
+              - name
+              - verified
+              - trust
+              - effect
             properties:
-              name: { type: string }
-              verified: { type: boolean }
-              via: { type: string, nullable: true }
-              purchases: { type: integer }
-              faults: { type: integer }
-              trust: { $ref: "#/components/schemas/Trust" }
+              name:
+                type: string
+                description: The agent operator's name.
+              verified:
+                type: boolean
+                description: Whether the agent presented a registered operator key.
+              via:
+                type: string
+                nullable: true
+                description: "How the agent connected: web or mcp."
+              purchases:
+                type: integer
+                description: Purchases made at this store.
+              faults:
+                type: integer
+                description: Undos where the agent was at fault.
+              trust:
+                $ref: "#/components/schemas/Trust"
               effect:
                 type: object
-                required: [blocked, extraMinutes]
+                required:
+                  - blocked
+                  - extraMinutes
                 properties:
-                  blocked: { type: string, nullable: true }
-                  extraMinutes: { type: integer }
-                  reason: { type: string, nullable: true }
+                  blocked:
+                    type: string
+                    nullable: true
+                    description: Why the agent would be refused, or null.
+                  extraMinutes:
+                    type: integer
+                    description: Extra undo-window minutes the rules add.
+                  reason:
+                    type: string
+                    nullable: true
+                    description: Which rule added the time, or null.
+                description: What the store's rules do to this agent's next purchase.
             additionalProperties: true
-
+          description: Every agent that has shopped here, riskiest first.
+      description: Every agent that has shopped here and the store's rules.
+      example:
+        rules:
+          blockBelow: null
+          extendBelow: 50
+          extendMinutes: 360
+          blockUnverified: false
+        agents:
+          - name: Careless demo agent
+            verified: false
+            via: web
+            purchases: 11
+            faults: 9
+            refused: 0
+            bypassed: 11
+            lastSeen: "2026-10-20T07:49:05.299Z"
+            trust:
+              score: 0
+              tier: risky
+              factors:
+                - label: unregistered name
+                  points: 50
+                - label: 2 clean purchases
+                  points: 6
+            effect:
+              blocked: null
+              extraMinutes: 360
+              reason: "merchant rule: Careless demo agent trust 0, below 50"
+          - name: Spike Agent
+            verified: false
+            via: mcp
+            purchases: 0
+            faults: 0
+            refused: 4
+            bypassed: 0
+            lastSeen: "2026-10-18T07:44:53.243Z"
+            trust:
+              score: 30
+              tier: risky
+              factors:
+                - label: unregistered name
+                  points: 50
+                - label: 4 carts refused by the guard
+                  points: -20
+            effect:
+              blocked: null
+              extraMinutes: 360
+              reason: "merchant rule: Spike Agent trust 30, below 50"
     ActivityEvent:
       type: object
-      required: [id, at, type, kind, how]
+      required:
+        - id
+        - at
+        - type
+        - kind
+        - how
       properties:
-        id: { type: integer }
-        at: { type: string, format: date-time }
-        type: { type: string, example: PAYMENT_VOIDED }
-        kind: { type: string }
-        how: { type: string }
-        orderId: { type: string, nullable: true }
-        amount: { type: number, nullable: true }
-        agent: { type: string, nullable: true }
-        ref: { type: string, nullable: true }
+        id:
+          type: integer
+          description: Event id. Pass the newest one as after to get only newer events.
+        at:
+          type: string
+          format: date-time
+          description: When it happened.
+        type:
+          type: string
+          example: PAYMENT_VOIDED
+          description: Event type, for example PAYMENT_VOIDED.
+        kind:
+          type: string
+          description: "Who or what decided this step: shopper, agent, rules, AI or PayPal."
+        how:
+          type: string
+          description: How the step was decided, in plain words.
+        orderId:
+          type: string
+          nullable: true
+          description: The order it belongs to, when there is one.
+        amount:
+          type: number
+          nullable: true
+          description: Money involved, when there is any.
+        agent:
+          type: string
+          nullable: true
+          description: The agent operator involved, when there is one.
+        ref:
+          type: string
+          nullable: true
+          description: The PayPal id or call behind the step, when there is one.
+      description: One recorded step in the store's activity.
+      example:
+        id: 226
+        at: "2026-10-20T12:38:24.861Z"
+        type: MERCHANT_RULES_CHANGED
+        kind: record
+        how: Recorded in the chain.
+        orderId: null
+        amount: null
+        agent: null
+        ref: null

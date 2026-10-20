@@ -3,7 +3,9 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
+    "predev": "node scripts/copy-bryntum.mjs",
     "dev": "next dev",
+    "prebuild": "node scripts/copy-bryntum.mjs",
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
@@ -26,7 +28,6 @@
   "dependencies": {
     "@ai-sdk/google": "^4.0.99",
     "@bryntum/scheduler": "npm:@bryntum/scheduler-trial@7.3.7",
-    "@bryntum/scheduler-react": "7.3.7",
     "@channel3/sdk": "^4.2.0",
     "@modelcontextprotocol/server": "2.2.0",
     "@neon/config": "^1.9.2",

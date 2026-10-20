@@ -44,3 +44,6 @@ next-env.d.ts
 # local product seed pulled from Channel3
 /data/
 .neon
+
+# Bryntum prebuilt files, copied from node_modules by scripts/copy-bryntum.mjs
+/public/bryntum/

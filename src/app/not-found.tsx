@@ -8,7 +8,7 @@ export const metadata: Metadata = { title: "Page not found" };
 
 const PLACES = [
   { href: "/#cases", label: "Four finished cases", note: "void, refund, claim, return" },
-  { href: "/rogue", label: "Rogue agents", note: "seven cheats, seven rules" },
+  { href: "/rogue", label: "Rogue agents", note: "eight cheats, one real AI" },
   { href: "/merchant", label: "Merchant console", note: "every agent order, live" },
   { href: "/#agents", label: "Connect your own agent", note: "Undo over MCP" },
 ];

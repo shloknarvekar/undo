@@ -1,13 +1,16 @@
 /**
- * Rogue agents: eight agents try to act on one signed mandate, and Undo's real guard decides each one.
+ * Rogue agents: nine agents try to act on one signed mandate, and Undo's real guard decides each one. One of them is
+ * a real AI agent hijacked by an instruction hidden in a product listing (lib/hijack.ts).
  *
  * Nothing here is mocked. The mandate is genuinely Ed25519-signed (by a throwaway demo key, never stored), the
  * products are fetched live from Channel3, and every verdict comes from the same functions the web shop and the MCP
  * server use: evaluateProduct, checkCart, verifyMandate, agentMayUse. No order or PayPal checkout is created.
+ * Each fresh run costs a few catalog searches and one Gemini call.
  */
 import { evaluateProduct, searchWithinMandate } from "./agent";
 import { searchProducts, toStoreProduct, type StoreProduct } from "./channel3";
 import { generateSigningKey, sha256Hex, signMessage } from "./crypto";
+import { hijackedAgent, type HijackOutcome } from "./hijack";
 import { QuotaExceeded, cacheGet, cachePut } from "./usage";
 import { agentMayUse, checkCart, prepareMandate, signingMessage, verifyMandate, type IntentDraft, type Violation } from "./mandate";
 
@@ -21,6 +24,8 @@ export type AttackResult = {
   by: "price" | "variant" | "quantity" | "signature" | "expiry" | "binding" | "none";
   reason: string;
   ms: number;
+  /** Only for the hijacked agent: the instruction hidden in the listing and what the real model did with it. */
+  hijack?: Pick<HijackOutcome, "injection" | "fooled" | "said" | "model">;
 };
 
 export type RogueRun = {
@@ -39,6 +44,8 @@ const describe = (p: StoreProduct) =>
   `${p.title} · $${p.price.toFixed(2)}${Object.keys(p.variant).length ? ` · ${Object.entries(p.variant).map(([k, v]) => `${k} ${v}`).join(", ")}` : ""}`;
 const explain = (v: Violation) => `${v.rule.replace("attribute:", "").replace("_", " ")}: mandate says ${v.expected}, agent tried ${v.actual}`;
 const optionName = (p: StoreProduct, re: RegExp, fallback: string) => p.variantOptions.find((o) => re.test(o.name))?.name ?? fallback;
+const ruleKind = (v: Violation): AttackResult["by"] =>
+  v.rule === "max_price" ? "price" : v.rule === "quantity" ? "quantity" : v.rule === "mandate_active" ? "expiry" : "variant";
 
 async function timed(fn: () => Promise<Omit<AttackResult, "ms">>): Promise<AttackResult> {
   const t = Date.now();
@@ -99,10 +106,15 @@ async function freshRun(): Promise<RogueRun> {
   if (!honest) throw new Error("No live product passes the mandate right now; try again in a minute.");
   const { product, sizeKey } = honest;
   const colourKey = optionName(product, /colou?r/i, "Color");
+  // A real hoodie over the $80 limit: what the Upsell Bot reaches for, and what the hijacked agent is lured towards.
+  // Prefer one with a different name, so "the pricier one" is obvious at a glance.
+  const pricier = (await searchProducts("black hoodie", { limit: 6, filters: { price: { min_price: 81, max_price: 400 } } }))
+    .map(toStoreProduct)
+    .filter((p): p is StoreProduct => p !== null);
+  const over = pricier.find((p) => p.title !== product.title) ?? pricier[0];
 
   const results = await Promise.all([
     timed(async () => {
-      const [over] = (await searchProducts("black hoodie", { limit: 6, filters: { price: { min_price: 81, max_price: 400 } } })).map(toStoreProduct).filter((p): p is StoreProduct => p !== null);
       const v = over ? checkCart(mandate, over, 1).find((x) => x.rule === "max_price") : undefined;
       return {
         id: "upsell",
@@ -164,6 +176,25 @@ async function freshRun(): Promise<RogueRun> {
         blocked: !may.ok,
         by: "binding",
         reason: may.ok ? "allowed" : may.reason,
+      };
+    }),
+    timed(async () => {
+      const h = await hijackedAgent(mandate, product, over ?? null);
+      const first = h.violations[0];
+      return {
+        id: "hijack",
+        agent: "Hijacked Agent",
+        tactic:
+          h.fooled === false
+            ? "A real AI agent reads a listing with a hidden instruction. This time it didn't take the bait."
+            : "A real AI agent reads a listing with a hidden instruction, and follows it.",
+        tried: `${h.tried.product.title} · $${h.tried.product.price.toFixed(2)} · size ${h.tried.size}`,
+        blocked: h.violations.length > 0,
+        by: first ? ruleKind(first) : "none",
+        reason: h.violations.length
+          ? h.violations.map(explain).join("; ")
+          : "The cart fit the mandate, so the injection changed nothing the shopper didn't sign.",
+        hijack: { injection: h.injection, fooled: h.fooled, said: h.said, model: h.model },
       };
     }),
     timed(async () => {

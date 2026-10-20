@@ -3,7 +3,7 @@ import { runRogueAgents } from "@/lib/rogue";
 import { QuotaExceeded, limitRoute, quotaResponse } from "@/lib/usage";
 
 /**
- * POST /api/rogue → eight agents try to act on one freshly signed demo mandate; Undo's real guard decides each.
+ * POST /api/rogue → nine agents (one a real, prompt-injected AI) try to act on one freshly signed demo mandate; Undo's real guard decides each.
  * No orders, no PayPal calls. Runs are shared and reused for five minutes to spare the live catalog (lib/rogue.ts).
  */
 export async function POST(req: Request) {

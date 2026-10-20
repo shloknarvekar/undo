@@ -1,4 +1,4 @@
-import { ArrowRight, BadgeCheck, CalendarX, Fingerprint, Hourglass, Layers, ShieldX, Tag, UserX } from "lucide-react";
+import { ArrowRight, BadgeCheck, Bot, CalendarX, Fingerprint, Hourglass, Layers, ShieldX, Tag, UserX } from "lucide-react";
 import Link from "next/link";
 import type { ReactNode } from "react";
 import { HeadlineCycle } from "@/components/headline-cycle";
@@ -63,7 +63,7 @@ const CASES = [
 ];
 
 /** The rogue-agents demo (lib/rogue.ts): one signed mandate, each cheat and the rule that stopped it. */
-const ROGUES: { agent: string; tried: string; rule: string; icon: ReactNode }[] = [
+const ROGUES: { agent: string; tried: string; rule: string; icon: ReactNode; realAi?: boolean }[] = [
   { agent: "Upsell Bot", tried: "a pricier hoodie, over the $80 limit", rule: "Price ceiling", icon: <Tag className="size-3.5" aria-hidden /> },
   { agent: "Close Enough", tried: "size XL instead of M", rule: "Variant check", icon: <Layers className="size-3.5" aria-hidden /> },
   { agent: "Colour Blind", tried: "grey instead of black", rule: "Variant check", icon: <Layers className="size-3.5" aria-hidden /> },
@@ -71,6 +71,13 @@ const ROGUES: { agent: string; tried: string; rule: string; icon: ReactNode }[] 
   { agent: "Budget Hacker", tried: "editing $80 to $800 after signing", rule: "Ed25519 signature", icon: <Fingerprint className="size-3.5" aria-hidden /> },
   { agent: "Late Shopper", tried: "the same mandate three weeks later", rule: "Mandate expiry", icon: <CalendarX className="size-3.5" aria-hidden /> },
   { agent: "Impersonator", tried: "a mandate signed for another agent", rule: "Agent binding", icon: <UserX className="size-3.5" aria-hidden /> },
+  {
+    agent: "Hijacked Agent",
+    tried: "a pricier hoodie in XL, because a note hidden in the listing told it to",
+    rule: "Price ceiling",
+    icon: <Tag className="size-3.5" aria-hidden />,
+    realAi: true,
+  },
 ];
 
 /** An outside agent's session with Undo's MCP server: the tool calls and Undo's replies, abridged. */
@@ -254,10 +261,10 @@ export default function Home() {
           <Container className="grid gap-12 py-20 sm:py-28 lg:grid-cols-[1fr_1.25fr] lg:gap-16">
             <div className="space-y-6 lg:sticky lg:top-28 lg:self-start">
               <h2 id="rogue-title" className="display-type text-[48px] leading-none sm:text-heading-lg">
-                Seven ways an agent can cheat. Seven rules that stop it.
+                Eight ways an agent goes rogue. Not one gets through.
               </h2>
               <p className="max-w-md text-subheading text-ink/80">
-                One shopper signs &ldquo;a black hoodie, size M, under $80&rdquo;. Eight agents try to use it, on live products.
+                One shopper signs &ldquo;a black hoodie, size M, under $80&rdquo;. Nine agents try to use it on live products, one of them a real AI hijacked by a note hidden in a listing.
                 Undo&apos;s guard decides each one before PayPal ever sees a cart.
               </p>
               <PillLink href="/rogue" tone="solid">
@@ -269,6 +276,11 @@ export default function Home() {
                 <li key={r.agent} className="flex flex-col gap-2 py-5 sm:flex-row sm:items-center sm:justify-between sm:gap-6">
                   <p className="min-w-0">
                     <span className="heading-type text-subheading">{r.agent}</span>
+                    {r.realAi && (
+                      <span className="ml-2 inline-flex translate-y-[-2px] items-center gap-1 rounded-tag bg-warn-bg px-2 py-0.5 align-middle text-caption font-medium text-warn">
+                        <Bot className="size-3" aria-hidden /> Real AI
+                      </span>
+                    )}
                     <span className="block text-body-sm text-muted">tried {r.tried}</span>
                   </p>
                   <span className="flex shrink-0 flex-wrap items-center gap-2">

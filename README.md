@@ -17,7 +17,7 @@ Built for the [PayPal AI Hackathon](https://paypalaihackathon.devpost.com/). Eve
 |---|---|
 | **Live app** | https://undo-1c56.onrender.com |
 | Shopper demo | [`/shop`](https://undo-1c56.onrender.com/shop) |
-| Rogue agents | [`/rogue`](https://undo-1c56.onrender.com/rogue): eight agents attack one signed mandate, live |
+| Rogue agents | [`/rogue`](https://undo-1c56.onrender.com/rogue): nine agents attack one signed mandate, live, one of them a real AI hijacked by a prompt injection |
 | Merchant console | [`/merchant`](https://undo-1c56.onrender.com/merchant) |
 | MCP server | `https://undo-1c56.onrender.com/api/mcp` |
 | Health | [`/api/health?deep=1`](https://undo-1c56.onrender.com/api/health?deep=1) |
@@ -35,9 +35,10 @@ The app runs on Render's free plan. After a while without visitors it sleeps; th
    [merchant claim](https://undo-1c56.onrender.com/orders/42f33fa9-072d-49fc-9012-75d9a886576d) ·
    [return](https://undo-1c56.onrender.com/orders/265e5167-e26f-435a-82e2-9e19b51df39f).
 1. **Watch the guard work.** Open [`/rogue`](https://undo-1c56.onrender.com/rogue) and press *Let the agents
-   loose*. Seven agents try to break one signed mandate (over budget, wrong size, wrong colour, wrong quantity, an
-   edited budget, an expired mandate, a stolen mandate). Each is stopped by a named rule. The honest agent gets
-   through.
+   loose*. Eight agents try to break one signed mandate (over budget, wrong size, wrong colour, wrong quantity, an
+   edited budget, an expired mandate, a stolen mandate, and a real Gemini agent hijacked by an instruction hidden in a
+   product listing). Each is stopped by a named rule; the hijack needs no special detector, because the cart still
+   has to fit what the shopper signed. The honest agent gets through.
 2. **Buy something with an agent.** On [`/shop`](https://undo-1c56.onrender.com/shop), type *"A black hoodie,
    size M, under $80"*, sign the mandate (your browser makes a device key), and let the agent shop. Approve the
    payment with a **PayPal sandbox personal account**. You land on the order page with the undo countdown running.

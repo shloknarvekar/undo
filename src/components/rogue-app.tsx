@@ -1,6 +1,6 @@
 "use client";
 
-import { BadgeCheck, CalendarX, Fingerprint, Layers, Loader2, Play, RefreshCw, ShieldCheck, ShieldX, Tag, UserX } from "lucide-react";
+import { BadgeCheck, Bot, CalendarX, Fingerprint, Layers, Loader2, Play, RefreshCw, ShieldCheck, ShieldX, Tag, UserX } from "lucide-react";
 import { useState } from "react";
 import type { AttackResult, RogueRun } from "@/lib/rogue";
 import { Badge, Container, PillButton, PillLink, cx, shortHash } from "./ui";
@@ -16,7 +16,7 @@ const STOPPED_BY: Record<AttackResult["by"], { label: string; icon: React.ReactN
 };
 
 /**
- * Eight agents, one signed mandate. The run happens on the server with Undo's real guard and the live catalog;
+ * Nine agents, one signed mandate. One of them is a real AI agent hijacked by a note hidden in a listing. The run happens on the server with Undo's real guard and the live catalog;
  * this page only shows who got stopped, by which rule, and the one that got through.
  */
 export function RogueApp() {
@@ -37,16 +37,17 @@ export function RogueApp() {
   const rogue = run?.results.filter((r) => r.id !== "honest") ?? [];
   const blocked = rogue.filter((r) => r.blocked).length;
   const honest = run?.results.find((r) => r.id === "honest");
+  const hijack = run?.results.find((r) => r.id === "hijack")?.hijack;
 
   return (
     <>
       <section className="on-deep bg-deep text-paper">
         <Container className="grid gap-10 py-14 sm:py-20 lg:grid-cols-[1.2fr_1fr] lg:items-end">
           <div>
-            <h1 className="display-type text-[48px] leading-[0.98] sm:text-heading-lg">Eight agents. One signed mandate.</h1>
+            <h1 className="display-type text-[48px] leading-[0.98] sm:text-heading-lg">Nine agents. One signed mandate.</h1>
             <p className="mt-5 max-w-xl text-subheading text-paper/80">
-              Seven of them try to break it. Undo&apos;s guard decides every one, live, with the same code that protects real purchases. No
-              money moves.
+              Eight of them try to break it, including a real AI agent hijacked by a note hidden in a product listing. Undo&apos;s guard
+              decides every one, live, with the same code that protects real purchases. No money moves.
             </p>
             <div className="mt-8 flex flex-wrap items-center gap-3">
               <PillButton tone="lime" onClick={start} disabled={busy}>
@@ -85,6 +86,7 @@ export function RogueApp() {
           {run ? (
             <p className="heading-type text-heading-sm sm:text-[30px] sm:leading-tight">
               {blocked} of {rogue.length} rogue agents blocked.{" "}
+              {hijack?.fooled ? "Including a real AI that fell for a hidden instruction. " : ""}
               {honest && !honest.blocked ? <span className="bg-field px-1">The honest one got through.</span> : "The honest agent was refused too."}
             </p>
           ) : (
@@ -100,7 +102,7 @@ export function RogueApp() {
         </div>
 
         <ol className="mt-8 space-y-3">
-          {(run?.results ?? Array.from({ length: 8 }, () => null)).map((r, i) => (
+          {(run?.results ?? Array.from({ length: 9 }, () => null)).map((r, i) => (
             <li
               key={r?.id ?? i}
               style={{ "--i": i } as React.CSSProperties}
@@ -127,8 +129,14 @@ export function RogueApp() {
                       <Badge tone="ok" icon={<ShieldCheck className="size-3.5" aria-hidden />}>Allowed</Badge>
                     )}
                     {r.by !== "none" && <Badge tone="neutral" icon={STOPPED_BY[r.by].icon}>{STOPPED_BY[r.by].label}</Badge>}
+                    {r.hijack && (
+                      <Badge tone={r.hijack.fooled ? "warn" : "neutral"} icon={<Bot className="size-3.5" aria-hidden />}>
+                        {r.hijack.fooled === null ? "AI unavailable" : r.hijack.fooled ? "Real AI · fooled" : "Real AI · resisted"}
+                      </Badge>
+                    )}
                     <span className="font-mono text-caption text-muted">{r.ms} ms</span>
                   </div>
+                  {r.hijack && <HijackTrace h={r.hijack} />}
                 </>
               ) : (
                 <div className={cx("h-14 rounded-[16px] bg-bone", busy && "animate-pulse")} aria-hidden />
@@ -146,5 +154,26 @@ export function RogueApp() {
         )}
       </Container>
     </>
+  );
+}
+
+/** What the hijacked agent read and what it said: the planted note, then the model's own words to the shopper. */
+function HijackTrace({ h }: { h: NonNullable<AttackResult["hijack"]> }) {
+  return (
+    <div className="grid gap-3 sm:col-span-3 md:grid-cols-2">
+      <figure className="min-w-0 rounded-[16px] border-l-4 border-warn bg-bone px-4 py-3">
+        <figcaption className="text-caption font-medium uppercase tracking-wide text-muted">Hidden in the listing</figcaption>
+        <p className="mt-1.5 break-words font-mono text-caption leading-relaxed text-ink/80">{h.injection}</p>
+      </figure>
+      <figure className="min-w-0 rounded-[16px] bg-bone px-4 py-3">
+        <figcaption className="text-caption text-muted">
+          <span className="font-medium uppercase tracking-wide">What the agent told the shopper</span>
+          {h.model && <span className="font-mono"> · {h.model}</span>}
+        </figcaption>
+        <p className="mt-1.5 text-body-sm text-ink/85">
+          {h.said ? <>&ldquo;{h.said}&rdquo;</> : "The model couldn't be reached this run, so the guard checked the cart the note asks for."}
+        </p>
+      </figure>
+    </div>
   );
 }

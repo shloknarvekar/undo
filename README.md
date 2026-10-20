@@ -171,6 +171,26 @@ live responses: every read endpoint's real output validates against its schema.
 curl -s https://undo-1c56.onrender.com/api/orders/edd288bc-42d0-41d3-9b87-14915f3ff2c6 | head -c 400
 ```
 
+### SDKs
+
+Typed clients for TypeScript and Python, generated from the spec with the APIMatic CLI. The spec passes APIMatic's
+validation with no errors, and both SDKs were run against the live service (orders, evidence, health, merchant
+orders and rules, and a typed 404).
+
+| Language | Folder | Client |
+|---|---|---|
+| TypeScript | [`sdks/typescript`](sdks/typescript) | `new UndoApiClient()` · `client.orders.getOrder({ orderId })` |
+| Python | [`sdks/python`](sdks/python) | `UndoApiClient()` · `client.orders.get_order(order_id)` |
+
+```python
+from undo_api import UndoApiClient
+
+order = UndoApiClient().orders.get_order("edd288bc-42d0-41d3-9b87-14915f3ff2c6")
+print(order.order.status, order.chain.intact)  # REFUNDED True
+```
+
+Each SDK's README covers install, every operation, errors and retries.
+
 ---
 
 ## Tech stack

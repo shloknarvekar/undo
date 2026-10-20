@@ -1,0 +1,70 @@
+{
+  "name": "undo-api",
+  "version": "1.0.0",
+  "description": "Ctrl+Z for AI agent purchases, built on PayPal.\n\nUndo sits between a shopping agent and PayPal. A shopper signs a mandate (what the agent may buy, for how much)\nwith a key that never leaves their device. The agent shops inside it, PayPal only **authorizes** the money, and\nan undo window opens. Pressing Undo runs a fault check and routes the money: a free void inside the window, or a\nrefund, a merchant claim or a return after capture. When the agent was at fault, its operator pays the merchant\nback through PayPal Payouts. Every step is written to a hash-chained event log anyone can verify.\n\n**Signing.** Mandates and undo requests are signed with Ed25519 by the shopper's device key. The API never\nsigns for a shopper. The exact strings to sign are given with each operation.\n\n**Sandbox.** This deployment runs on the PayPal sandbox; no real money moves. Costly endpoints are rate limited\nper visitor and answer `429` with a `Retry-After` header when the limit or the free-tier budget is reached.\n\n**Agents.** Third-party agents usually connect over MCP (Streamable HTTP at `/api/mcp`, JSON-RPC, not described\nhere). This document covers the HTTP API that the web app, agents and merchants call directly.\n",
+  "type": "module",
+  "exports": {
+    ".": {
+      "import": {
+        "types": "./dist/esm/index.d.ts",
+        "default": "./dist/esm/index.js"
+      },
+      "require": {
+        "types": "./dist/commonjs/index.d.ts",
+        "default": "./dist/commonjs/index.js"
+      }
+    },
+    "./package.json": "./package.json"
+  },
+  "tshy": {
+    "exports": {
+      ".": "./src/index.ts",
+      "./package.json": "./package.json"
+    },
+    "dialects": [
+      "esm",
+      "commonjs"
+    ],
+    "project": "./tsconfig.tshy.json",
+    "selfLink": false
+  },
+  "main": "./dist/commonjs/index.js",
+  "module": "./dist/esm/index.js",
+  "types": "./dist/commonjs/index.d.ts",
+  "files": [
+    "dist",
+    "src",
+    "tsconfig.json",
+    "tsconfig.tshy.json",
+    "README.md",
+    "api-reference.md",
+    "sdk-map.md",
+    "map"
+  ],
+  "sideEffects": false,
+  "engines": {
+    "node": ">=20.3"
+  },
+  "scripts": {
+    "prepare": "tshy",
+    "build": "tshy",
+    "smoke": "node -e \"require('undo-api')\" && node --input-type=module -e \"import('undo-api')\"",
+    "typecheck": "tsc --noEmit",
+    "typecheck:dom": "tsc --noEmit -p tsconfig.dom.json",
+    "lint": "oxlint --type-aware --max-warnings=0 src",
+    "format": "oxfmt src",
+    "format:check": "oxfmt --check src"
+  },
+  "license": "MIT",
+  "devDependencies": {
+    "@types/node": "^20.14.0",
+    "oxfmt": "^0.61.0",
+    "oxlint": "^1.76.0",
+    "oxlint-tsgolint": "^7.0.2001",
+    "tshy": "^4.1.3",
+    "typescript": "^7.0.2"
+  },
+  "dependencies": {
+    "zod": "^4.1.0"
+  }
+}

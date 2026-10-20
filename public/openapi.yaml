@@ -1905,16 +1905,8 @@ components:
             - "#d5d4d8"
         attributes:
           type: object
-          additionalProperties:
-            type: array
-            items:
-              type: string
-              description: One entry in attributes.
-              example: Running
-            description: The value for one key in attributes.
-            example:
-              - Running
-          description: Catalog attributes, each with one or more values.
+          additionalProperties: true
+          description: "Catalog attributes. Each value is a list of strings, for example activity: [Running]."
           example:
             activity:
               - Running

@@ -6,6 +6,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { DeviceKeyUnsupported, getDeviceKey, sha256Hex, undoMessage } from "@/lib/device-key";
 import { proofSummary, type Proof, type ProofKind } from "@/lib/proof";
 import { useFocusTrap } from "./use-focus-trap";
+import { VerifyPanel } from "./verify-panel";
 import { Badge, Container, PillButton, PillLink, StatusBadge, VERDICT, VerdictBadge, cx, money, shortHash } from "./ui";
 
 type Evidence = { source: string; finding: string };
@@ -337,6 +338,8 @@ export function OrderApp() {
               ))}
             </ol>
           </section>
+
+          <VerifyPanel orderId={order.id} label={(type) => EVENT_LABEL[type] ?? type} />
 
           {order.status === "AUTHORIZED" && (
             <section className="rounded-card border border-ink/15 bg-paper p-[27px] sm:p-8">

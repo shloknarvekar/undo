@@ -201,7 +201,7 @@ export default function Home() {
           <Container className="pb-24 sm:pb-32">
             <div id="cases" className="flex flex-col justify-between gap-2 border-t border-paper/15 pt-8 sm:flex-row sm:items-baseline">
               <h3 id="cases-title" className="heading-type text-heading-sm">Four finished cases. Open any of them.</h3>
-              <p className="text-body-sm text-paper/70">Real sandbox orders, with every step&apos;s proof.</p>
+              <p className="text-body-sm text-paper/70">Real sandbox orders. Re-check each one in your own browser.</p>
             </div>
             <ul aria-labelledby="cases-title" className="mt-6 grid gap-px overflow-hidden rounded-card bg-paper/15 sm:grid-cols-2 xl:grid-cols-4">
               {CASES.map((c) => (

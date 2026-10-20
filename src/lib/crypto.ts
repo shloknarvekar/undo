@@ -6,24 +6,9 @@
  * format the browser's WebCrypto produces, so a shopper's device can sign and the server can verify.
  */
 import { createHash, createPrivateKey, createPublicKey, generateKeyPairSync, sign, verify } from "node:crypto";
+import { canonicalJson } from "./canonical";
 
-/** JSON with object keys sorted at every level, so the same data always hashes the same. */
-export function canonicalJson(value: unknown): string {
-  return JSON.stringify(sortKeys(value));
-}
-
-function sortKeys(value: unknown): unknown {
-  if (Array.isArray(value)) return value.map(sortKeys);
-  if (value && typeof value === "object" && !(value instanceof Date)) {
-    return Object.fromEntries(
-      Object.keys(value as Record<string, unknown>)
-        .filter((k) => (value as Record<string, unknown>)[k] !== undefined)
-        .sort()
-        .map((k) => [k, sortKeys((value as Record<string, unknown>)[k])]),
-    );
-  }
-  return value;
-}
+export { canonicalJson };
 
 export function sha256Hex(data: string): string {
   return createHash("sha256").update(data, "utf8").digest("hex");

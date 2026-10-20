@@ -34,6 +34,9 @@ The app runs on Render's free plan. After a while without visitors it sleeps; th
    [refund + operator payout](https://undo-1c56.onrender.com/orders/edd288bc-42d0-41d3-9b87-14915f3ff2c6) ·
    [merchant claim](https://undo-1c56.onrender.com/orders/42f33fa9-072d-49fc-9012-75d9a886576d) ·
    [return](https://undo-1c56.onrender.com/orders/265e5167-e26f-435a-82e2-9e19b51df39f).
+   On any order page, *Verify in my browser* re-checks every hash link and the shopper's Ed25519 signatures with your
+   browser's own WebCrypto, and *Now try to cheat* edits a local copy (an amount, the verdict, the signed budget, a
+   deleted step) to show exactly where the check catches it. The raw evidence is one click to download.
 1. **Watch the guard work.** Open [`/rogue`](https://undo-1c56.onrender.com/rogue) and press *Let the agents
    loose*. Eight agents try to break one signed mandate (over budget, wrong size, wrong colour, wrong quantity, an
    edited budget, an expired mandate, a stolen mandate, and a real Gemini agent hijacked by an instruction hidden in a

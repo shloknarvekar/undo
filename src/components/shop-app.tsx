@@ -3,6 +3,7 @@
 import { AlertTriangle, ArrowRight, Check, Fingerprint, Loader2, ShieldCheck, Sparkles, Undo2 } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { DeviceKeyUnsupported, getDeviceKey } from "@/lib/device-key";
+import { AutopayOption } from "./autopay-option";
 import { Badge, Container, PillButton, PillLink, cx, money } from "./ui";
 
 type Draft = {
@@ -19,12 +20,19 @@ type Draft = {
 type Considered = { id: string; title: string; price: number; ok: boolean; why?: string };
 type ShopResult = {
   orderId: string;
-  approveUrl: string;
+  /** Null when the agent already paid with the shopper's saved wallet. */
+  approveUrl: string | null;
+  paidWith?: "saved_wallet" | "approval";
+  windowEndsAt?: string | null;
+  walletNote?: "no_saved_wallet";
   cart: { title: string; brand: string | null; variant: Record<string, string>; price: number; currency: string; quantity: number; retailer: string; imageUrl: string | null };
   agent: { reasoning: string; confidence: number; unverified: string[]; guard: { bypassed: boolean; violations: { rule: string; expected: string; actual: string }[] }; considered: Considered[] };
   undoWindow: { minutes: number; factors: { factor: string; minutes: number }[] };
 };
 type Stage = "ask" | "review" | "signing" | "shopping" | "cart" | "nomatch";
+
+/** What the shopper was doing, kept across the one-time trip to PayPal to save a wallet. */
+const PENDING_KEY = "undo:pending-mandate";
 
 const EXAMPLES = [
   "Black men's running shoes, size 10, under $120",
@@ -69,6 +77,22 @@ export function ShopApp() {
   const [fingerprint, setFingerprint] = useState<string | null>(null);
   const [result, setResult] = useState<ShopResult | null>(null);
   const [considered, setConsidered] = useState<Considered[]>([]);
+  const [autopay, setAutopay] = useState(false);
+  const [walletSaved, setWalletSaved] = useState(false);
+
+  // Back from saving a wallet in PayPal: put the shopper back on the mandate they were about to sign.
+  useEffect(() => {
+    if (!new URL(window.location.href).searchParams.has("wallet")) return;
+    try {
+      const pending = JSON.parse(sessionStorage.getItem(PENDING_KEY) ?? "null") as { request: string; draft: Draft; careless: boolean } | null;
+      sessionStorage.removeItem(PENDING_KEY);
+      if (!pending) return;
+      setRequest(pending.request);
+      setDraft(pending.draft);
+      setCareless(pending.careless);
+      setStage("review");
+    } catch {}
+  }, []);
 
   async function makeDraft(text: string) {
     setBusy(true);
@@ -96,7 +120,12 @@ export function ShopApp() {
     try {
       const key = await getDeviceKey();
       setFingerprint(key.fingerprint);
-      const p = await post<{ mandate: unknown; signingMessage: string }>("/api/mandates/prepare", { request, draft, shopperKey: key.publicKey });
+      const p = await post<{ mandate: unknown; signingMessage: string }>("/api/mandates/prepare", {
+        request,
+        draft,
+        shopperKey: key.publicKey,
+        ...(autopay && walletSaved ? { payWith: "saved_wallet" } : {}),
+      });
       if (!p.ok) throw new Error(humanError(p.data.error, p.data.detail));
       const signature = await key.sign(p.data.signingMessage);
       const m = await post<{ id: string }>("/api/mandates", { mandate: p.data.mandate, signature });
@@ -257,11 +286,25 @@ export function ShopApp() {
               </form>
             )}
 
+            <div className="mt-8">
+              <AutopayOption
+                checked={autopay}
+                onCheckedChange={setAutopay}
+                onSavedChange={setWalletSaved}
+                returnTo="/shop"
+                onBeforeSave={() => {
+                  try {
+                    sessionStorage.setItem(PENDING_KEY, JSON.stringify({ request, draft, careless }));
+                  } catch {}
+                }}
+              />
+            </div>
+
             <div className="mt-8 flex flex-col-reverse gap-3 sm:flex-row sm:justify-between">
               <PillButton tone="ink" onClick={() => setStage("ask")}>Change request</PillButton>
               <PillButton tone="solid" onClick={signAndShop} disabled={!ready || stage === "signing"}>
                 {stage === "signing" ? <Loader2 className="size-4 animate-spin" aria-hidden /> : <Fingerprint className="size-4" aria-hidden />}
-                {stage === "signing" ? "Signing on this device…" : "Sign & let the agent shop"}
+                {stage === "signing" ? "Signing on this device…" : autopay && walletSaved ? "Sign & let the agent buy" : "Sign & let the agent shop"}
               </PillButton>
             </div>
           </div>
@@ -380,9 +423,18 @@ function CartView({ r, careless }: { r: ShopResult; careless: boolean }) {
       </div>
 
       <aside className="on-deep flex flex-col rounded-card bg-deep p-[27px] text-paper sm:p-10">
+        {r.approveUrl === null && (
+          <p className="mb-5 inline-flex w-fit items-center gap-2 rounded-full bg-field px-3 py-1 text-body-sm font-medium text-deep">
+            <Check className="size-4" aria-hidden /> Paid by your agent, no click needed
+          </p>
+        )}
         <p className="display-type text-[45px] leading-none">{undoWindow.minutes ? windowLabel(undoWindow.minutes) : "No window"}</p>
         <p className="mt-2 text-body text-paper/80">
-          {undoWindow.minutes ? "to undo for free once you approve. The money is only held." : "Low risk, so the payment is captured as soon as you approve."}
+          {r.approveUrl === null
+            ? `to undo for free. Your saved PayPal wallet paid ${money(cart.price * cart.quantity, cart.currency)}, and it's only held, not taken.`
+            : undoWindow.minutes
+              ? "to undo for free once you approve. The money is only held."
+              : "Low risk, so the payment is captured as soon as you approve."}
         </p>
         <ul className="mt-6 space-y-2 text-body-sm text-paper/75">
           {undoWindow.factors.map((f) => (
@@ -392,12 +444,26 @@ function CartView({ r, careless }: { r: ShopResult; careless: boolean }) {
             </li>
           ))}
         </ul>
-        <PillLink href={r.approveUrl} tone="lime" className="mt-8">
-          Approve in PayPal <ArrowRight className="arrow size-4" aria-hidden />
-        </PillLink>
-        <p className="mt-4 text-body-sm text-paper/60">
-          You&apos;ll log in with your PayPal sandbox buyer and come straight back here.{careless ? " This purchase came from the careless demo agent." : ""}
-        </p>
+        {r.approveUrl === null ? (
+          <>
+            <PillLink href={`/orders/${r.orderId}`} tone="lime" className="mt-8">
+              Open the purchase <ArrowRight className="arrow size-4" aria-hidden />
+            </PillLink>
+            <p className="mt-4 text-body-sm text-paper/60">
+              The undo button is on the purchase page.{careless ? " This purchase came from the careless demo agent." : ""}
+            </p>
+          </>
+        ) : (
+          <>
+            <PillLink href={r.approveUrl} tone="lime" className="mt-8">
+              Approve in PayPal <ArrowRight className="arrow size-4" aria-hidden />
+            </PillLink>
+            <p className="mt-4 text-body-sm text-paper/60">
+              You&apos;ll log in with your PayPal sandbox buyer and come straight back here.{careless ? " This purchase came from the careless demo agent." : ""}
+              {r.walletNote === "no_saved_wallet" ? " No saved wallet was found on this device, so it needs your approval this time." : ""}
+            </p>
+          </>
+        )}
       </aside>
     </section>
   );

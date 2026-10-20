@@ -107,3 +107,23 @@ export const appCache = pgTable("app_cache", {
   value: jsonb("value").notNull(),
   at: timestamp("at", { withTimezone: true }).notNull().defaultNow(),
 });
+
+/**
+ * A shopper's PayPal wallet saved with PayPal Vault, tied to the device key that asked for it. PayPal holds the wallet;
+ * Undo keeps only the payment token id (vaultId), which only Undo's own PayPal app can charge.
+ */
+export const wallets = pgTable(
+  "wallets",
+  {
+    id: uuid("id").primaryKey(),
+    shopperKey: text("shopper_key").notNull(),
+    setupTokenId: text("setup_token_id").notNull().unique(),
+    vaultId: text("vault_id"),
+    customerId: text("customer_id"),
+    status: text("status", { enum: ["PENDING", "ACTIVE", "REVOKED"] }).notNull().default("PENDING"),
+    returnTo: text("return_to").notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [index("wallets_shopper_key_idx").on(t.shopperKey)],
+);

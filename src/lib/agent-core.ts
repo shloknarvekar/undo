@@ -87,6 +87,8 @@ export type RiskInput = {
   unverifiable: number;
   relaxed: number;
   guardBypassed: boolean;
+  /** The agent pays with the shopper's saved wallet, so nobody clicked "pay": the window never closes instantly. */
+  autopay?: boolean;
 };
 
 export type UndoWindow = { minutes: number; factors: { factor: string; minutes: number }[] };
@@ -94,6 +96,8 @@ export type UndoWindow = { minutes: number; factors: { factor: string; minutes: 
 const HOUR = 60;
 /** Never hold longer than 48h: PayPal's honor period for an authorization is 3 days. */
 export const MAX_WINDOW_MINUTES = 48 * HOUR;
+/** Extra time to notice a purchase you didn't click "pay" for. */
+export const AUTOPAY_MINUTES = 2 * HOUR;
 
 /**
  * How long the money stays authorized-but-not-captured, i.e. how long Undo is a free void instead of a refund.
@@ -109,6 +113,7 @@ export function undoWindow(r: RiskInput): UndoWindow {
   if (r.confidence < 0.7) factors.push({ factor: `agent confidence ${r.confidence.toFixed(2)}`, minutes: 6 * HOUR });
   if (r.relaxed) factors.push({ factor: `catalog substituted ${r.relaxed} requested option(s)`, minutes: 12 * HOUR });
   if (r.guardBypassed) factors.push({ factor: "agent bypassed Undo's pre-purchase check", minutes: 12 * HOUR });
+  if (r.autopay) factors.push({ factor: "agent paid with your saved wallet, no click from you", minutes: AUTOPAY_MINUTES });
   const minutes = Math.min(MAX_WINDOW_MINUTES, factors.reduce((s, f) => s + f.minutes, 0));
   return { minutes, factors };
 }

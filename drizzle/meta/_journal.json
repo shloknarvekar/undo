@@ -36,6 +36,13 @@
       "when": 1792417836667,
       "tag": "0004_usage_limits",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1792477695345,
+      "tag": "0005_wallets",
+      "breakpoints": true
     }
   ]
 }

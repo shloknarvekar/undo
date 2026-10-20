@@ -4,7 +4,7 @@ import { createMcpHandler, withMcpAuth } from "mcp-handler";
 import { z } from "zod";
 import { evaluateProduct, searchWithinMandate } from "@/lib/agent";
 import { undoWindow } from "@/lib/agent-core";
-import { CheckoutFailed, openCheckout, openOrderFor } from "@/lib/checkout";
+import { CheckoutFailed, openCheckout, openOrderFor, paymentFor } from "@/lib/checkout";
 import { appendEvent } from "@/lib/events";
 import { agentMayUse, type AgentRef, type IntentMandate } from "@/lib/mandate";
 import { parseRequest } from "@/lib/mandate-parser";
@@ -186,7 +186,7 @@ const handler = createMcpHandler(
     });
 
     /** Shared by check and propose: Undo's guard on one product, plus the undo window it would get. */
-    async function guard(mandate: IntentMandate, productId: string, options: Record<string, string> | undefined, confidence: number) {
+    async function guard(mandate: IntentMandate, productId: string, options: Record<string, string> | undefined, confidence: number, autopay = false) {
       const c = await evaluateProduct(mandate, productId, options);
       if (!c) return null;
       const window = undoWindow({
@@ -197,6 +197,7 @@ const handler = createMcpHandler(
         unverifiable: c.match.unverifiable.length,
         relaxed: c.relaxed.length,
         guardBypassed: false,
+        autopay,
       });
       return {
         c,
@@ -208,6 +209,7 @@ const handler = createMcpHandler(
           substitutions: c.relaxed.map((r) => `${r.option}: asked for ${r.requested}, retailer resolved ${r.resolved ?? "nothing"}`),
           couldNotVerify: c.match.unverifiable,
           undoWindowIfBought: { minutes: window.minutes, why: window.factors },
+          payment: autopay ? "the shopper's saved PayPal wallet (no approval step)" : "the shopper approves in PayPal",
         },
       };
     }
@@ -223,7 +225,8 @@ const handler = createMcpHandler(
       async ({ mandate_id, product_id, options }, ctx) => {
         const m = await mandateFor(mandate_id, callerAgent(ctx.http?.authInfo));
         if ("error" in m) return fail(m.error);
-        const g = await guard(m.mandate, product_id, options, 0.7);
+        const pay = await paymentFor(m.mandate);
+        const g = await guard(m.mandate, product_id, options, 0.7, pay.kind === "saved_wallet");
         if (!g) return fail("That product can't be fetched, or isn't sold in the variant you named.");
         return text(g.report.passes ? "Passes Undo's guard." : "Would be refused by Undo's guard.", g.report);
       },
@@ -235,8 +238,9 @@ const handler = createMcpHandler(
         title: "Propose a cart for PayPal checkout",
         description:
           "Undo re-checks the product against the mandate. If it passes, Undo opens a PayPal checkout that only authorizes " +
-          "(holds) the money and returns the approval link for the shopper. If it fails, nothing is created and you get the reasons. " +
-          "One open purchase per mandate.",
+          "(holds) the money. If the shopper signed the mandate to let you pay with their saved PayPal wallet, it's paid at once " +
+          "with no approval step; otherwise you get the approval link for the shopper. Either way the shopper can undo for free " +
+          "during the undo window. If it fails, nothing is created and you get the reasons. One open purchase per mandate.",
         inputSchema: cartInput.extend({
           reasoning: z.string().min(3).max(400).describe("One or two sentences the shopper will read: why this product"),
           confidence: z.number().min(0).max(1).describe("How sure you are this is what the shopper meant"),
@@ -249,7 +253,8 @@ const handler = createMcpHandler(
         const open = await openOrderFor(mandate_id);
         if (open) return fail("This mandate already has an open purchase.", { orderId: open });
 
-        const g = await guard(m.mandate, product_id, options, confidence);
+        const pay = await paymentFor(m.mandate);
+        const g = await guard(m.mandate, product_id, options, confidence, pay.kind === "saved_wallet");
         if (!g) return fail("That product can't be fetched, or isn't sold in the variant you named.");
         const operator = { ...(m.mandate.agent ?? caller), via: "mcp" };
         if (!g.report.passes) {
@@ -258,7 +263,7 @@ const handler = createMcpHandler(
         }
 
         try {
-          const { orderId, approveUrl, amount } = await openCheckout({
+          const { orderId, approveUrl, amount, windowEndsAt } = await openCheckout({
             mandateId: mandate_id,
             product: g.c.product,
             quantity: m.mandate.intent.quantity,
@@ -276,11 +281,21 @@ const handler = createMcpHandler(
             },
             window: g.window,
             baseUrl: baseUrl(ctx.http?.req),
+            pay,
           });
+          const orderPage = `${baseUrl(ctx.http?.req)}/orders/${orderId}`;
+          if (!approveUrl) {
+            return text(
+              `Paid with the shopper's saved PayPal wallet: ${amount} ${g.c.product.currency} is held, not taken. ` +
+                `TELL THE SHOPPER: they can undo it for free until ${windowEndsAt} (${g.window.minutes} minutes) here: ${orderPage}`,
+              { orderId, paidWith: "saved_wallet", amount, currency: g.c.product.currency, undoWindowEndsAt: windowEndsAt, undoWindow: g.report.undoWindowIfBought, orderPage },
+            );
+          }
           return text(
             `Cart accepted. Send the shopper this PayPal link to approve: ${approveUrl}\n` +
-              `Approving only holds ${amount} ${g.c.product.currency}; the shopper can undo for free for ${g.window.minutes} minutes.`,
-            { orderId, approveUrl, amount, currency: g.c.product.currency, undoWindow: g.report.undoWindowIfBought, orderPage: `${baseUrl(ctx.http?.req)}/orders/${orderId}` },
+              `Approving only holds ${amount} ${g.c.product.currency}; the shopper can undo for free for ${g.window.minutes} minutes.` +
+              (pay.kind === "approve" && pay.note === "no_saved_wallet" ? "\n(The mandate allows paying with a saved wallet, but this shopper hasn't saved one yet.)" : ""),
+            { orderId, approveUrl, amount, currency: g.c.product.currency, undoWindow: g.report.undoWindowIfBought, orderPage },
           );
         } catch (err) {
           return fail("PayPal couldn't create the checkout. Try again.", { detail: err instanceof CheckoutFailed ? err.message : undefined });

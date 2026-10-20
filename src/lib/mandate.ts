@@ -54,8 +54,14 @@ export const IntentMandate = z.object({
   request: z.string().max(1000), // the shopper's own words, kept verbatim as evidence
   intent: IntentDraft,
   agent: AgentRef.optional(),
+  /**
+   * Set only when the shopper chose it: the agent may pay with the wallet this device saved, with no PayPal click.
+   * It sits inside the signed bytes, so no agent or server can add it later. Absent = the shopper approves in PayPal.
+   */
+  payWith: z.literal("saved_wallet").optional(),
 });
 export type IntentMandate = z.infer<typeof IntentMandate>;
+export type PayWith = NonNullable<IntentMandate["payWith"]>;
 
 /** A draft can be signed only when every agent question is answered and there is a real budget. */
 export function readyToSign(d: IntentDraft): { ok: true } | { ok: false; reason: "open_questions" | "missing_budget" } {
@@ -64,7 +70,14 @@ export function readyToSign(d: IntentDraft): { ok: true } | { ok: false; reason:
   return { ok: true };
 }
 
-export function prepareMandate(request: string, intent: IntentDraft, shopperKey: string, now = new Date(), agent?: AgentRef): IntentMandate {
+export function prepareMandate(
+  request: string,
+  intent: IntentDraft,
+  shopperKey: string,
+  now = new Date(),
+  agent?: AgentRef,
+  payWith?: PayWith,
+): IntentMandate {
   const ready = readyToSign(IntentDraft.parse(intent));
   if (!ready.ok) throw new Error(`Draft not ready to sign: ${ready.reason}`);
   const expires = new Date(now.getTime() + MANDATE_TTL_DAYS * 86_400_000);
@@ -77,6 +90,7 @@ export function prepareMandate(request: string, intent: IntentDraft, shopperKey:
     request,
     intent: IntentDraft.parse(intent),
     ...(agent ? { agent } : {}),
+    ...(payWith ? { payWith } : {}),
   });
 }
 

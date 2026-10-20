@@ -153,11 +153,14 @@ export const paypal = {
    * The agent's checkout: one line item, AUTHORIZE intent (money is held, not taken, until the undo window
    * closes). custom_id ties the PayPal order back to the Undo order; the request id makes retries safe.
    */
+  /**
+   * The agent's purchase, AUTHORIZE only. With `returnUrl`/`cancelUrl` the shopper approves in PayPal; with `vaultId`
+   * the shopper's saved wallet pays with no redirect, and PayPal authorizes in the same call (status COMPLETED).
+   */
   createAgentOrder(o: {
     undoOrderId: string;
     item: { name: string; sku: string; quantity: number; unitPrice: string; currency: string; url?: string; imageUrl?: string };
-    returnUrl: string;
-    cancelUrl: string;
+    pay: { returnUrl: string; cancelUrl: string } | { vaultId: string };
   }) {
     const { item } = o;
     const total = (Number(item.unitPrice) * item.quantity).toFixed(2);
@@ -191,15 +194,18 @@ export const paypal = {
           },
         ],
         payment_source: {
-          paypal: {
-            experience_context: {
-              brand_name: "Undo Demo Store",
-              user_action: "CONTINUE",
-              shipping_preference: "NO_SHIPPING",
-              return_url: o.returnUrl,
-              cancel_url: o.cancelUrl,
-            },
-          },
+          paypal:
+            "vaultId" in o.pay
+              ? { vault_id: o.pay.vaultId }
+              : {
+                  experience_context: {
+                    brand_name: "Undo Demo Store",
+                    user_action: "CONTINUE",
+                    shipping_preference: "NO_SHIPPING",
+                    return_url: o.pay.returnUrl,
+                    cancel_url: o.pay.cancelUrl,
+                  },
+                },
         },
       },
       `undo-order-${o.undoOrderId}`,
@@ -435,6 +441,34 @@ export const payouts = {
   get(batchId: string) {
     return call<PayoutBatch>("GET", `/v1/payments/payouts/${batchId}`, undefined, undefined, {}, "operator");
   },
+};
+
+export type SetupToken = { id: string; status: string; links?: Link[] };
+export type PaymentToken = { id: string; customer?: { id: string } };
+
+/**
+ * PayPal Vault v3: the shopper approves saving their PayPal wallet once (setup token), and Undo keeps the resulting
+ * payment token. Only this PayPal app can charge it, and every charge is still an AUTHORIZE with an undo window.
+ */
+export const vault = {
+  createSetupToken: (o: { returnUrl: string; cancelUrl: string }) =>
+    call<SetupToken>("POST", "/v3/vault/setup-tokens", {
+      payment_source: {
+        paypal: {
+          description: "Undo: your shopping agent pays inside the mandate you sign, and you can always undo",
+          usage_pattern: "IMMEDIATE",
+          usage_type: "MERCHANT",
+          customer_type: "CONSUMER",
+          permit_multiple_payment_tokens: false,
+          experience_context: { brand_name: "Undo", shipping_preference: "NO_SHIPPING", return_url: o.returnUrl, cancel_url: o.cancelUrl },
+        },
+      },
+    }),
+  getSetupToken: (id: string) => call<SetupToken>("GET", `/v3/vault/setup-tokens/${id}`),
+  /** Deterministic request id: a refreshed return page can't create two payment tokens. */
+  createPaymentToken: (setupTokenId: string) =>
+    call<PaymentToken>("POST", "/v3/vault/payment-tokens", { payment_source: { token: { id: setupTokenId, type: "SETUP_TOKEN" } } }, `undo-vault-${setupTokenId}`),
+  deletePaymentToken: (id: string) => call<Record<string, never>>("DELETE", `/v3/vault/payment-tokens/${id}`),
 };
 
 export function approveLink(order: Order): string | undefined {

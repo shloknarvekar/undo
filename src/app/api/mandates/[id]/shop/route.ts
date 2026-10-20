@@ -3,7 +3,7 @@ import { z } from "zod";
 import { runAgent, NoCompliantProduct } from "@/lib/agent";
 import { undoWindow } from "@/lib/agent-core";
 import { AiUnavailable } from "@/lib/ai";
-import { CheckoutFailed, openCheckout, openOrderFor } from "@/lib/checkout";
+import { CheckoutFailed, openCheckout, openOrderFor, paymentFor } from "@/lib/checkout";
 import { appendEvent } from "@/lib/events";
 import { loadMandate, publicBaseUrl } from "@/lib/store";
 import { QuotaExceeded, limitRoute, quotaResponse } from "@/lib/usage";
@@ -46,6 +46,8 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
 
   const { chosen } = decision;
   const quantity = mandate.intent.quantity;
+  // Saved wallet only if the shopper signed for it and this device saved one; otherwise they approve in PayPal.
+  const pay = await paymentFor(mandate);
   const window = undoWindow({
     price: chosen.product.price,
     quantity,
@@ -54,6 +56,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     unverifiable: chosen.match.unverifiable.length, // decision.unverified also lists the approximate ones; don't count twice
     relaxed: decision.guard.relaxed.length,
     guardBypassed: decision.guard.bypassed,
+    autopay: pay.kind === "saved_wallet",
   });
   const agent = {
     reasoning: decision.reasoning,
@@ -71,11 +74,15 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
   };
 
   try {
-    const { orderId, approveUrl } = await openCheckout({ mandateId: id, product: chosen.product, quantity, agent, window, baseUrl: publicBaseUrl(req) });
+    const { orderId, approveUrl, status, windowEndsAt } = await openCheckout({ mandateId: id, product: chosen.product, quantity, agent, window, baseUrl: publicBaseUrl(req), pay });
     return NextResponse.json(
       {
         orderId,
         approveUrl,
+        status,
+        windowEndsAt,
+        paidWith: pay.kind === "saved_wallet" ? "saved_wallet" : "approval",
+        ...(pay.kind === "approve" && pay.note ? { walletNote: pay.note } : {}),
         cart: { title: chosen.product.title, brand: chosen.product.brand, variant: chosen.product.variant, price: chosen.product.price, currency: chosen.product.currency, quantity, retailer: chosen.product.sourceDomain, imageUrl: chosen.product.imageUrl },
         agent: { reasoning: decision.reasoning, confidence: decision.confidence, unverified: decision.unverified, guard: decision.guard, considered: decision.considered },
         undoWindow: window,

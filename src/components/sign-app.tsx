@@ -3,6 +3,7 @@
 import { AlertTriangle, BadgeCheck, Check, Fingerprint, Loader2, ShieldAlert } from "lucide-react";
 import { useParams } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
+import { AutopayOption } from "./autopay-option";
 import { DeviceKeyUnsupported, getDeviceKey } from "@/lib/device-key";
 import { Badge, Container, PillButton, PillLink, cx, money } from "./ui";
 
@@ -52,6 +53,9 @@ export function SignApp() {
   const [busy, setBusy] = useState<null | "answer" | "sign">(null);
   const [error, setError] = useState<string | null>(null);
   const [fingerprint, setFingerprint] = useState<string | null>(null);
+  const [autopay, setAutopay] = useState(false);
+  const [walletSaved, setWalletSaved] = useState(false);
+  const [paysItself, setPaysItself] = useState(false);
 
   const load = useCallback(async () => {
     const res = await fetch(`/api/mandate-requests/${id}`, { cache: "no-store" });
@@ -79,11 +83,13 @@ export function SignApp() {
     try {
       const key = await getDeviceKey();
       setFingerprint(key.fingerprint);
-      const p = await post<{ mandate: unknown; signingMessage: string }>(id, { action: "prepare", shopperKey: key.publicKey });
+      const payWith = autopay && walletSaved ? ("saved_wallet" as const) : undefined;
+      const p = await post<{ mandate: unknown; signingMessage: string }>(id, { action: "prepare", shopperKey: key.publicKey, ...(payWith ? { payWith } : {}) });
       if (!p.ok) throw new Error(ERRORS[p.data.error ?? ""] ?? "Undo couldn't prepare the mandate.");
       const signature = await key.sign(p.data.signingMessage);
       const s = await post<{ mandateId: string }>(id, { action: "sign", mandate: p.data.mandate, signature });
       if (!s.ok) throw new Error(ERRORS[s.data.error ?? ""] ?? "Undo couldn't store the signature.");
+      setPaysItself(Boolean(payWith));
       await load();
     } catch (err) {
       setError(err instanceof DeviceKeyUnsupported || err instanceof Error ? err.message : "Signing failed.");
@@ -169,9 +175,15 @@ export function SignApp() {
 
         {data.status === "PENDING" && (
           <div className="mt-8">
+            <AutopayOption checked={autopay} onCheckedChange={setAutopay} onSavedChange={setWalletSaved} returnTo={`/mandates/sign/${id}`} />
+          </div>
+        )}
+
+        {data.status === "PENDING" && (
+          <div className="mt-8">
             <PillButton tone="solid" onClick={sign} disabled={!data.ready.ok || busy !== null}>
               {busy === "sign" ? <Loader2 className="size-4 animate-spin" aria-hidden /> : <Fingerprint className="size-4" aria-hidden />}
-              {busy === "sign" ? "Signing on this device…" : `Sign & let ${agent.name} shop`}
+              {busy === "sign" ? "Signing on this device…" : autopay && walletSaved ? `Sign & let ${agent.name} buy` : `Sign & let ${agent.name} shop`}
             </PillButton>
             {!data.ready.ok && <p className="mt-3 text-body-sm text-muted">Answer the questions above first.</p>}
           </div>
@@ -182,6 +194,7 @@ export function SignApp() {
             <Check className="mt-0.5 size-5 shrink-0" aria-hidden />
             <p className="text-body">
               Go back to {agent.name}. It can now shop inside these limits, and Undo will refuse any cart that breaks them.
+              {paysItself ? " It will pay with your saved PayPal wallet without asking you; the purchase page lets you undo it." : ""}
               {fingerprint && <span className="mt-1 block font-mono text-body-sm">Signed by device key {fingerprint}</span>}
             </p>
           </div>

@@ -34,6 +34,7 @@ export const ROUTE_LIMITS = {
   search: [{ max: 10, ms: MIN }, { max: 60, ms: HOUR }], // raw product search (Channel3)
   undo: [{ max: 6, ms: MIN }, { max: 30, ms: HOUR }], // fault checks (Gemini, photos included)
   mcp: [{ max: 60, ms: MIN }, { max: 600, ms: HOUR }], // outside agents; tool calls are chatty, budgets still apply
+  wallet: [{ max: 5, ms: MIN }, { max: 20, ms: HOUR }], // saving or forgetting a PayPal wallet
 } satisfies Record<string, Window[]>;
 export type RouteLimit = keyof typeof ROUTE_LIMITS;
 

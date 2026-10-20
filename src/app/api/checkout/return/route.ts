@@ -1,6 +1,7 @@
 import { eq } from "drizzle-orm";
 import { NextResponse } from "next/server";
 import { getDb, schema } from "@/db";
+import { recordAuthorization } from "@/lib/checkout";
 import { appendEvent } from "@/lib/events";
 import { paypal, PayPalError } from "@/lib/paypal";
 import { loadOrder, publicBaseUrl } from "@/lib/store";
@@ -35,27 +36,14 @@ export async function GET(req: Request) {
     const authorized = await paypal.authorizeOrder(order.paypalOrderId);
     const auth = authorized.purchase_units?.[0]?.payments?.authorizations?.[0];
     if (!auth) throw new Error("PayPal returned no authorization");
-
-    const window = order.risk as UndoWindow;
-    const windowEndsAt = new Date(Date.now() + window.minutes * 60_000);
-    await set({ status: "AUTHORIZED", authorizationId: auth.id, windowEndsAt });
-    await appendEvent(order.mandateId, "PAYMENT_AUTHORIZED", {
+    await recordAuthorization({
       orderId: order.id,
+      mandateId: order.mandateId,
       paypalOrderId: order.paypalOrderId,
+      window: order.risk as UndoWindow,
+      auth,
       payerId: approved.payer?.payer_id ?? null,
-      authorizationId: auth.id,
-      amount: auth.amount,
-      authorizationExpires: auth.expiration_time ?? null,
-      undoWindowMinutes: window.minutes,
-      windowEndsAt: windowEndsAt.toISOString(),
     });
-    await db.update(schema.mandates).set({ status: "FULFILLED" }).where(eq(schema.mandates.id, order.mandateId));
-
-    if (window.minutes === 0) {
-      const capture = await paypal.captureAuthorization(auth.id);
-      await set({ status: "CAPTURED", captureId: capture.id });
-      await appendEvent(order.mandateId, "PAYMENT_CAPTURED", { orderId: order.id, captureId: capture.id, reason: "no undo window (low risk)" });
-    }
     return done();
   } catch (err) {
     const message = err instanceof PayPalError ? err.message : err instanceof Error ? err.message : String(err);

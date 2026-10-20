@@ -78,13 +78,17 @@ export function proofFor(type: string, payload: unknown): Proof {
       };
     case "CHECKOUT_CREATED":
       return { kind: "paypal", how: "PayPal order created to authorize only: money can be held, not taken.", api: "POST /v2/checkout/orders (intent AUTHORIZE)", ref: str(p.paypalOrderId) };
-    case "PAYMENT_AUTHORIZED":
-      return {
-        kind: "paypal",
-        how: `The shopper approved in PayPal; ${money(p.amount) ?? "the payment"} is held${str(p.windowEndsAt) ? ` until ${new Date(String(p.windowEndsAt)).toUTCString()}` : ""}.`,
-        api: "POST /v2/checkout/orders/{id}/authorize",
-        ref: str(p.authorizationId),
-      };
+    case "PAYMENT_AUTHORIZED": {
+      const held = `${money(p.amount) ?? "the payment"} is held${str(p.windowEndsAt) ? ` until ${new Date(String(p.windowEndsAt)).toUTCString()}` : ""}`;
+      return p.paidWith === "saved_wallet"
+        ? {
+            kind: "paypal",
+            how: `The agent paid with the shopper's saved PayPal wallet, with no click, because the signed mandate allows it; ${held}.`,
+            api: "POST /v2/checkout/orders (payment_source.paypal.vault_id)",
+            ref: str(p.authorizationId),
+          }
+        : { kind: "paypal", how: `The shopper approved in PayPal; ${held}.`, api: "POST /v2/checkout/orders/{id}/authorize", ref: str(p.authorizationId) };
+    }
     case "PAYMENT_CAPTURED":
       return { kind: "paypal", how: `Captured: ${str(p.reason) ?? "the undo window closed"}.`, api: "POST /v2/payments/authorizations/{id}/capture", ref: str(p.captureId) };
     case "WINDOW_FAST_FORWARDED":

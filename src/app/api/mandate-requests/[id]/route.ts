@@ -34,7 +34,7 @@ export async function GET(_req: Request, { params }: Ctx) {
 
 const Body = z.discriminatedUnion("action", [
   z.object({ action: z.literal("answer"), answers: z.record(z.string().max(200), z.string().max(200)) }),
-  z.object({ action: z.literal("prepare"), shopperKey: z.string().min(40).max(60) }),
+  z.object({ action: z.literal("prepare"), shopperKey: z.string().min(40).max(60), payWith: z.literal("saved_wallet").optional() }),
   z.object({ action: z.literal("sign"), mandate: IntentMandate, signature: z.string().min(80).max(100) }),
 ]);
 
@@ -71,7 +71,7 @@ export async function POST(req: Request, { params }: Ctx) {
   if (body.action === "prepare") {
     const ready = readyToSign(row.draft);
     if (!ready.ok) return NextResponse.json({ error: ready.reason, mustAsk: row.draft.mustAsk }, { status: 422 });
-    const mandate = prepareMandate(row.request, row.draft, body.shopperKey, new Date(), row.agent);
+    const mandate = prepareMandate(row.request, row.draft, body.shopperKey, new Date(), row.agent, body.payWith);
     return NextResponse.json({ mandate, signingMessage: signingMessage(mandate) });
   }
 

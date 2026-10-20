@@ -60,8 +60,9 @@ The app runs on Render's free plan. After a while without visitors it sleeps; th
    each refresh, a pinned row totals whatever the filters leave on screen, every column has a typed filter, the layout
    is remembered, and *Export CSV* downloads what you see. *Live activity* streams every step from the event log into
    a second grid as row transactions, with a pause control. *Undo windows* is a Bryntum Scheduler timeline: a row per
-   agent, a bar per order running from purchase to the moment its undo window closes, and a line for now, so the
-   purchases a shopper can still undo are the bars crossing it. Click a bar to open the order. Under it, *Agent trust* scores every agent from its
+   agent, a bar per order running from purchase to the moment its undo window closes, and a line for now. Open
+   windows are lime with a live countdown, closed ones say what happened, chips filter by outcome, and the cards under
+   it list the windows closing next. Click a bar or a card to open the order. Under it, *Agent trust* scores every agent from its
    record (clean purchases, faults, refused carts, skipped checks, every point shown), and the store's rules act on
    it at checkout: block agents below a score, give low-trust agents a longer undo window, or accept only registered
    operators. Change a rule and the next checkout follows it, for Undo's agent and every MCP agent.

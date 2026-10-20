@@ -6,7 +6,7 @@ const from = "node_modules/@bryntum/scheduler";
 const to = "public/bryntum";
 
 mkdirSync(to, { recursive: true });
-for (const file of ["scheduler.module.js", "scheduler.css", "svalbard-light.css"]) cpSync(`${from}/${file}`, `${to}/${file}`);
+for (const file of ["scheduler.module.js", "scheduler.css", "svalbard-dark.css"]) cpSync(`${from}/${file}`, `${to}/${file}`);
 // Font Awesome's CSS points at ../webfonts, so the two folders keep their layout.
 for (const file of ["fontawesome.css", "solid.css"]) {
   mkdirSync(`${to}/fontawesome/css`, { recursive: true });

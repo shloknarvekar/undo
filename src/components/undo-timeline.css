@@ -1,20 +1,186 @@
-/* Undo's tokens on top of Bryntum's Svalbard light theme, scoped to the timeline. */
+/* Bryntum's Svalbard dark theme, retuned to Undo's Ink field. Scoped to the timeline and its tooltip. */
 .undo-timeline .b-widget {
   font-family: var(--font-sans);
-  --b-primary: var(--color-ink);
-  --b-grid-header-background: var(--color-bone);
-  --b-grid-header-color: var(--color-ink);
+  --b-primary: var(--color-field);
+  --b-panel-background: var(--color-deep);
+  --b-grid-background: var(--color-deep);
+  --b-grid-cell-background: transparent;
+  --b-grid-cell-color: var(--color-paper);
   --b-grid-cell-font-size: 14px;
-  --b-grid-header-font-size: 13px;
-  --b-current-time-color: var(--color-bad);
+  --b-grid-cell-border-color: rgb(255 255 255 / 0.08);
+  --b-grid-row-border-color: rgb(255 255 255 / 0.08);
+  --b-grid-cell-hover-background: rgb(255 255 255 / 0.03);
+  --b-grid-cell-selected-background: rgb(255 255 255 / 0.05);
+  --b-grid-cell-hover-selected-background: rgb(255 255 255 / 0.05);
+  --b-grid-header-background: var(--color-deep);
+  --b-grid-header-color: rgb(255 255 255 / 0.72);
+  --b-grid-header-border-color: rgb(255 255 255 / 0.1);
+  --b-grid-header-font-size: 12px;
+  --b-grid-splitter-color: rgb(255 255 255 / 0.1);
+  --b-column-lines-tick-color: rgb(255 255 255 / 0.05);
+  --b-column-lines-major-color: rgb(255 255 255 / 0.12);
+  --b-current-time-color: var(--color-field);
+  background: var(--color-deep);
 }
 
-.undo-timeline .b-sch-event {
+/* Dark native scrollbars, so the timeline's own scroll bars sit in the field instead of glaring white. */
+.undo-timeline {
+  color-scheme: dark;
+}
+
+/* Agent column: initials, name, and whether the operator is registered. */
+.ut-agent {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+}
+.ut-avatar {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 36px;
+  height: 36px;
+  border-radius: 999px;
+  border: 1px solid rgb(255 255 255 / 0.25);
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  color: var(--color-paper);
+}
+.ut-avatar.is-verified {
+  border-color: var(--color-field);
+  color: var(--color-field);
+}
+.ut-agent-text {
+  display: grid;
+  min-width: 0;
+  line-height: 1.3;
+}
+.ut-agent-text b,
+.ut-agent-text small {
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+.ut-agent-text b {
   font-weight: 500;
-  border-radius: 8px;
-  cursor: pointer;
+}
+.ut-agent-text small {
+  font-size: 12px;
+  color: rgb(255 255 255 / 0.6);
 }
 
+/* Bars: open windows are solid Rewind; closed ones step back to an outline with a status dot. */
+.undo-timeline .b-sch-event-wrap .b-sch-event {
+  --ut-accent: rgb(255 255 255 / 0.55);
+  border-radius: 10px;
+  border: 1px solid rgb(255 255 255 / 0.18);
+  background: var(--color-deep-2);
+  color: var(--color-paper);
+  padding-inline: 10px;
+  cursor: pointer;
+  transition:
+    border-color 180ms ease-out,
+    transform 180ms ease-out;
+}
+.undo-timeline .b-sch-event-wrap:hover .b-sch-event {
+  border-color: rgb(255 255 255 / 0.6);
+  transform: translateY(-1px);
+}
+.undo-timeline .b-sch-event-wrap.ut-open .b-sch-event,
+.undo-timeline .b-sch-event.ut-open {
+  background: var(--color-field);
+  border-color: var(--color-field);
+  color: var(--color-ink);
+}
+.undo-timeline .b-sch-event-wrap.ut-open:hover .b-sch-event {
+  border-color: var(--color-paper);
+}
+.undo-timeline .ut-undone .b-sch-event,
+.undo-timeline .b-sch-event.ut-undone {
+  --ut-accent: #4ade80;
+}
+.undo-timeline .ut-action .b-sch-event,
+.undo-timeline .b-sch-event.ut-action {
+  --ut-accent: #fbbf24;
+  border-color: rgb(251 191 36 / 0.55);
+}
+.undo-timeline .ut-kept .b-sch-event,
+.undo-timeline .b-sch-event.ut-kept {
+  --ut-accent: rgb(255 255 255 / 0.45);
+}
+
+.ut-bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  width: 100%;
+}
+.ut-dot {
+  flex: none;
+  width: 8px;
+  height: 8px;
+  border-radius: 999px;
+  background: var(--ut-accent);
+}
+.ut-open .ut-dot {
+  background: var(--color-ink);
+}
+.ut-text {
+  display: grid;
+  min-width: 0;
+  line-height: 1.25;
+}
+.ut-text b,
+.ut-text small {
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+.ut-text b {
+  font-size: 13px;
+  font-weight: 600;
+}
+.ut-text small {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  opacity: 0.75;
+}
+.ut-open .ut-text small {
+  opacity: 0.8;
+}
+
+/* The now line, a little heavier than the grid so it reads as the edge between undoable and done. */
+.undo-timeline .b-sch-current-time {
+  border-inline-start-width: 2px;
+}
+
+/* Chip swatches mirror the bars. */
+.ut-swatch {
+  width: 10px;
+  height: 10px;
+  border-radius: 3px;
+  flex: none;
+}
+.ut-swatch-open {
+  background: var(--color-field);
+}
+.ut-swatch-action {
+  border: 1.5px solid #fbbf24;
+}
+.ut-swatch-undone {
+  border: 1.5px solid #4ade80;
+}
+.ut-swatch-kept {
+  border: 1.5px solid rgb(255 255 255 / 0.45);
+}
+
+/* Tooltip floats outside the timeline, so it is styled by its own class. */
+.undo-tooltip {
+  --b-tooltip-background: var(--color-deep-2);
+}
 .undo-tip {
   display: grid;
   gap: 2px;
@@ -22,14 +188,26 @@
   font-family: var(--font-sans);
   font-size: 13px;
   line-height: 1.45;
+  color: rgb(255 255 255 / 0.8);
 }
-
 .undo-tip strong {
   font-size: 14px;
+  color: var(--color-paper);
 }
-
+.undo-tip-status {
+  color: var(--color-field);
+}
 .undo-tip em {
   margin-top: 4px;
   font-style: normal;
-  color: var(--color-muted);
+  color: rgb(255 255 255 / 0.55);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .undo-timeline .b-sch-event-wrap .b-sch-event {
+    transition: none;
+  }
+  .undo-timeline .b-sch-event-wrap:hover .b-sch-event {
+    transform: none;
+  }
 }

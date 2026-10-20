@@ -8,6 +8,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { EVENT_LABEL } from "./order-app";
 import { useFocusTrap } from "./use-focus-trap";
 import { Badge, Container, PillButton, StatusBadge, VERDICT, VerdictBadge, cx, money, shortHash } from "./ui";
+import { AgentTrust } from "./agent-trust";
 
 ModuleRegistry.registerModules([AllCommunityModule]);
 
@@ -97,6 +98,7 @@ export function MerchantConsole() {
   const [query, setQuery] = useState("");
   const [selected, setSelected] = useState<Row | null>(null);
   const [loading, setLoading] = useState(false);
+  const [refreshed, setRefreshed] = useState(0);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -108,6 +110,7 @@ export function MerchantConsole() {
       setSelected((s) => (s ? (body.orders as Row[]).find((r) => r.id === s.id) ?? null : null));
     }
     setLoading(false);
+    setRefreshed((n) => n + 1);
   }, []);
 
   useEffect(() => {
@@ -265,6 +268,8 @@ export function MerchantConsole() {
           )}
         </div>
         <p className="mt-3 text-body-sm text-muted">Click an order, or press Enter on it, to see the evidence and act. Updates every 15 seconds.</p>
+
+        <AgentTrust refreshKey={refreshed} />
       </Container>
 
       {selected && <OrderDrawer row={selected} onClose={() => setSelected(null)} onChanged={load} />}

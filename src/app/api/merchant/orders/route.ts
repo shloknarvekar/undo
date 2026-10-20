@@ -2,6 +2,7 @@ import { desc, eq, sql } from "drizzle-orm";
 import { NextResponse } from "next/server";
 import { getDb, schema } from "@/db";
 import { maybeSweep } from "@/lib/money";
+import { operatorOf } from "@/lib/trust";
 
 /**
  * GET /api/merchant/orders — the merchant console feed: every agent order with its verdict, plus KPIs.
@@ -24,9 +25,8 @@ export async function GET() {
   const orders = rows.map(({ order: o, request }) => {
     const r = o.resolution as Resolution;
     const product = o.product as { title?: string; brand?: string | null; variant?: Record<string, string>; imageUrl?: string | null; sourceDomain?: string };
-    const agent = o.agent as { confidence?: number; guard?: { bypassed?: boolean }; simulated?: string; operator?: { name: string; verified: boolean; via?: string } };
-    // Orders from before agents were recorded came from Undo's own web agent (or its careless demo twin).
-    const operator = agent.operator ?? { name: agent.simulated ? "Careless demo agent" : "Undo web agent", verified: !agent.simulated, via: "web" };
+    const agent = o.agent as { confidence?: number; guard?: { bypassed?: boolean }; simulated?: string };
+    const operator = operatorOf(o.agent);
     return {
       id: o.id,
       createdAt: o.createdAt.toISOString(),

@@ -47,7 +47,7 @@ async function post<T>(path: string, body: unknown): Promise<{ ok: boolean; stat
 
 /** A rate limit or used-up allowance comes with its own plain-words detail from the server; everything else is mapped here. */
 const humanError = (e?: string, detail?: string) =>
-  (e === "rate_limited" && detail) ||
+  ((e === "rate_limited" || e === "agent_blocked") && detail) ||
   (({
     parse_failed: "The AI couldn't read that request. Try rephrasing it.",
     parser_unavailable: "The AI is not configured on this server.",

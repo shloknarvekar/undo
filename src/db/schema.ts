@@ -127,3 +127,10 @@ export const wallets = pgTable(
   },
   (t) => [index("wallets_shopper_key_idx").on(t.shopperKey)],
 );
+
+/** The demo store's own settings, one row per key (e.g. "agent-rules": who may buy, and who gets a longer undo window). */
+export const merchantSettings = pgTable("merchant_settings", {
+  key: text("key").primaryKey(),
+  value: jsonb("value").notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+});

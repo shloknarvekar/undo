@@ -6,6 +6,7 @@ import { AiUnavailable } from "@/lib/ai";
 import { CheckoutFailed, openCheckout, openOrderFor, paymentFor } from "@/lib/checkout";
 import { appendEvent } from "@/lib/events";
 import { loadMandate, publicBaseUrl } from "@/lib/store";
+import { checkAgent, withRule } from "@/lib/trust";
 import { QuotaExceeded, limitRoute, quotaResponse } from "@/lib/usage";
 
 /**
@@ -29,6 +30,15 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
   if (openId) return NextResponse.json({ error: "purchase_already_open", orderId: openId }, { status: 409 });
   const limited = limitRoute(req, "shop");
   if (limited) return limited;
+
+  // The store's agent rules, on this agent's record. A blocked agent is refused before it shops.
+  // The careless demo agent is a stand-in for a third-party agent: liability (and the payout) is billed under its name.
+  const operator = parsed.data.simulate ? { name: "Careless demo agent", verified: false, via: "web" } : { name: "Undo web agent", verified: true, via: "web" };
+  const { trust, effect } = await checkAgent(operator);
+  if (effect.blocked) {
+    await appendEvent(id, "AGENT_BLOCKED", { operator, trustScore: trust.score, reason: effect.blocked });
+    return NextResponse.json({ error: "agent_blocked", detail: effect.blocked, trust }, { status: 403 });
+  }
 
   let decision;
   try {
@@ -58,6 +68,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     guardBypassed: decision.guard.bypassed,
     autopay: pay.kind === "saved_wallet",
   });
+  const finalWindow = withRule(window, effect);
   const agent = {
     reasoning: decision.reasoning,
     confidence: decision.confidence,
@@ -68,13 +79,13 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     considered: decision.considered,
     searches: decision.searches,
     model: decision.model,
-    // The careless demo agent is a stand-in for a third-party agent: liability (and the payout) is billed under its name.
-    operator: parsed.data.simulate ? { name: "Careless demo agent", verified: false, via: "web" } : { name: "Undo web agent", verified: true, via: "web" },
+    operator,
+    trust: { score: trust.score, tier: trust.tier, ruleApplied: effect.reason },
     ...(parsed.data.simulate ? { simulated: parsed.data.simulate } : {}),
   };
 
   try {
-    const { orderId, approveUrl, status, windowEndsAt } = await openCheckout({ mandateId: id, product: chosen.product, quantity, agent, window, baseUrl: publicBaseUrl(req), pay });
+    const { orderId, approveUrl, status, windowEndsAt } = await openCheckout({ mandateId: id, product: chosen.product, quantity, agent, window: finalWindow, baseUrl: publicBaseUrl(req), pay });
     return NextResponse.json(
       {
         orderId,
@@ -85,7 +96,8 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
         ...(pay.kind === "approve" && pay.note ? { walletNote: pay.note } : {}),
         cart: { title: chosen.product.title, brand: chosen.product.brand, variant: chosen.product.variant, price: chosen.product.price, currency: chosen.product.currency, quantity, retailer: chosen.product.sourceDomain, imageUrl: chosen.product.imageUrl },
         agent: { reasoning: decision.reasoning, confidence: decision.confidence, unverified: decision.unverified, guard: decision.guard, considered: decision.considered },
-        undoWindow: window,
+        undoWindow: finalWindow,
+        trust: { score: trust.score, tier: trust.tier },
       },
       { status: 201 },
     );

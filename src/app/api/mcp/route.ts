@@ -5,6 +5,7 @@ import { z } from "zod";
 import { evaluateProduct, searchWithinMandate } from "@/lib/agent";
 import { undoWindow } from "@/lib/agent-core";
 import { CheckoutFailed, openCheckout, openOrderFor, paymentFor } from "@/lib/checkout";
+import { checkAgent, withRule, type RuleEffect } from "@/lib/trust";
 import { appendEvent } from "@/lib/events";
 import { agentMayUse, type AgentRef, type IntentMandate } from "@/lib/mandate";
 import { parseRequest } from "@/lib/mandate-parser";
@@ -186,10 +187,17 @@ const handler = createMcpHandler(
     });
 
     /** Shared by check and propose: Undo's guard on one product, plus the undo window it would get. */
-    async function guard(mandate: IntentMandate, productId: string, options: Record<string, string> | undefined, confidence: number, autopay = false) {
+    async function guard(
+      mandate: IntentMandate,
+      productId: string,
+      options: Record<string, string> | undefined,
+      confidence: number,
+      autopay = false,
+      rule: RuleEffect = { blocked: null, extraMinutes: 0, reason: null },
+    ) {
       const c = await evaluateProduct(mandate, productId, options);
       if (!c) return null;
-      const window = undoWindow({
+      const window = withRule(undoWindow({
         price: c.product.price,
         quantity: mandate.intent.quantity,
         confidence,
@@ -198,7 +206,7 @@ const handler = createMcpHandler(
         relaxed: c.relaxed.length,
         guardBypassed: false,
         autopay,
-      });
+      }), rule);
       return {
         c,
         window,
@@ -226,9 +234,12 @@ const handler = createMcpHandler(
         const m = await mandateFor(mandate_id, callerAgent(ctx.http?.authInfo));
         if ("error" in m) return fail(m.error);
         const pay = await paymentFor(m.mandate);
-        const g = await guard(m.mandate, product_id, options, 0.7, pay.kind === "saved_wallet");
+        const { trust, effect } = await checkAgent({ ...(m.mandate.agent ?? callerAgent(ctx.http?.authInfo)), via: "mcp" });
+        const g = await guard(m.mandate, product_id, options, 0.7, pay.kind === "saved_wallet", effect);
         if (!g) return fail("That product can't be fetched, or isn't sold in the variant you named.");
-        return text(g.report.passes ? "Passes Undo's guard." : "Would be refused by Undo's guard.", g.report);
+        const store = { yourTrustScore: trust.score, tier: trust.tier, ...(effect.blocked ? { blocked: effect.blocked } : effect.reason ? { rule: effect.reason } : {}) };
+        if (effect.blocked) return fail(`This store won't accept a purchase from you: ${effect.blocked}`, { ...g.report, store });
+        return text(g.report.passes ? "Passes Undo's guard." : "Would be refused by Undo's guard.", { ...g.report, store });
       },
     );
 
@@ -253,10 +264,15 @@ const handler = createMcpHandler(
         const open = await openOrderFor(mandate_id);
         if (open) return fail("This mandate already has an open purchase.", { orderId: open });
 
-        const pay = await paymentFor(m.mandate);
-        const g = await guard(m.mandate, product_id, options, confidence, pay.kind === "saved_wallet");
-        if (!g) return fail("That product can't be fetched, or isn't sold in the variant you named.");
         const operator = { ...(m.mandate.agent ?? caller), via: "mcp" };
+        const { trust, effect } = await checkAgent(operator);
+        if (effect.blocked) {
+          await appendEvent(mandate_id, "AGENT_BLOCKED", { operator, trustScore: trust.score, reason: effect.blocked });
+          return fail(`This store won't accept a purchase from you: ${effect.blocked} Nothing was charged.`, { trust });
+        }
+        const pay = await paymentFor(m.mandate);
+        const g = await guard(m.mandate, product_id, options, confidence, pay.kind === "saved_wallet", effect);
+        if (!g) return fail("That product can't be fetched, or isn't sold in the variant you named.");
         if (!g.report.passes) {
           await appendEvent(mandate_id, "AGENT_CART_REJECTED", { operator, product: g.report.product, violations: g.report.violations, substitutions: g.report.substitutions });
           return fail("Refused by Undo's guard: this cart breaks the shopper's mandate. Nothing was charged.", g.report);
@@ -278,6 +294,7 @@ const handler = createMcpHandler(
               searches: [],
               model: null,
               operator,
+              trust: { score: trust.score, tier: trust.tier, ruleApplied: effect.reason },
             },
             window: g.window,
             baseUrl: baseUrl(ctx.http?.req),

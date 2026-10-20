@@ -54,7 +54,10 @@ The app runs on Render's free plan. After a while without visitors it sleeps; th
    redirect, the money is still only held, and the undo window gets two extra hours. *Forget it* deletes the wallet
    at PayPal.
 5. **See the merchant side.** [`/merchant`](https://undo-1c56.onrender.com/merchant) lists every agent order with
-   its verdict, who pays, and any payout from an agent operator.
+   its verdict, who pays, and any payout from an agent operator. Under it, *Agent trust* scores every agent from its
+   record (clean purchases, faults, refused carts, skipped checks, every point shown), and the store's rules act on
+   it at checkout: block agents below a score, give low-trust agents a longer undo window, or accept only registered
+   operators. Change a rule and the next checkout follows it, for Undo's agent and every MCP agent.
 6. **Use your own agent.** Connect Claude (or any MCP client) to the MCP server below and ask it to buy something.
 
 ---

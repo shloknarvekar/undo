@@ -1,14 +1,16 @@
 "use client";
 
-import { AllCommunityModule, ModuleRegistry, themeQuartz, type ColDef, type ICellRendererParams } from "ag-grid-community";
+import { AllCommunityModule, ModuleRegistry, type ColDef, type GridState, type ICellRendererParams } from "ag-grid-community";
 import { AgGridReact } from "ag-grid-react";
-import { AlertTriangle, ExternalLink, FastForward, Loader2, PackageCheck, RefreshCw, Search, ShieldCheck, X } from "lucide-react";
+import { AlertTriangle, Download, ExternalLink, FastForward, Loader2, PackageCheck, RefreshCw, Search, ShieldCheck, X } from "lucide-react";
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { EVENT_LABEL } from "./order-app";
 import { useFocusTrap } from "./use-focus-trap";
 import { Badge, Container, PillButton, StatusBadge, VERDICT, VerdictBadge, cx, money, shortHash } from "./ui";
+import { ActivityFeed } from "./activity-feed";
 import { AgentTrust } from "./agent-trust";
+import { gridTheme } from "./grid-theme";
 
 ModuleRegistry.registerModules([AllCommunityModule]);
 
@@ -36,33 +38,18 @@ type Row = {
   action: string | null;
   windowMinutesLeft: number | null;
   paypalRef: string | null;
+  settledAmount: number;
 };
+/** The pinned totals row: the same fields, summarised as text for whatever the filters leave visible. */
+type TotalsRow = Partial<Record<keyof Row, string | number | null>> & { amount: number };
 type Kpis = { agentOrders: number; undone: number; feesAvoided: number; billedToAgents: number; merchantProtected: number; needsAction: number; heldNow: number };
 type Detail = {
   order: { resolution: { decision: { verdict: string; confidence: number; evidence: { source: string; finding: string }[] }; action: { type: string; reason: string }; evidencePack?: { digest: string }; settlement?: { status: string; amount: string; currency: string; from: string; to: string | null; payoutBatchId?: string; transactionId?: string; error?: string } } | null };
   chain: { intact: boolean; events: { seq: number; type: string; hash: string }[] };
 };
 
-/** AG Grid themed from the Undo tokens (globals.css @theme): DM Sans, ink text, Rewind Mist hover, 30px radius. */
-const gridTheme = themeQuartz.withParams({
-  fontFamily: "var(--font-dm-sans), ui-sans-serif, system-ui",
-  fontSize: 14,
-  headerFontSize: 13,
-  headerFontWeight: 500,
-  foregroundColor: "var(--color-ink)",
-  backgroundColor: "var(--color-paper)",
-  headerBackgroundColor: "var(--color-paper)",
-  headerTextColor: "var(--color-muted)",
-  borderColor: "color-mix(in srgb, var(--color-ink) 8%, transparent)",
-  rowHoverColor: "var(--color-mist)",
-  selectedRowBackgroundColor: "var(--color-mist)",
-  accentColor: "var(--color-deep)",
-  wrapperBorderRadius: 30,
-  wrapperBorder: false,
-  rowHeight: 64,
-  headerHeight: 48,
-  spacing: 6,
-});
+/** Where this browser keeps the merchant's column order, widths and sort between visits. */
+const GRID_STATE_KEY = "undo:orders-grid";
 
 const FILTERS = {
   all: { label: "All", test: () => true },
@@ -99,6 +86,53 @@ export function MerchantConsole() {
   const [selected, setSelected] = useState<Row | null>(null);
   const [loading, setLoading] = useState(false);
   const [refreshed, setRefreshed] = useState(0);
+  const gridRef = useRef<AgGridReact<Row>>(null);
+  const [totals, setTotals] = useState<TotalsRow[]>([]);
+  // The layout this merchant left the grid in last time (read once, before the grid is created).
+  const [savedState, setSavedState] = useState<GridState | undefined>(undefined);
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem(GRID_STATE_KEY);
+      if (raw) setSavedState(JSON.parse(raw) as GridState);
+    } catch {}
+  }, []);
+
+  /** The pinned totals row, recomputed from exactly the rows the filters leave on screen. */
+  const recount = useCallback(() => {
+    const api = gridRef.current?.api;
+    if (!api) return;
+    let n = 0, amount = 0, held = 0, undone = 0, recovered = 0;
+    api.forEachNodeAfterFilter((node) => {
+      const r = node.data;
+      if (!r) return;
+      n++;
+      amount += r.amount;
+      if (r.status === "AUTHORIZED") held += r.amount;
+      if (r.verdict) undone++;
+      recovered += r.settledAmount ?? 0;
+    });
+    setTotals([
+      {
+        product: `${n} order${n === 1 ? "" : "s"} shown`,
+        amount,
+        status: `${money(held)} held now`,
+        verdict: `${undone} undone`,
+        liability: `${money(recovered)} paid back by agents`,
+      },
+    ]);
+  }, []);
+
+  const exportCsv = useCallback(() => {
+    gridRef.current?.api.exportDataAsCsv({
+      fileName: `undo-agent-orders-${new Date().toISOString().slice(0, 10)}.csv`,
+      processCellCallback: (p) => {
+        const field = p.column.getColDef().field;
+        if (field === "amount" && typeof p.value === "number") return p.value.toFixed(2);
+        if (field === "liability" && typeof p.value === "string") return LIABILITY[p.value] ?? p.value;
+        return p.value ?? "";
+      },
+    });
+  }, []);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -132,41 +166,73 @@ export function MerchantConsole() {
         headerName: "When",
         width: 150,
         sort: "desc",
-        valueFormatter: (p) => new Date(p.value).toLocaleString([], { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" }),
+        filter: "agDateColumnFilter",
+        filterParams: { comparator: (day: Date, iso: string) => (new Date(iso).setHours(0, 0, 0, 0) - day.getTime()) },
+        valueFormatter: (p) => (p.node?.rowPinned ? "Totals" : new Date(p.value).toLocaleString([], { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" })),
+        cellClass: (p) => (p.node.rowPinned ? "font-medium" : ""),
       },
-      { field: "product", headerName: "Agent order", flex: 2, minWidth: 260, cellRenderer: ProductCell },
+      {
+        field: "product",
+        headerName: "Agent order",
+        flex: 2,
+        minWidth: 260,
+        cellRendererSelector: (p) => (p.node.rowPinned ? undefined : { component: ProductCell }),
+        cellClass: (p) => (p.node.rowPinned ? "font-medium" : ""),
+      },
       {
         field: "agentName",
         headerName: "Agent",
         width: 190,
-        cellRenderer: (p: ICellRendererParams<Row>) =>
-          p.data && (
-            <span className="flex h-full flex-col justify-center leading-tight">
-              <span className="truncate font-medium">{p.data.agentName}</span>
-              <span className="text-caption text-muted">{p.data.agentVia === "mcp" ? "via MCP" : "Undo web"} · {p.data.agentVerified ? "registered" : "unregistered"}</span>
-            </span>
-          ),
+        cellRendererSelector: (p) =>
+          p.node.rowPinned
+            ? undefined
+            : {
+                component: (q: ICellRendererParams<Row>) =>
+                  q.data && (
+                    <span className="flex h-full flex-col justify-center leading-tight">
+                      <span className="truncate font-medium">{q.data.agentName}</span>
+                      <span className="text-caption text-muted">{q.data.agentVia === "mcp" ? "via MCP" : "Undo web"} · {q.data.agentVerified ? "registered" : "unregistered"}</span>
+                    </span>
+                  ),
+              },
       },
       {
         field: "amount",
         headerName: "Amount",
-        width: 110,
+        width: 120,
         type: "rightAligned",
+        filter: "agNumberColumnFilter",
         valueFormatter: (p) => money(p.value, p.data?.currency),
-        cellClass: "font-mono tabular",
+        cellClass: (p) => cx("font-mono tabular", p.node.rowPinned && "font-medium"),
       },
-      { field: "status", headerName: "Status", width: 190, cellRenderer: (p: ICellRendererParams<Row>) => p.value && <StatusBadge status={p.value} /> },
+      {
+        field: "status",
+        headerName: "Status",
+        width: 190,
+        enableCellChangeFlash: true,
+        cellRendererSelector: (p) => (p.node.rowPinned ? undefined : { component: (q: ICellRendererParams<Row>) => q.value && <StatusBadge status={q.value} /> }),
+      },
       {
         field: "verdict",
         headerName: "Verdict",
         width: 170,
-        cellRenderer: (p: ICellRendererParams<Row>) => (p.value ? <VerdictBadge verdict={p.value} /> : <span className="text-muted">—</span>),
+        enableCellChangeFlash: true,
+        cellRendererSelector: (p) =>
+          p.node.rowPinned ? undefined : { component: (q: ICellRendererParams<Row>) => (q.value ? <VerdictBadge verdict={q.value} /> : <span className="text-muted">—</span>) },
       },
-      { field: "liability", headerName: "Who pays", width: 190, valueFormatter: (p) => (p.value ? LIABILITY[p.value] ?? p.value : "—") },
+      {
+        field: "liability",
+        headerName: "Who pays",
+        width: 210,
+        enableCellChangeFlash: true,
+        valueFormatter: (p) => (p.value ? LIABILITY[p.value] ?? p.value : "—"),
+      },
       {
         field: "windowMinutesLeft",
         headerName: "Undo window",
-        width: 130,
+        width: 140,
+        enableCellChangeFlash: true,
+        filter: "agNumberColumnFilter",
         valueFormatter: (p) => (p.value == null ? "—" : p.value >= 60 ? `${Math.floor(p.value / 60)}h ${p.value % 60}m left` : `${p.value}m left`),
         cellClass: "font-mono tabular",
       },
@@ -226,17 +292,28 @@ export function MerchantConsole() {
               </button>
             ))}
           </div>
-          <label className="relative block w-full lg:w-80">
-            <span className="sr-only">Search orders</span>
-            <Search className="pointer-events-none absolute left-4 top-1/2 size-4 -translate-y-1/2 text-muted" aria-hidden />
-            <input
-              type="search"
-              value={query}
-              onChange={(e) => setQuery(e.target.value)}
-              placeholder="Search product, mandate, status…"
-              className="field-focus min-h-11 w-full rounded-full border border-ink/20 bg-paper pl-11 pr-5 text-body"
-            />
-          </label>
+          <div className="flex w-full gap-2 lg:w-auto">
+            <label className="relative block min-w-0 flex-1 lg:w-80 lg:flex-none">
+              <span className="sr-only">Search orders</span>
+              <Search className="pointer-events-none absolute left-4 top-1/2 size-4 -translate-y-1/2 text-muted" aria-hidden />
+              <input
+                type="search"
+                value={query}
+                onChange={(e) => setQuery(e.target.value)}
+                placeholder="Search product, mandate, status…"
+                className="field-focus min-h-11 w-full rounded-full border border-ink/20 bg-paper pl-11 pr-5 text-body"
+              />
+            </label>
+            <button
+              type="button"
+              onClick={exportCsv}
+              disabled={!rows?.length}
+              className="inline-flex min-h-11 shrink-0 cursor-pointer items-center gap-2 rounded-full border border-ink/20 bg-paper px-5 text-body-sm font-medium transition-colors hover:border-ink disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              <Download className="size-4" aria-hidden /> Export CSV
+              <span className="sr-only"> of the orders shown</span>
+            </button>
+          </div>
         </div>
 
         <div className="mt-6 overflow-hidden rounded-card bg-paper">
@@ -245,17 +322,32 @@ export function MerchantConsole() {
           ) : (
             <div style={{ height: Math.min(720, 112 + Math.max(visible.length, 4) * 64) }}>
               <AgGridReact<Row>
+                ref={gridRef}
                 theme={gridTheme}
                 rowData={visible}
                 columnDefs={columns}
+                defaultColDef={{ resizable: true, sortable: true, filter: true }}
                 quickFilterText={query}
                 getRowId={(p) => p.data.id}
+                // Totals for whatever the filters leave on screen, pinned under the grid.
+                pinnedBottomRowData={totals}
+                onModelUpdated={recount}
+                // Status, verdict, who pays and the countdown flash when a refresh changes them.
+                cellFlashDuration={900}
+                cellFadeDuration={700}
+                initialState={savedState}
+                onStateUpdated={(e) => {
+                  try {
+                    const { columnOrder, columnSizing, columnVisibility, sort } = e.state;
+                    localStorage.setItem(GRID_STATE_KEY, JSON.stringify({ columnOrder, columnSizing, columnVisibility, sort }));
+                  } catch {}
+                }}
                 rowSelection={{ mode: "singleRow", checkboxes: false, enableClickSelection: true }}
-                onRowClicked={(e) => e.data && setSelected(e.data)}
+                onRowClicked={(e) => !e.node.rowPinned && e.data && setSelected(e.data)}
                 // Keyboard: arrow keys move between cells, Enter or Space opens the order.
                 onCellKeyDown={(e) => {
                   const ev = e.event as KeyboardEvent | null | undefined;
-                  if (e.data && ev && (ev.key === "Enter" || ev.key === " ")) {
+                  if (!e.node.rowPinned && e.data && ev && (ev.key === "Enter" || ev.key === " ")) {
                     ev.preventDefault();
                     setSelected(e.data);
                   }
@@ -267,7 +359,11 @@ export function MerchantConsole() {
             </div>
           )}
         </div>
-        <p className="mt-3 text-body-sm text-muted">Click an order, or press Enter on it, to see the evidence and act. Updates every 15 seconds.</p>
+        <p className="mt-3 text-body-sm text-muted">
+          Click an order, or press Enter on it, to see the evidence and act. Updates every 15 seconds; changed cells flash. Column filters are in each header.
+        </p>
+
+        <ActivityFeed />
 
         <AgentTrust refreshKey={refreshed} />
       </Container>

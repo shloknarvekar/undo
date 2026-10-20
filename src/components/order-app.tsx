@@ -35,6 +35,10 @@ type OrderData = {
 };
 
 export const EVENT_LABEL: Record<string, string> = {
+  AGENT_BLOCKED: "Agent refused by the store's rules",
+  MERCHANT_RULES_CHANGED: "Store's agent rules changed",
+  WALLET_SAVED: "PayPal wallet saved for the agent",
+  WALLET_FORGOTTEN: "Saved PayPal wallet forgotten",
   MANDATE_SIGNED: "Mandate signed on your device",
   CART_PROPOSED: "Agent proposed a cart",
   CHECKOUT_CREATED: "PayPal checkout created (authorize only)",

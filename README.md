@@ -251,6 +251,9 @@ tests/                 unit tests (node:test)
 
 ## Limitations, honestly
 
+The full threat model, every way agent purchases can go wrong and exactly what in Undo stops each one (with links to
+watch it happen), is at [`/security`](https://undo-1c56.onrender.com/security). The short version of what it doesn't cover:
+
 - **Sandbox only.** PayPal sandbox accounts, a demo store, and no real money.
 - **PayPal disputes aren't opened through the API.** Creating a dispute as the buyer needs a partner permission this
   app doesn't have (`spike:dispute-create` records the error). The merchant-fault path opens Undo's own claim with

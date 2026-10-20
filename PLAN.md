@@ -129,7 +129,7 @@ One feature per slot, each shipped live and verified before the next starts. Gat
 | Oct 29 (Thu) | **Done Oct 20.** Phone photo by QR for wrong-item cases; desktop verdict updates live | done: one-time 15-min QR link, phone sends, computer collects once and signs over its hash |
 | Oct 30 (Fri) | **Bryntum** (free trial): undo-window timeline in the merchant console, one bar per held order from authorize to window close, voids and captures marked | live orders on the timeline, a void ends its bar |
 | Oct 31 (Sat) | OpenAPI spec, Postman collection, SDKs generated with APIMatic | collection runs green against the live app |
-| Nov 1 (Sun) | **AG Grid** showcase (**done Oct 20**: live activity grid streamed by row transactions, flashing cells, pinned totals row, CSV export, type-aware column filters, remembered layout). Threat model page | both live |
+| Nov 1 (Sun) | **AG Grid** showcase (**done Oct 20**: live activity grid streamed by row transactions, flashing cells, pinned totals row, CSV export, type-aware column filters, remembered layout). Threat model page (**done Oct 20**: /security, 17 threats in 6 stages, each with its mechanism and a live proof link, plus honest limits) | both live |
 | Nov 2 (Mon) | Landing, README and video brief updated for every new feature | docs match the app |
 | Nov 3–4 (Tue–Wed) | Full QA: every flow on live, desktop + phone, accessibility pass, all spikes re-run; fix everything found | zero known bugs |
 | Nov 5 (Thu) | **Feature freeze.** Record the Claude MCP clip; send the final brief to the video maker | brief sent |

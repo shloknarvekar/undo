@@ -267,9 +267,14 @@ export default function Home() {
                 One shopper signs &ldquo;a black hoodie, size M, under $80&rdquo;. Nine agents try to use it on live products, one of them a real AI hijacked by a note hidden in a listing.
                 Undo&apos;s guard decides each one before PayPal ever sees a cart.
               </p>
-              <PillLink href="/rogue" tone="solid">
-                Run it live <ArrowRight className="arrow size-4" aria-hidden />
-              </PillLink>
+              <div className="flex flex-wrap items-center gap-x-6 gap-y-2">
+                <PillLink href="/rogue" tone="solid">
+                  Run it live <ArrowRight className="arrow size-4" aria-hidden />
+                </PillLink>
+                <Link href="/security" className="inline-flex min-h-11 items-center text-body font-medium underline underline-offset-4 hover:text-muted">
+                  Read the threat model
+                </Link>
+              </div>
             </div>
             <Reveal as="ol" className="divide-y divide-ink/10 rounded-card bg-paper px-6 sm:px-8">
               {ROGUES.map((r) => (

@@ -67,6 +67,7 @@ export function SiteFooter() {
           <FooterLink href="/shop">Shopper demo</FooterLink>
           <FooterLink href="/merchant">Merchant console</FooterLink>
           <FooterLink href="/rogue">Rogue agents</FooterLink>
+          <FooterLink href="/security">Threat model</FooterLink>
           <FooterLink href="/#how">How it works</FooterLink>
         </div>
         <div className="space-y-2">

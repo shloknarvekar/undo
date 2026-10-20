@@ -84,20 +84,28 @@ async function call<T>(
   requestId?: string,
   extraHeaders: Record<string, string> = {},
   account: Account = "merchant",
+  retried = false,
 ): Promise<T> {
   const { baseUrl } = config(account);
   const multipart = body instanceof FormData;
+  const idempotencyKey = method === "POST" ? (requestId ?? randomUUID()) : undefined;
   const res = await fetch(`${baseUrl}${path}`, {
     method,
     headers: {
       Authorization: `Bearer ${await accessToken(account)}`,
       ...(multipart ? {} : { "Content-Type": "application/json" }),
       Prefer: "return=representation",
-      ...(method === "POST" ? { "PayPal-Request-Id": requestId ?? randomUUID() } : {}),
+      ...(idempotencyKey ? { "PayPal-Request-Id": idempotencyKey } : {}),
       ...extraHeaders,
     },
     body: body === undefined ? undefined : multipart ? body : JSON.stringify(body),
   });
+  // A token PayPal ended early (revoked, or app permissions changed) is replaced once, then the call is retried.
+  // The PayPal-Request-Id is kept, so a retried money call can't run twice.
+  if (res.status === 401 && !retried) {
+    delete cachedTokens[account];
+    return call<T>(method, path, body, idempotencyKey, extraHeaders, account, true);
+  }
   const text = await res.text();
   const json = text ? JSON.parse(text) : {};
   if (!res.ok) {

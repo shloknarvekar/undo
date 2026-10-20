@@ -19,7 +19,8 @@
     "spike:agent": "tsx scripts/spike-agent.ts",
     "spike:undo": "tsx scripts/spike-undo.ts",
     "spike:mcp": "tsx scripts/spike-mcp.ts",
-    "spike:payouts": "tsx scripts/spike-payouts.ts"
+    "spike:payouts": "tsx scripts/spike-payouts.ts",
+    "spike:vault": "tsx scripts/spike-vault.ts"
   },
   "dependencies": {
     "@ai-sdk/google": "^4.0.99",

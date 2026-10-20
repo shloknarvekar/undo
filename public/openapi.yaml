@@ -1,4 +1,3 @@
-# Undo HTTP API. Checked against live responses; keep it in step with src/app/api.
 openapi: 3.0.3
 info:
   title: Undo API
@@ -26,6 +25,16 @@ info:
   license:
     name: MIT
     url: https://opensource.org/licenses/MIT
+  x-server-configuration:
+    default-environment: Production
+    default-server: Default
+    environments:
+      - name: Production
+        servers:
+          - name: Default
+            url: https://undo-1c56.onrender.com
+            description: Undo's API on Render.
+        description: The live sandbox deployment. PayPal sandbox only; no real money moves.
 servers:
   - url: https://undo-1c56.onrender.com
     description: Live sandbox deployment
@@ -62,7 +71,8 @@ paths:
           description: Present (any value) to also check PayPal and the database.
           schema:
             type: string
-          example: "1"
+            description: Present (any value) to also check PayPal and the database.
+            example: "1"
       responses:
         "200":
           description: Healthy.
@@ -111,6 +121,7 @@ paths:
               maxPrice: 80
               color: black
               limit: 5
+        description: What to search for and how to filter it.
       responses:
         "200":
           description: Matching products with an offer.
@@ -201,7 +212,8 @@ paths:
           description: Catalog product id (`channel3Id` from a search).
           schema:
             type: string
-          example: w25336I
+            description: Catalog product id (`channel3Id` from a search).
+            example: w25336I
         - name: options
           in: query
           required: false
@@ -212,9 +224,12 @@ paths:
             type: object
             additionalProperties:
               type: string
-          example:
-            option_Size: "10.5"
-            option_Color: Black
+              description: The value for that option.
+              example: "10.5"
+            description: Variant options as `option_<Name>` keys.
+            example:
+              option_Size: "10.5"
+              option_Color: Black
       responses:
         "200":
           description: The product at the closest available variant.
@@ -299,17 +314,10 @@ paths:
         content:
           application/json:
             schema:
-              type: object
-              required:
-                - request
-              properties:
-                request:
-                  type: string
-                  minLength: 3
-                  maxLength: 1000
-                  description: The shopper's own words.
+              $ref: "#/components/schemas/DraftMandateRequest"
             example:
               request: A black hoodie in size M under $80
+        description: The shopper's request in their own words.
       responses:
         "200":
           description: The draft and whether it can be signed as is.
@@ -353,6 +361,20 @@ paths:
           application/json:
             schema:
               $ref: "#/components/schemas/PrepareMandate"
+            example:
+              request: A black hoodie in size M under $80
+              draft:
+                item: black hoodie
+                category: hoodie
+                quantity: 1
+                maxPrice: 80
+                currency: USD
+                attributes:
+                  color: black
+                  size: M
+                mustAsk: []
+              shopperKey: aHBQ5B27O2BiDV0oWgOigpsXZKjOfhcYYMch5pZ5H0c=
+        description: The draft, the shopper's words and the device key that will sign.
       responses:
         "200":
           description: The mandate and the string to sign.
@@ -407,6 +429,27 @@ paths:
           application/json:
             schema:
               $ref: "#/components/schemas/SignedMandate"
+            example:
+              mandate:
+                version: 1
+                id: 2f4069f0-2367-4f08-acc6-d9cf1cf6669a
+                createdAt: "2026-10-20T04:18:17.928Z"
+                expiresAt: "2026-11-03T04:18:17.928Z"
+                shopperKey: aHBQ5B27O2BiDV0oWgOigpsXZKjOfhcYYMch5pZ5H0c=
+                request: Buy me black men's running shoes, size 10, under $120
+                intent:
+                  item: running shoes
+                  category: running shoes
+                  quantity: 1
+                  maxPrice: 120
+                  currency: USD
+                  attributes:
+                    size: "10"
+                    color: black
+                  gender: male
+                  mustAsk: []
+              signature: derQBgmEoL8kvl3vfHVsmqTVAkGTSvb2ShqDoVFKdSC5U5PpGkYAUsDzgSd80QyEpGEPh4966mrEQ9CzBw0IDA==
+        description: The mandate and the shopper's signature over it.
       responses:
         "201":
           description: Stored.
@@ -502,13 +545,9 @@ paths:
         content:
           application/json:
             schema:
-              type: object
-              properties:
-                simulate:
-                  type: string
-                  enum:
-                    - unguarded_wrong_variant
-                  description: Demo only. A careless third-party agent that skips Undo's checks and buys the wrong variant.
+              $ref: "#/components/schemas/ShopMandateRequest"
+            example: {}
+        description: Optional demo settings. Send {} for a normal run.
       responses:
         "201":
           description: Checkout opened.
@@ -650,25 +689,19 @@ paths:
         content:
           application/json:
             schema:
-              oneOf:
-                - $ref: "#/components/schemas/AnswerAction"
-                - $ref: "#/components/schemas/PrepareAction"
-                - $ref: "#/components/schemas/SignAction"
-              discriminator:
-                propertyName: action
-                mapping:
-                  answer: "#/components/schemas/AnswerAction"
-                  prepare: "#/components/schemas/PrepareAction"
-                  sign: "#/components/schemas/SignAction"
+              $ref: "#/components/schemas/MandateRequestAction"
+            example:
+              action: answer
+              answers:
+                What size?: M
+        description: The shopper's answer, a request to prepare the mandate, or the signed mandate.
       responses:
         "200":
           description: Answered (new draft) or prepared (mandate and signing message).
           content:
             application/json:
               schema:
-                oneOf:
-                  - $ref: "#/components/schemas/DraftResult"
-                  - $ref: "#/components/schemas/PreparedMandate"
+                $ref: "#/components/schemas/MandateRequestActionResult"
               example:
                 mandate:
                   version: 1
@@ -697,18 +730,7 @@ paths:
           content:
             application/json:
               schema:
-                type: object
-                required:
-                  - mandateId
-                  - digest
-                properties:
-                  mandateId:
-                    type: string
-                    format: uuid
-                    description: The stored mandate's id.
-                  digest:
-                    type: string
-                    description: SHA-256 of the canonical mandate.
+                $ref: "#/components/schemas/MandateRequestSigned"
               example:
                 mandateId: 2f4069f0-2367-4f08-acc6-d9cf1cf6669a
                 digest: 7bf66d54681f2b73e2f05ee0d49b5a68776908620751daaf0102b9f0b17fcac6
@@ -1087,6 +1109,11 @@ paths:
           application/json:
             schema:
               $ref: "#/components/schemas/UndoRequest"
+            example:
+              reason: This isn't what I asked for.
+              requestedAt: "2026-10-20T16:30:00.000Z"
+              signature: derQBgmEoL8kvl3vfHVsmqTVAkGTSvb2ShqDoVFKdSC5U5PpGkYAUsDzgSd80QyEpGEPh4966mrEQ9CzBw0IDA==
+        description: Why the shopper is undoing, an optional photo, and their signature.
       responses:
         "200":
           description: The verdict and what happened to the money.
@@ -1148,34 +1175,17 @@ paths:
         content:
           application/json:
             schema:
-              type: object
-              required:
-                - action
-              properties:
-                action:
-                  type: string
-                  enum:
-                    - accept_claim
-                    - return_received
-                    - retry_settlement
-                  description: >-
-                    accept_claim refunds a merchant-fault claim; return_received refunds a return minus the restocking
-                    fee; retry_settlement retries a failed agent payout.
+              $ref: "#/components/schemas/ResolveOrderRequest"
+            example:
+              action: retry_settlement
+        description: The merchant's decision.
       responses:
         "200":
           description: Done; the body describes the PayPal actions taken.
           content:
             application/json:
               schema:
-                type: object
-                required:
-                  - orderId
-                properties:
-                  orderId:
-                    type: string
-                    format: uuid
-                    description: The order that was resolved.
-                additionalProperties: true
+                $ref: "#/components/schemas/ResolveOrderResult"
               example:
                 orderId: edd288bc-42d0-41d3-9b87-14915f3ff2c6
                 settlement:
@@ -1380,6 +1390,7 @@ paths:
               extendBelow: 50
               extendMinutes: 360
               blockUnverified: false
+        description: The rules to apply from the next checkout.
       responses:
         "200":
           description: The rules now in force.
@@ -1411,21 +1422,15 @@ paths:
           schema:
             type: integer
             minimum: 0
+            description: Only events with an id greater than this.
+            example: 1200
       responses:
         "200":
           description: Activity events.
           content:
             application/json:
               schema:
-                type: object
-                required:
-                  - events
-                properties:
-                  events:
-                    type: array
-                    items:
-                      $ref: "#/components/schemas/ActivityEvent"
-                    description: Events, newest first.
+                $ref: "#/components/schemas/ActivityFeed"
               example:
                 events:
                   - id: 226
@@ -1456,7 +1461,8 @@ components:
       schema:
         type: string
         format: uuid
-      example: 2f4069f0-2367-4f08-acc6-d9cf1cf6669a
+        description: Mandate id.
+        example: 2f4069f0-2367-4f08-acc6-d9cf1cf6669a
     RequestId:
       name: requestId
       in: path
@@ -1465,7 +1471,8 @@ components:
       schema:
         type: string
         format: uuid
-      example: 7d1f0c2a-3b4e-4f5a-9c6d-8e7f1a2b3c4d
+        description: Mandate request id.
+        example: 7d1f0c2a-3b4e-4f5a-9c6d-8e7f1a2b3c4d
     OrderId:
       name: orderId
       in: path
@@ -1474,7 +1481,8 @@ components:
       schema:
         type: string
         format: uuid
-      example: edd288bc-42d0-41d3-9b87-14915f3ff2c6
+        description: Undo order id.
+        example: edd288bc-42d0-41d3-9b87-14915f3ff2c6
   responses:
     InvalidRequest:
       description: The body failed validation; `issues` lists each problem.
@@ -1482,6 +1490,13 @@ components:
         application/json:
           schema:
             $ref: "#/components/schemas/Error"
+          example:
+            error: invalid_request
+            issues:
+              - code: too_small
+                message: String must contain at least 3 character(s)
+                path:
+                  - request
     NotFound:
       description: Not found.
       content:
@@ -1496,18 +1511,25 @@ components:
         application/json:
           schema:
             $ref: "#/components/schemas/Error"
+          example:
+            error: bad_signature
     Conflict:
       description: The resource is not in a state that allows this.
       content:
         application/json:
           schema:
             $ref: "#/components/schemas/Error"
+          example:
+            error: not_undoable
+            status: VOIDED
     Unprocessable:
       description: Valid shape, but the content can't be accepted.
       content:
         application/json:
           schema:
             $ref: "#/components/schemas/Error"
+          example:
+            error: stale_request
     RateLimited:
       description: Too many requests from this visitor, or the free-tier budget is spent.
       headers:
@@ -1515,22 +1537,33 @@ components:
           description: Seconds to wait.
           schema:
             type: integer
+            example: 120
+            description: Seconds to wait before trying again.
       content:
         application/json:
           schema:
             $ref: "#/components/schemas/RateLimited"
+          example:
+            error: rate_limited
+            detail: That's a lot of tries in a short time. Give it 2 minutes and try again.
+            retryAfter: 120
     UpstreamError:
       description: PayPal, the catalog or the AI model failed.
       content:
         application/json:
           schema:
             $ref: "#/components/schemas/Error"
+          example:
+            error: paypal_checkout_failed
+            detail: PayPal returned 500
     Unavailable:
       description: The AI model is unavailable right now.
       content:
         application/json:
           schema:
             $ref: "#/components/schemas/Error"
+          example:
+            error: ai_unavailable
   schemas:
     Error:
       type: object
@@ -1540,15 +1573,21 @@ components:
         error:
           type: string
           description: Machine-readable code, for example `not_found`, `bad_signature`, `purchase_already_open`.
+          example: not_found
         detail:
           type: string
           description: Human-readable detail, when there is one.
+          example: That's a lot of tries in a short time. Give it 2 minutes and try again.
         issues:
           type: array
           description: Validation problems, on `invalid_request`.
           items:
             type: object
             additionalProperties: true
+            description: One entry in issues.
+            example: {}
+          example:
+            - {}
       additionalProperties: true
       description: An error. error is a stable machine-readable code; detail explains it.
       example:
@@ -1561,16 +1600,15 @@ components:
         - retryAfter
       properties:
         error:
-          type: string
-          enum:
-            - rate_limited
-          description: Always rate_limited.
+          $ref: "#/components/schemas/RateLimitCode"
         detail:
           type: string
           description: What happened and how long to wait, in plain words.
+          example: That's a lot of tries in a short time. Give it 2 minutes and try again.
         retryAfter:
           type: integer
           description: Seconds to wait.
+          example: 120
       description: Returned with 429 when this visitor made too many requests or a free-tier budget is spent.
       example:
         error: rate_limited
@@ -1587,42 +1625,33 @@ components:
         ok:
           type: boolean
           description: True when every check that ran passed.
+          example: true
         service:
           type: string
           description: Always undo.
+          example: undo
         commit:
           type: string
           description: Deployed commit, or `local`.
+          example: a1dd1af
         configured:
-          type: object
-          required:
-            - paypal
-            - channel3
-            - database
-          properties:
-            paypal:
-              type: boolean
-              description: PayPal sandbox client id and secret are set.
-            channel3:
-              type: boolean
-              description: The product catalog key is set.
-            database:
-              type: boolean
-              description: The Postgres connection string is set.
-          description: Which integrations have credentials set. Never the values.
+          $ref: "#/components/schemas/ConfiguredIntegrations"
         paypal:
           type: string
           description: With `deep`, `reachable` or the error.
+          example: reachable
         database:
           type: object
           additionalProperties: true
           description: >-
             With deep: whether a live query worked, how long it took, and the shape of the connection URL (never
             credentials).
+          example: {}
         usage:
           type: object
           additionalProperties: true
           description: "With deep: free-tier budget used so far today and this month."
+          example: {}
       description: Service health. Never includes secret values.
       example:
         ok: true
@@ -1642,39 +1671,37 @@ components:
           minLength: 1
           maxLength: 500
           description: What to search for, in plain words.
+          example: black hoodie
         maxPrice:
           type: number
           minimum: 0.01
           description: Highest price per item.
+          example: 80
         minPrice:
           type: number
           minimum: 0
           description: Lowest price per item.
+          example: 20
         color:
           type: string
           maxLength: 30
           description: Color name, for example black.
+          example: black
         category:
           type: string
           maxLength: 60
           description: Plain-words category, resolved server-side.
+          example: hoodie
         gender:
-          type: string
-          enum:
-            - male
-            - female
-          description: Limit to men's or women's products.
+          $ref: "#/components/schemas/Gender"
         limit:
           type: integer
           minimum: 1
           maximum: 30
           description: How many products to return.
+          example: 5
         mode:
-          type: string
-          enum:
-            - default
-            - agentic
-          description: agentic lets the catalog rewrite the query for better matches.
+          $ref: "#/components/schemas/SearchMode"
       description: A catalog search with structured filters.
       example:
         query: black hoodie
@@ -1690,11 +1717,68 @@ components:
           type: string
           nullable: true
           description: The catalog category the search was narrowed to.
+          example: hoodies
         products:
           type: array
           items:
             $ref: "#/components/schemas/Product"
           description: Products that have at least one offer.
+          example:
+            - channel3Id: w25336I
+              title: UA Infinite Pro Men's Running Shoes
+              brand: Under Armour
+              description: >-
+                These men's running shoes from Under Armour, the UA Infinite Pro, are designed for endurance with a
+                focus on comfort and support. They feature a breathable e…
+              price: 116.97
+              currency: USD
+              imageUrl: https://cdn.trychannel3.com/aed9ec20-0e99-49b6-b011-2425732889be?aid=01M5D44F1Y9VDE34RVPPTF1H15&mid=oKaH
+              sourceUrl: >-
+                https://buy.trychannel3.com/w25336I-oKaH-Wqce8l?o=01KVATPXMQW09XVTMRDEW2Q1Y9&aid=01M5D44F1Y9VDE34RVPPTF1H15
+              sourceDomain: underarmour.com
+              colors:
+                - "#1e1e20"
+                - "#d5d4d8"
+              attributes:
+                activity:
+                  - Running
+                pattern:
+                  - Texture
+                  - Geometric
+                closure-type:
+                  - Straps
+                  - Lace-up
+                heel-height-type:
+                  - Flat
+                  - Low
+                footwear-material:
+                  - Mesh
+                  - Polyester
+                shoe-fit:
+                  - Regular
+                shoe-features:
+                  - Breathable design
+                  - Cushioned
+                toe-style:
+                  - Round
+                outsole-material:
+                  - Rubber
+                footwear-support-type:
+                  - Neutral
+                  - Stability
+                lining-material:
+                  - Synthetic
+              variant:
+                Size: "10.5"
+              variantOptions:
+                - name: Color
+                  values:
+                    - Black
+                    - White
+                - name: Size
+                  values:
+                    - "7"
+                    - "8"
       description: Search results.
       example:
         category: hoodies
@@ -1771,20 +1855,27 @@ components:
         channel3Id:
           type: string
           description: Catalog product id. Use it with getProduct.
+          example: w25336I
         title:
           type: string
           description: Product title.
+          example: UA Infinite Pro Men's Running Shoes
         brand:
           type: string
           nullable: true
           description: Brand name, when known.
+          example: Under Armour
         description:
           type: string
           nullable: true
           description: Product description from the retailer, when there is one.
+          example: >-
+            These men's running shoes from Under Armour, the UA Infinite Pro, are designed for endurance with a focus on
+            comfort and support. They feature a breathable e…
         price:
           type: number
           description: Price of the chosen offer, per item.
+          example: 116.97
         currency:
           type: string
           example: USD
@@ -1793,46 +1884,89 @@ components:
           type: string
           nullable: true
           description: Product image URL, when there is one.
+          example: https://cdn.trychannel3.com/aed9ec20-0e99-49b6-b011-2425732889be?aid=01M5D44F1Y9VDE34RVPPTF1H15&mid=oKaH
         sourceUrl:
           type: string
           description: Where the product is sold.
+          example: https://buy.trychannel3.com/w25336I-oKaH-Wqce8l?o=01KVATPXMQW09XVTMRDEW2Q1Y9&aid=01M5D44F1Y9VDE34RVPPTF1H15
         sourceDomain:
           type: string
           description: The retailer's domain.
+          example: underarmour.com
         colors:
           type: array
           items:
             type: string
+            description: One entry in colors.
+            example: "#1e1e20"
           description: Colors of the product as hex codes.
+          example:
+            - "#1e1e20"
+            - "#d5d4d8"
         attributes:
           type: object
           additionalProperties:
             type: array
             items:
               type: string
+              description: One entry in attributes.
+              example: Running
+            description: The value for one key in attributes.
+            example:
+              - Running
           description: Catalog attributes, each with one or more values.
+          example:
+            activity:
+              - Running
+            pattern:
+              - Texture
+              - Geometric
+            closure-type:
+              - Straps
+              - Lace-up
+            heel-height-type:
+              - Flat
+              - Low
+            footwear-material:
+              - Mesh
+              - Polyester
+            shoe-fit:
+              - Regular
+            shoe-features:
+              - Breathable design
+              - Cushioned
+            toe-style:
+              - Round
+            outsole-material:
+              - Rubber
+            footwear-support-type:
+              - Neutral
+              - Stability
+            lining-material:
+              - Synthetic
         variant:
           type: object
           description: The exact variant this offer resolves to, for example Size M and Color Black.
           additionalProperties:
             type: string
+            description: The value for one key in variant.
+            example: "10.5"
+          example:
+            Size: "10.5"
         variantOptions:
           type: array
           items:
-            type: object
-            required:
-              - name
-              - values
-            properties:
-              name:
-                type: string
-                description: Option name, for example Size.
-              values:
-                type: array
-                items:
-                  type: string
-                description: Available values, for example S, M, L.
+            $ref: "#/components/schemas/VariantOption"
           description: Every option the product comes in, with its values.
+          example:
+            - name: Color
+              values:
+                - Black
+                - White
+            - name: Size
+              values:
+                - "7"
+                - "8"
       description: A catalog product resolved to one offer and one exact variant.
       example:
         channel3Id: w25336I
@@ -1903,6 +2037,9 @@ components:
           items:
             type: object
             additionalProperties: true
+            description: One entry in relaxed.
+            example: {}
+          example: []
       description: A product at the requested variant, plus any option the catalog couldn't honor.
       example:
         product:
@@ -1977,55 +2114,66 @@ components:
           type: string
           maxLength: 60
           description: Product category in plain words.
+          example: hoodie
         quantity:
           type: integer
           minimum: 1
           maximum: 20
           default: 1
           description: How many to buy.
+          example: 1
         maxPrice:
           type: number
           minimum: 0
           description: Ceiling per item; 0 means no budget was given.
+          example: 80
         currency:
           type: string
           minLength: 3
           maxLength: 3
           default: USD
           description: Currency of maxPrice.
+          example: USD
         attributes:
           type: object
           description: Required attribute values, keys lowercase.
           additionalProperties:
             type: string
+            description: The value for one key in attributes.
+            example: M
           example:
             size: M
             color: black
         gender:
-          type: string
-          enum:
-            - male
-            - female
-          description: Men's or women's, if the shopper said.
+          $ref: "#/components/schemas/Gender"
         brands:
           type: array
           maxItems: 10
           items:
             type: string
+            description: One entry in brands.
+            example: Under Armour
           description: Only these brands, if the shopper named any.
+          example:
+            - Under Armour
         deadline:
           type: string
           description: ISO date the item must arrive by.
+          example: "2026-11-01"
         notes:
           type: string
           maxLength: 300
           description: Soft preferences that are not hard limits.
+          example: Prefer cotton.
         mustAsk:
           type: array
           maxItems: 5
           description: Questions to answer before the draft can be signed.
           items:
             type: string
+            description: One entry in mustAsk.
+            example: What size?
+          example: []
       example:
         item: black hoodie
         category: hoodie
@@ -2044,12 +2192,9 @@ components:
         ok:
           type: boolean
           description: True when the draft can be signed as is.
+          example: false
         reason:
-          type: string
-          enum:
-            - open_questions
-            - missing_budget
-          description: "Why it can't be signed yet: open questions remain, or no budget was given."
+          $ref: "#/components/schemas/NotReadyReason"
       description: Whether a draft can be signed as is.
       example:
         ok: false
@@ -2063,6 +2208,7 @@ components:
         request:
           type: string
           description: The request text, when it was extended with answers.
+          example: A black hoodie in size M under $80
         draft:
           $ref: "#/components/schemas/IntentDraft"
         ready:
@@ -2087,16 +2233,15 @@ components:
         - error
       properties:
         error:
-          type: string
-          enum:
-            - open_questions
-            - missing_budget
-          description: Why the mandate can't be prepared yet.
+          $ref: "#/components/schemas/NotReadyReason"
         mustAsk:
           type: array
           items:
             type: string
+            description: One entry in mustAsk.
+            example: What size?
           description: The questions still to answer.
+          example: []
       description: The draft can't be turned into a mandate yet.
       example:
         error: missing_budget
@@ -2111,9 +2256,11 @@ components:
           type: string
           maxLength: 80
           description: The agent's name as it introduced itself.
+          example: Claude
         verified:
           type: boolean
           description: The agent presented a registered operator key.
+          example: false
       description: The agent a mandate authorizes. Inside the signed bytes, so liability follows the name.
       example:
         name: Claude
@@ -2132,37 +2279,40 @@ components:
       properties:
         version:
           type: integer
-          enum:
-            - 1
-          description: Mandate format version.
+          minimum: 1
+          maximum: 1
+          description: Mandate format version. Always 1.
+          example: 1
         id:
           type: string
           format: uuid
           description: Mandate id, chosen when it was prepared.
+          example: 2f4069f0-2367-4f08-acc6-d9cf1cf6669a
         createdAt:
           type: string
           format: date-time
           description: When the mandate was prepared.
+          example: "2026-10-20T04:18:17.928Z"
         expiresAt:
           type: string
           format: date-time
           description: When the mandate stops working (14 days after it was prepared).
+          example: "2026-11-03T04:18:17.928Z"
         shopperKey:
           type: string
           description: Base64 Ed25519 public key (32 bytes).
+          example: aHBQ5B27O2BiDV0oWgOigpsXZKjOfhcYYMch5pZ5H0c=
         request:
           type: string
           maxLength: 1000
           description: The shopper's own words, verbatim.
+          example: Buy me black men's running shoes, size 10, under $120
         intent:
           $ref: "#/components/schemas/IntentDraft"
         agent:
           $ref: "#/components/schemas/AgentRef"
         payWith:
-          type: string
-          enum:
-            - saved_wallet
-          description: Present only if the shopper allowed the agent to pay with their saved PayPal wallet.
+          $ref: "#/components/schemas/PayWith"
       example:
         version: 1
         id: 2f4069f0-2367-4f08-acc6-d9cf1cf6669a
@@ -2193,6 +2343,7 @@ components:
           minLength: 3
           maxLength: 1000
           description: The shopper's request in their own words, kept verbatim inside the mandate.
+          example: A black hoodie in size M under $80
         draft:
           $ref: "#/components/schemas/IntentDraft"
         shopperKey:
@@ -2200,13 +2351,9 @@ components:
           minLength: 40
           maxLength: 60
           description: Base64 Ed25519 public key.
+          example: aHBQ5B27O2BiDV0oWgOigpsXZKjOfhcYYMch5pZ5H0c=
         payWith:
-          type: string
-          enum:
-            - saved_wallet
-          description: >-
-            Set to saved_wallet to let the agent pay with the shopper's saved PayPal wallet, with no PayPal click. Leave
-            out to have the shopper approve in PayPal.
+          $ref: "#/components/schemas/PayWith"
       description: What's needed to build the exact mandate a device will sign.
       example:
         request: A black hoodie in size M under $80
@@ -2267,6 +2414,7 @@ components:
           minLength: 80
           maxLength: 100
           description: Base64 Ed25519 signature of the signing message.
+          example: derQBgmEoL8kvl3vfHVsmqTVAkGTSvb2ShqDoVFKdSC5U5PpGkYAUsDzgSd80QyEpGEPh4966mrEQ9CzBw0IDA==
       description: A mandate and the shopper's signature over its signing message.
       example:
         mandate:
@@ -2299,22 +2447,13 @@ components:
           type: string
           format: uuid
           description: The stored mandate's id.
+          example: 2f4069f0-2367-4f08-acc6-d9cf1cf6669a
         digest:
           type: string
           description: SHA-256 (hex) of the mandate's canonical JSON.
+          example: 7bf66d54681f2b73e2f05ee0d49b5a68776908620751daaf0102b9f0b17fcac6
         event:
-          type: object
-          required:
-            - seq
-            - hash
-          properties:
-            seq:
-              type: integer
-              description: Position in the hash chain, starting at 1.
-            hash:
-              type: string
-              description: SHA-256 of this event chained to the previous event's hash.
-          description: The first event in the mandate's hash chain (MANDATE_SIGNED).
+          $ref: "#/components/schemas/ChainEventRef"
       description: A stored mandate and the first event of its hash chain.
       example:
         id: 2f4069f0-2367-4f08-acc6-d9cf1cf6669a
@@ -2333,6 +2472,7 @@ components:
         seq:
           type: integer
           description: Position in the hash chain, starting at 1.
+          example: 0
         type:
           type: string
           example: MANDATE_SIGNED
@@ -2341,9 +2481,11 @@ components:
           type: string
           format: date-time
           description: When it was created (ISO 8601, UTC).
+          example: "2026-10-20T04:18:18.268Z"
         hash:
           type: string
           description: SHA-256 of this event chained to the previous event's hash.
+          example: 91b50424c310c5106b3c9873427ada9d3ffccf45c9834d1c2df342316b5a25d8
       description: One event in a mandate's hash chain, without its payload.
       example:
         seq: 0
@@ -2362,42 +2504,33 @@ components:
         mandate:
           $ref: "#/components/schemas/IntentMandate"
         status:
-          type: string
-          enum:
-            - ACTIVE
-            - FULFILLED
-            - REVOKED
-            - EXPIRED
-          description: ACTIVE until it is used, revoked or past expiresAt.
+          $ref: "#/components/schemas/MandateStatus"
         search:
           type: object
           description: The product search this mandate permits.
           additionalProperties: true
+          example:
+            query: black running shoes
+            category: running shoes
+            maxPrice: 120
+            color: black
+            gender: male
         integrity:
-          type: object
-          required:
-            - digestMatches
-            - signatureValid
-            - chainIntact
-          properties:
-            digestMatches:
-              type: boolean
-              description: The stored digest matches the mandate recomputed now.
-            signatureValid:
-              type: boolean
-              description: The shopper's signature verifies against the mandate.
-            chainIntact:
-              type: boolean
-              description: Every event's hash links correctly to the one before.
-            chainBrokenAt:
-              type: integer
-              description: The first event whose hash doesn't link, when the chain is broken.
-          description: A fresh check, run on every read.
+          $ref: "#/components/schemas/IntegrityCheck"
         events:
           type: array
           items:
             $ref: "#/components/schemas/ChainEventSummary"
           description: The mandate's event chain, oldest first.
+          example:
+            - seq: 0
+              type: MANDATE_SIGNED
+              createdAt: "2026-10-20T04:18:18.268Z"
+              hash: 91b50424c310c5106b3c9873427ada9d3ffccf45c9834d1c2df342316b5a25d8
+            - seq: 1
+              type: CART_PROPOSED
+              createdAt: "2026-10-20T04:18:18.832Z"
+              hash: 89f7646662727852af27cbdf1e326a17b6cc76c2bd462031bbf8f1f29622e323
       description: A mandate with its status, the search it permits, and a fresh integrity check.
       example:
         mandate:
@@ -2447,21 +2580,17 @@ components:
         minutes:
           type: integer
           description: Total window length.
+          example: 1080
         factors:
           type: array
           description: Why the window is this long, factor by factor.
           items:
-            type: object
-            required:
-              - factor
-              - minutes
-            properties:
-              factor:
-                type: string
-                description: What added time, in plain words.
-              minutes:
-                type: integer
-                description: Minutes it added.
+            $ref: "#/components/schemas/UndoWindowFactor"
+          example:
+            - factor: order total $116.97
+              minutes: 360
+            - factor: agent bypassed Undo's pre-purchase check
+              minutes: 720
       description: How long the shopper can undo for free, and why.
       example:
         minutes: 1080
@@ -2481,28 +2610,19 @@ components:
           minimum: 0
           maximum: 100
           description: 0 to 100, from the agent's record at this store.
+          example: 62
         tier:
-          type: string
-          enum:
-            - trusted
-            - neutral
-            - risky
-          description: trusted from 80, neutral from 50, risky below.
+          $ref: "#/components/schemas/TrustTier"
         factors:
           type: array
           items:
-            type: object
-            required:
-              - label
-              - points
-            properties:
-              label:
-                type: string
-                description: What earned or cost points.
-              points:
-                type: integer
-                description: Points added (negative when taken away).
+            $ref: "#/components/schemas/TrustFactor"
           description: Every point in the score, explained.
+          example:
+            - label: unregistered name
+              points: 50
+            - label: 4 clean purchases
+              points: 12
       description: An agent's trust score at this store, with every point explained.
       example:
         score: 62
@@ -2527,74 +2647,48 @@ components:
           type: string
           format: uuid
           description: The new order. Read it with getOrder.
+          example: edd288bc-42d0-41d3-9b87-14915f3ff2c6
         approveUrl:
           type: string
           nullable: true
           description: Where the shopper approves the payment in PayPal (absent when paid with a saved wallet).
+          example: https://www.sandbox.paypal.com/checkoutnow?token=1X507517Y8961004F
         status:
-          type: string
-          enum:
-            - CHECKOUT_CREATED
-            - AUTHORIZED
-          description: >-
-            CHECKOUT_CREATED while the shopper still has to approve; AUTHORIZED when a saved wallet held the money
-            straight away.
+          $ref: "#/components/schemas/CheckoutStatus"
         windowEndsAt:
           type: string
           format: date-time
           nullable: true
           description: When the undo window closes, once the money is held.
+          example: null
         paidWith:
-          type: string
-          enum:
-            - approval
-            - saved_wallet
-          description: approval when the shopper approves in PayPal; saved_wallet when the agent paid with the saved wallet.
+          $ref: "#/components/schemas/PaidWith"
         walletNote:
           type: string
           description: Why a saved wallet was not used, when the mandate allowed one.
+          example: No saved wallet on this device, so the shopper approves in PayPal.
         cart:
-          type: object
-          required:
-            - title
-            - variant
-            - price
-            - currency
-            - quantity
-          properties:
-            title:
-              type: string
-              description: Product title.
-            brand:
-              type: string
-              nullable: true
-              description: Brand name, when known.
-            variant:
-              type: object
-              additionalProperties:
-                type: string
-              description: The exact variant bought.
-            price:
-              type: number
-              description: Price per item in currency units.
-            currency:
-              type: string
-              description: ISO 4217 currency code.
-            quantity:
-              type: integer
-              description: Number of items.
-            retailer:
-              type: string
-              description: The retailer's domain.
-            imageUrl:
-              type: string
-              nullable: true
-              description: Product image URL, when there is one.
-          description: What the agent put in the cart.
+          $ref: "#/components/schemas/Cart"
         agent:
           type: object
           description: The agent's reasoning, confidence and the guard's checks.
           additionalProperties: true
+          example:
+            reasoning: Picked UA Infinite Pro Men's Running Shoes in Black / 10.5 — looked like the best match.
+            confidence: 0.9
+            unverified: []
+            guard:
+              relaxed: []
+              bypassed: true
+              violations:
+                - rule: attribute:size
+                  actual: "10.5"
+                  expected: "10"
+            considered:
+              - id: w25336I
+                ok: false
+                price: 116.97
+                title: UA Infinite Pro Men's Running Shoes
         undoWindow:
           $ref: "#/components/schemas/UndoWindow"
         trust:
@@ -2658,9 +2752,11 @@ components:
           type: string
           format: uuid
           description: Mandate request id.
+          example: 7d1f0c2a-3b4e-4f5a-9c6d-8e7f1a2b3c4d
         request:
           type: string
           description: The request as the agent passed it on, plus any answers.
+          example: A black hoodie in size M under $80
         draft:
           $ref: "#/components/schemas/IntentDraft"
         ready:
@@ -2668,21 +2764,18 @@ components:
         agent:
           $ref: "#/components/schemas/AgentRef"
         status:
-          type: string
-          enum:
-            - PENDING
-            - SIGNED
-            - EXPIRED
-          description: PENDING until the shopper signs; SIGNED after; EXPIRED if never signed.
+          $ref: "#/components/schemas/MandateRequestStatus"
         mandateId:
           type: string
           format: uuid
           nullable: true
           description: The signed mandate, once there is one.
+          example: null
         expiresAt:
           type: string
           format: date-time
           description: When the request stops accepting a signature.
+          example: "2026-10-21T18:00:00.000Z"
       description: A mandate an outside agent asked the shopper to sign.
       example:
         id: 7d1f0c2a-3b4e-4f5a-9c6d-8e7f1a2b3c4d
@@ -2712,16 +2805,17 @@ components:
         - answers
       properties:
         action:
-          type: string
-          enum:
-            - answer
-          description: answer
+          $ref: "#/components/schemas/AnswerActionName"
         answers:
           type: object
           description: Each open question (exactly as asked) mapped to the shopper's answer.
           additionalProperties:
             type: string
             maxLength: 200
+            description: The value for one key in answers.
+            example: M
+          example:
+            What size?: M
       description: Answer the agent's open questions.
       example:
         action: answer
@@ -2734,22 +2828,15 @@ components:
         - shopperKey
       properties:
         action:
-          type: string
-          enum:
-            - prepare
-          description: prepare
+          $ref: "#/components/schemas/PrepareActionName"
         shopperKey:
           type: string
           minLength: 40
           maxLength: 60
           description: Base64 Ed25519 public key of the device that will sign.
+          example: aHBQ5B27O2BiDV0oWgOigpsXZKjOfhcYYMch5pZ5H0c=
         payWith:
-          type: string
-          enum:
-            - saved_wallet
-          description: >-
-            Set to saved_wallet to let the agent pay with the shopper's saved PayPal wallet, with no PayPal click. Leave
-            out to have the shopper approve in PayPal.
+          $ref: "#/components/schemas/PayWith"
       description: Build the exact mandate this device will sign.
       example:
         action: prepare
@@ -2762,10 +2849,7 @@ components:
         - signature
       properties:
         action:
-          type: string
-          enum:
-            - sign
-          description: sign
+          $ref: "#/components/schemas/SignActionName"
         mandate:
           $ref: "#/components/schemas/IntentMandate"
         signature:
@@ -2773,6 +2857,7 @@ components:
           minLength: 80
           maxLength: 100
           description: Base64 Ed25519 signature of the signingMessage returned by prepare.
+          example: derQBgmEoL8kvl3vfHVsmqTVAkGTSvb2ShqDoVFKdSC5U5PpGkYAUsDzgSd80QyEpGEPh4966mrEQ9CzBw0IDA==
       description: Store the signed mandate.
       example:
         action: sign
@@ -2824,20 +2909,28 @@ components:
         seq:
           type: integer
           description: Position in the hash chain, starting at 1.
+          example: 0
         type:
           type: string
           description: Event type, for example MANDATE_SIGNED or PAYMENT_VOIDED.
+          example: MANDATE_SIGNED
         createdAt:
           type: string
           format: date-time
           description: When it was created (ISO 8601, UTC).
+          example: "2026-10-20T04:18:18.268Z"
         hash:
           type: string
           description: SHA-256 of this event chained to the previous event's hash.
+          example: 91b50424c310c5106b3c9873427ada9d3ffccf45c9834d1c2df342316b5a25d8
         proof:
           type: object
           description: How this step was decided, and the PayPal call or id behind it.
           additionalProperties: true
+          example:
+            kind: signature
+            how: Ed25519 signature from the shopper's device verified against the mandate's exact bytes.
+            ref: 7bf66d54681f2b73e2f05ee0d49b5a68776908620751daaf0102b9f0b17fcac6
       description: One event in the hash chain, with the proof of how it was decided.
       example:
         seq: 0
@@ -2856,115 +2949,13 @@ components:
         - chain
       properties:
         order:
-          type: object
-          required:
-            - id
-            - status
-            - amount
-            - currency
-            - quantity
-            - product
-            - paypal
-          properties:
-            id:
-              type: string
-              format: uuid
-              description: Undo order id.
-            status:
-              $ref: "#/components/schemas/OrderStatus"
-            amount:
-              type: string
-              example: "116.97"
-              description: Total held or charged, as a decimal string.
-            currency:
-              type: string
-              description: ISO 4217 currency code.
-            quantity:
-              type: integer
-              description: Number of items.
-            product:
-              $ref: "#/components/schemas/Product"
-            agent:
-              type: object
-              additionalProperties: true
-              description: The agent's reasoning, confidence, guard checks and operator, as recorded at checkout.
-            paypal:
-              type: object
-              properties:
-                orderId:
-                  type: string
-                  nullable: true
-                  description: PayPal Orders v2 id.
-                authorizationId:
-                  type: string
-                  nullable: true
-                  description: PayPal authorization id, once the money is held.
-                captureId:
-                  type: string
-                  nullable: true
-                  description: PayPal capture id, once the money is taken.
-              description: The PayPal ids behind this order.
-            resolution:
-              type: object
-              nullable: true
-              description: The latest Undo, with verdict, evidence, money action and any agent payout.
-              additionalProperties: true
-          description: The purchase.
+          $ref: "#/components/schemas/Order"
         undoWindow:
-          allOf:
-            - $ref: "#/components/schemas/UndoWindow"
-            - type: object
-              required:
-                - open
-              properties:
-                endsAt:
-                  type: string
-                  format: date-time
-                  nullable: true
-                  description: When the window closes.
-                open:
-                  type: boolean
-                  description: "True while the money is only held and the window hasn't closed: Undo is a free void."
-                minutesLeft:
-                  type: integer
-                  nullable: true
-                  description: Minutes until the window closes.
-          description: "The undo window: how long, why, and whether it is still open."
+          $ref: "#/components/schemas/UndoWindowStatus"
         mandate:
-          type: object
-          nullable: true
-          properties:
-            id:
-              type: string
-              format: uuid
-              description: Mandate id.
-            request:
-              type: string
-              description: The shopper's request in their own words.
-            intent:
-              $ref: "#/components/schemas/IntentDraft"
-            status:
-              type: string
-              description: Mandate status.
-            shopperKey:
-              type: string
-              description: The shopper's public key. Undo requests must be signed by it.
-          description: The mandate this purchase was made under.
+          $ref: "#/components/schemas/MandateSummary"
         chain:
-          type: object
-          required:
-            - intact
-            - events
-          properties:
-            intact:
-              type: boolean
-              description: Every hash links correctly.
-            events:
-              type: array
-              items:
-                $ref: "#/components/schemas/ChainEvent"
-              description: Events, oldest first.
-          description: The mandate's event chain, with a proof on every step.
+          $ref: "#/components/schemas/EventChain"
       description: An order, its undo window, its mandate and its verified event chain.
       example:
         order:
@@ -3146,25 +3137,165 @@ components:
         - events
       properties:
         format:
-          type: string
-          enum:
-            - undo-evidence-v1
-          description: Evidence file format.
+          $ref: "#/components/schemas/EvidenceFormat"
         orderId:
           type: string
           format: uuid
           description: The order this evidence is for.
+          example: edd288bc-42d0-41d3-9b87-14915f3ff2c6
         mandate:
           type: object
           nullable: true
           description: The signed mandate exactly as stored.
           additionalProperties: true
+          example:
+            id: 2f4069f0-2367-4f08-acc6-d9cf1cf6669a
+            intent:
+              item: running shoes
+              gender: male
+              mustAsk: []
+              category: running shoes
+              currency: USD
+              maxPrice: 120
+              quantity: 1
+              attributes:
+                size: "10"
+                color: black
+            request: Buy me black men's running shoes, size 10, under $120
+            version: 1
+            createdAt: "2026-10-20T04:18:17.928Z"
+            expiresAt: "2026-11-03T04:18:17.928Z"
+            shopperKey: aHBQ5B27O2BiDV0oWgOigpsXZKjOfhcYYMch5pZ5H0c=
         events:
           type: array
           description: Raw events exactly as hashed. Each hash covers the previous hash and the canonical payload.
           items:
             type: object
             additionalProperties: true
+            description: One entry in events.
+            example:
+              subjectId: 2f4069f0-2367-4f08-acc6-d9cf1cf6669a
+              seq: 0
+              type: MANDATE_SIGNED
+              payload:
+                digest: 7bf66d54681f2b73e2f05ee0d49b5a68776908620751daaf0102b9f0b17fcac6
+                signature: derQBgmEoL8kvl3vfHVsmqTVAkGTSvb2ShqDoVFKdSC5U5PpGkYAUsDzgSd80QyEpGEPh4966mrEQ9CzBw0IDA==
+              createdAt: "2026-10-20T04:18:18.268Z"
+              prevHash: "0000000000000000000000000000000000000000000000000000000000000000"
+              hash: 91b50424c310c5106b3c9873427ada9d3ffccf45c9834d1c2df342316b5a25d8
+          example:
+            - subjectId: 2f4069f0-2367-4f08-acc6-d9cf1cf6669a
+              seq: 0
+              type: MANDATE_SIGNED
+              payload:
+                digest: 7bf66d54681f2b73e2f05ee0d49b5a68776908620751daaf0102b9f0b17fcac6
+                signature: derQBgmEoL8kvl3vfHVsmqTVAkGTSvb2ShqDoVFKdSC5U5PpGkYAUsDzgSd80QyEpGEPh4966mrEQ9CzBw0IDA==
+              createdAt: "2026-10-20T04:18:18.268Z"
+              prevHash: "0000000000000000000000000000000000000000000000000000000000000000"
+              hash: 91b50424c310c5106b3c9873427ada9d3ffccf45c9834d1c2df342316b5a25d8
+            - subjectId: 2f4069f0-2367-4f08-acc6-d9cf1cf6669a
+              seq: 1
+              type: CART_PROPOSED
+              payload:
+                risk:
+                  factors:
+                    - factor: order total $116.97
+                      minutes: 360
+                    - factor: agent bypassed Undo's pre-purchase check
+                      minutes: 720
+                  minutes: 1080
+                agent:
+                  guard:
+                    relaxed: []
+                    bypassed: true
+                    violations:
+                      - rule: attribute:size
+                        actual: "10.5"
+                        expected: "10"
+                  model: null
+                  operator:
+                    via: web
+                    name: Careless demo agent
+                    verified: false
+                  searches:
+                    - query: black running shoes
+                      filters: price+gender+category_ids+colors
+                  reasoning: Picked UA Infinite Pro Men's Running Shoes in Black / 10.5 — looked like the best match.
+                  requested:
+                    Size: "10"
+                    Color: Black
+                  simulated: unguarded_wrong_variant
+                  confidence: 0.9
+                  considered:
+                    - id: w25336I
+                      ok: false
+                      price: 116.97
+                      title: UA Infinite Pro Men's Running Shoes
+                  unverified: []
+                  approximate: []
+                orderId: edd288bc-42d0-41d3-9b87-14915f3ff2c6
+                product:
+                  brand: Under Armour
+                  price: 116.97
+                  title: UA Infinite Pro Men's Running Shoes
+                  colors:
+                    - "#1e1e20"
+                    - "#d5d4d8"
+                  variant:
+                    Size: "10.5"
+                    Color: Black
+                  currency: USD
+                  imageUrl: >-
+                    https://cdn.trychannel3.com/aed9ec20-0e99-49b6-b011-2425732889be?aid=01M5BRG5D3YC8J46QPWBYB58RG&mid=oKaH
+                  sourceUrl: >-
+                    https://buy.trychannel3.com/w25336I-oKaH-Wqce8l?o=01KVATPXMQW09XVTMRDEW2Q1Y9&aid=01M5BRG5D3YC8J46QPWBYB58RG
+                  attributes:
+                    pattern:
+                      - Texture
+                      - Geometric
+                    activity:
+                      - Running
+                    shoe-fit:
+                      - Regular
+                    toe-style:
+                      - Round
+                    closure-type:
+                      - Straps
+                      - Lace-up
+                    shoe-features:
+                      - Breathable design
+                      - Cushioned
+                    lining-material:
+                      - Synthetic
+                    heel-height-type:
+                      - Flat
+                      - Low
+                    outsole-material:
+                      - Rubber
+                    footwear-material:
+                      - Mesh
+                      - Polyester
+                    footwear-support-type:
+                      - Neutral
+                      - Stability
+                  channel3Id: w25336I
+                  description: >-
+                    These men's running shoes from Under Armour, the UA Infinite Pro, are designed for endurance with a
+                    focus on comfort and support. They feature a breathable e…
+                  sourceDomain: underarmour.com
+                  variantOptions:
+                    - name: Color
+                      values:
+                        - Black
+                        - White
+                    - name: Size
+                      values:
+                        - "7"
+                        - "8"
+                quantity: 1
+              createdAt: "2026-10-20T04:18:18.832Z"
+              prevHash: 91b50424c310c5106b3c9873427ada9d3ffccf45c9834d1c2df342316b5a25d8
+              hash: 89f7646662727852af27cbdf1e326a17b6cc76c2bd462031bbf8f1f29622e323
       description: Everything needed to verify an order without trusting Undo.
       example:
         format: undo-evidence-v1
@@ -3317,15 +3448,19 @@ components:
           type: string
           description: Optional photo of what arrived, as a base64 JPEG, PNG or WebP data URL (max 4 MB).
           pattern: ^data:image/(jpeg|png|webp);base64,[A-Za-z0-9+/=]+$
+          example: >-
+            data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=
         requestedAt:
           type: string
           format: date-time
           description: When the shopper pressed Undo. Must be within 15 minutes of the server's clock.
+          example: "2026-10-20T16:30:00.000Z"
         signature:
           type: string
           minLength: 80
           maxLength: 100
           description: Base64 Ed25519 signature of the undo signing message.
+          example: derQBgmEoL8kvl3vfHVsmqTVAkGTSvb2ShqDoVFKdSC5U5PpGkYAUsDzgSd80QyEpGEPh4966mrEQ9CzBw0IDA==
       description: An Undo, signed by the shopper's device key.
       example:
         reason: This isn't what I asked for.
@@ -3340,47 +3475,25 @@ components:
         - evidence
       properties:
         verdict:
-          type: string
-          enum:
-            - AGENT_FAULT
-            - MERCHANT_FAULT
-            - SHOPPER_CHANGED_MIND
-            - INCONCLUSIVE
-          description: Who was at fault.
+          $ref: "#/components/schemas/Verdict"
         confidence:
           type: number
           minimum: 0
           maximum: 1
           description: How sure the fault check is, from 0 to 1. Below 0.7 goes to a person.
+          example: 1
         liability:
-          type: string
-          nullable: true
-          description: Who pays. Null when a person still has to decide.
-          enum:
-            - agent_operator
-            - merchant
-            - shopper
+          $ref: "#/components/schemas/Liability"
         evidence:
           type: array
           items:
-            type: object
-            required:
-              - source
-              - finding
-            properties:
-              source:
-                type: string
-                enum:
-                  - mandate_check
-                  - agent_record
-                  - delivered_photo
-                  - ai_judgement
-                  - shopper
-                description: Where the finding came from.
-              finding:
-                type: string
-                description: The finding, in plain words.
+            $ref: "#/components/schemas/EvidenceItem"
           description: Each finding behind the verdict and where it came from.
+          example:
+            - source: shopper
+              finding: This isn't what I asked for.
+            - source: mandate_check
+              finding: "attribute:size: mandate required 10, agent bought 10.5"
       description: The fault check's verdict, who pays, and the evidence behind it.
       example:
         verdict: AGENT_FAULT
@@ -3398,24 +3511,19 @@ components:
         - reason
       properties:
         type:
-          type: string
-          enum:
-            - VOID
-            - REFUND_FULL
-            - OPEN_CLAIM
-            - AUTHORIZE_RETURN
-            - REVIEW
-            - NONE
-          description: What happened to the money.
+          $ref: "#/components/schemas/MoneyActionType"
         reason:
           type: string
           description: Why, in plain words.
+          example: "agent broke the mandate: full refund, liability on the agent operator"
         refundOnReturn:
           type: string
           description: On AUTHORIZE_RETURN, the amount refunded when the item comes back.
+          example: "99.42"
         restockingFee:
           type: string
           description: On AUTHORIZE_RETURN.
+          example: "17.55"
       description: What happens to the money after the verdict.
       example:
         type: REFUND_FULL
@@ -3431,29 +3539,11 @@ components:
           type: string
           format: uuid
           description: The order that was undone.
+          example: edd288bc-42d0-41d3-9b87-14915f3ff2c6
         decision:
           $ref: "#/components/schemas/Decision"
         outcome:
-          type: object
-          required:
-            - action
-            - status
-            - paypal
-          properties:
-            action:
-              $ref: "#/components/schemas/MoneyAction"
-            status:
-              $ref: "#/components/schemas/OrderStatus"
-            paypal:
-              type: object
-              description: The PayPal ids behind the money movement.
-              additionalProperties:
-                type: string
-                nullable: true
-            evidenceDigest:
-              type: string
-              description: SHA-256 of the evidence pack sent with a merchant claim.
-          description: What happened to the money and the order's new status.
+          $ref: "#/components/schemas/UndoOutcome"
       description: The verdict and what happened to the money.
       example:
         orderId: edd288bc-42d0-41d3-9b87-14915f3ff2c6
@@ -3486,20 +3576,24 @@ components:
           maximum: 100
           nullable: true
           description: Refuse agents scoring below this. Null turns it off.
+          example: null
         extendBelow:
           type: integer
           minimum: 1
           maximum: 100
           nullable: true
           description: Give agents scoring below this a longer window. Null turns it off.
+          example: 50
         extendMinutes:
           type: integer
           minimum: 15
           maximum: 1440
           description: How much longer.
+          example: 360
         blockUnverified:
           type: boolean
           description: Refuse agents without a registered operator key.
+          example: false
       description: The store's rules for agents. They apply from the next checkout.
       example:
         blockBelow: null
@@ -3522,96 +3616,121 @@ components:
           type: string
           format: uuid
           description: Undo order id.
+          example: 0b1b3bb1-f411-406a-87b7-0bf32f55ed61
         createdAt:
           type: string
           format: date-time
           description: When the agent placed the order.
+          example: "2026-10-20T12:14:48.268Z"
         status:
           $ref: "#/components/schemas/OrderStatus"
         amount:
           type: number
           description: Order total.
+          example: 59.99
         currency:
           type: string
           description: ISO 4217 currency code.
+          example: USD
         product:
           type: string
           description: Product title.
+          example: Mens Boxy Hoodie
         brand:
           type: string
           nullable: true
           description: Brand name, when known.
+          example: Cernucci
         variant:
           type: string
           description: The variant bought, for example Size M · Color Black.
+          example: Size M
         imageUrl:
           type: string
           nullable: true
           description: Product image URL, when there is one.
+          example: https://cdn.trychannel3.com/b9e090b6-615d-4117-a827-c1dad96f2a12?aid=01M5CKRKZAQ4Z7XXEQEKMJVC9V&mid=m7kZ
         retailer:
           type: string
           nullable: true
           description: The retailer's domain.
+          example: us.cernucci.com
         request:
           type: string
           nullable: true
           description: The shopper's mandate, in their words.
+          example: A black hoodie, size M, under $80
         agentConfidence:
           type: number
           nullable: true
           description: How sure the agent was that the item fits, from 0 to 1.
+          example: 0.8
         guardBypassed:
           type: boolean
           description: True when the agent skipped Undo's checks before buying.
+          example: false
         simulated:
           type: string
           nullable: true
           description: Set on demo orders from the careless test agent.
+          example: null
         agentName:
           type: string
           description: The agent operator's name.
+          example: Undo web agent
         agentVerified:
           type: boolean
           description: Whether the operator presented a registered key.
+          example: true
         agentVia:
           type: string
           description: "How the agent connected: web or mcp."
+          example: web
         verdict:
           type: string
           nullable: true
           description: The fault check's verdict, after an Undo.
+          example: MERCHANT_FAULT
         verdictConfidence:
           type: number
           nullable: true
           description: How sure the verdict is, from 0 to 1.
+          example: 1
         liability:
           type: string
           nullable: true
           description: "Who pays: agent_operator, merchant or shopper."
+          example: merchant
         settlement:
           type: string
           nullable: true
           description: Status of the agent operator's payout to the store, when one was due.
+          example: null
         settledAmount:
           type: number
           description: Money that arrived from an agent operator through PayPal Payouts.
+          example: 0
         action:
           type: string
           nullable: true
           description: What happened to the money, for example VOID or REFUND_FULL.
+          example: VOID
         windowEndsAt:
           type: string
           format: date-time
           nullable: true
           description: When the undo window closes or closed.
+          example: "2026-10-20T19:15:15.261Z"
         windowMinutesLeft:
           type: integer
           nullable: true
           description: Minutes left in the undo window, while the money is held.
+          example: null
         paypalRef:
           type: string
           nullable: true
           description: "The most specific PayPal id: capture, then authorization, then order."
+          example: 8L594057D91511610
       description: One agent order as the store sees it.
       example:
         id: 0b1b3bb1-f411-406a-87b7-0bf32f55ed61
@@ -3647,43 +3766,65 @@ components:
         - orders
       properties:
         kpis:
-          type: object
-          required:
-            - agentOrders
-            - undone
-            - feesAvoided
-            - billedToAgents
-            - merchantProtected
-            - needsAction
-            - heldNow
-          properties:
-            agentOrders:
-              type: integer
-              description: Orders placed by agents (not counting abandoned checkouts).
-            undone:
-              type: integer
-              description: Orders that were undone.
-            feesAvoided:
-              type: number
-              description: Estimated PayPal fees avoided by voiding instead of refunding.
-            billedToAgents:
-              type: number
-              description: Money paid back to the store by agent operators through PayPal Payouts.
-            merchantProtected:
-              type: integer
-              description: Undos where the shopper changed their mind and the store was protected.
-            needsAction:
-              type: integer
-              description: Orders waiting for the store's decision.
-            heldNow:
-              type: number
-              description: Money held right now with an undo window open.
-          description: Headline numbers for the store.
+          $ref: "#/components/schemas/MerchantKpis"
         orders:
           type: array
           items:
             $ref: "#/components/schemas/MerchantOrder"
           description: Agent orders, newest first.
+          example:
+            - id: 0b1b3bb1-f411-406a-87b7-0bf32f55ed61
+              createdAt: "2026-10-20T12:14:48.268Z"
+              status: VOIDED
+              amount: 59.99
+              currency: USD
+              product: Mens Boxy Hoodie
+              brand: Cernucci
+              variant: Size M
+              imageUrl: https://cdn.trychannel3.com/b9e090b6-615d-4117-a827-c1dad96f2a12?aid=01M5CKRKZAQ4Z7XXEQEKMJVC9V&mid=m7kZ
+              retailer: us.cernucci.com
+              request: A black hoodie, size M, under $80
+              agentConfidence: 0.8
+              guardBypassed: false
+              simulated: null
+              agentName: Undo web agent
+              agentVerified: true
+              agentVia: web
+              verdict: MERCHANT_FAULT
+              verdictConfidence: 1
+              liability: merchant
+              settlement: null
+              settledAmount: 0
+              action: VOID
+              windowEndsAt: "2026-10-20T19:15:15.261Z"
+              windowMinutesLeft: null
+              paypalRef: 8L594057D91511610
+            - id: f4e45935-229f-48f8-918a-be44a4997a9f
+              createdAt: "2026-10-20T07:49:05.299Z"
+              status: VOIDED
+              amount: 116.97
+              currency: USD
+              product: UA Infinite Pro Men's Running Shoes
+              brand: Under Armour
+              variant: Size 10.5 · Color Black
+              imageUrl: https://cdn.trychannel3.com/aed9ec20-0e99-49b6-b011-2425732889be?aid=01M5C4J3G46ER2Y26PBPQ3QGZB&mid=oKaH
+              retailer: underarmour.com
+              request: Black men's running shoes, size 10, under $120
+              agentConfidence: 0.9
+              guardBypassed: true
+              simulated: unguarded_wrong_variant
+              agentName: Careless demo agent
+              agentVerified: false
+              agentVia: web
+              verdict: AGENT_FAULT
+              verdictConfidence: 1
+              liability: agent_operator
+              settlement: null
+              settledAmount: 0
+              action: VOID
+              windowEndsAt: "2026-10-21T07:49:23.031Z"
+              windowMinutesLeft: null
+              paypalRef: 3LJ53399FX105624A
       description: The store's agent orders and headline numbers.
       example:
         kpis:
@@ -3758,51 +3899,49 @@ components:
         agents:
           type: array
           items:
-            type: object
-            required:
-              - name
-              - verified
-              - trust
-              - effect
-            properties:
-              name:
-                type: string
-                description: The agent operator's name.
-              verified:
-                type: boolean
-                description: Whether the agent presented a registered operator key.
-              via:
-                type: string
-                nullable: true
-                description: "How the agent connected: web or mcp."
-              purchases:
-                type: integer
-                description: Purchases made at this store.
-              faults:
-                type: integer
-                description: Undos where the agent was at fault.
-              trust:
-                $ref: "#/components/schemas/Trust"
-              effect:
-                type: object
-                required:
-                  - blocked
-                  - extraMinutes
-                properties:
-                  blocked:
-                    type: string
-                    nullable: true
-                    description: Why the agent would be refused, or null.
-                  extraMinutes:
-                    type: integer
-                    description: Extra undo-window minutes the rules add.
-                  reason:
-                    type: string
-                    nullable: true
-                    description: Which rule added the time, or null.
-                description: What the store's rules do to this agent's next purchase.
-            additionalProperties: true
+            $ref: "#/components/schemas/AgentRecord"
           description: Every agent that has shopped here, riskiest first.
+          example:
+            - name: Careless demo agent
+              verified: false
+              via: web
+              purchases: 11
+              faults: 9
+              refused: 0
+              bypassed: 11
+              lastSeen: "2026-10-20T07:49:05.299Z"
+              trust:
+                score: 0
+                tier: risky
+                factors:
+                  - label: unregistered name
+                    points: 50
+                  - label: 2 clean purchases
+                    points: 6
+              effect:
+                blocked: null
+                extraMinutes: 360
+                reason: "merchant rule: Careless demo agent trust 0, below 50"
+            - name: Spike Agent
+              verified: false
+              via: mcp
+              purchases: 0
+              faults: 0
+              refused: 4
+              bypassed: 0
+              lastSeen: "2026-10-18T07:44:53.243Z"
+              trust:
+                score: 30
+                tier: risky
+                factors:
+                  - label: unregistered name
+                    points: 50
+                  - label: 4 carts refused by the guard
+                    points: -20
+              effect:
+                blocked: null
+                extraMinutes: 360
+                reason: "merchant rule: Spike Agent trust 30, below 50"
       description: Every agent that has shopped here and the store's rules.
       example:
         rules:
@@ -3863,10 +4002,12 @@ components:
         id:
           type: integer
           description: Event id. Pass the newest one as after to get only newer events.
+          example: 226
         at:
           type: string
           format: date-time
           description: When it happened.
+          example: "2026-10-20T12:38:24.861Z"
         type:
           type: string
           example: PAYMENT_VOIDED
@@ -3874,25 +4015,31 @@ components:
         kind:
           type: string
           description: "Who or what decided this step: shopper, agent, rules, AI or PayPal."
+          example: record
         how:
           type: string
           description: How the step was decided, in plain words.
+          example: Recorded in the chain.
         orderId:
           type: string
           nullable: true
           description: The order it belongs to, when there is one.
+          example: null
         amount:
           type: number
           nullable: true
           description: Money involved, when there is any.
+          example: null
         agent:
           type: string
           nullable: true
           description: The agent operator involved, when there is one.
+          example: null
         ref:
           type: string
           nullable: true
           description: The PayPal id or call behind the step, when there is one.
+          example: null
       description: One recorded step in the store's activity.
       example:
         id: 226
@@ -3904,3 +4051,911 @@ components:
         amount: null
         agent: null
         ref: null
+    PayPalIds:
+      type: object
+      properties:
+        orderId:
+          type: string
+          nullable: true
+          description: PayPal Orders v2 id.
+          example: edd288bc-42d0-41d3-9b87-14915f3ff2c6
+        authorizationId:
+          type: string
+          nullable: true
+          description: PayPal authorization id, once the money is held.
+          example: 4LD43914UL8743542
+        captureId:
+          type: string
+          nullable: true
+          description: PayPal capture id, once the money is taken.
+          example: 4087729233507714F
+      description: The PayPal ids behind this order.
+      example:
+        orderId: edd288bc-42d0-41d3-9b87-14915f3ff2c6
+        authorizationId: 4LD43914UL8743542
+        captureId: 4087729233507714F
+    RuleEffect:
+      type: object
+      required:
+        - blocked
+        - extraMinutes
+      properties:
+        blocked:
+          type: string
+          nullable: true
+          description: Why the agent would be refused, or null.
+          example: This store only accepts registered agent operators.
+        extraMinutes:
+          type: integer
+          description: Extra undo-window minutes the rules add.
+          example: 1
+        reason:
+          type: string
+          nullable: true
+          description: Which rule added the time, or null.
+          example: "risky agent: undo window +6h"
+      description: What the store's rules do to this agent's next purchase.
+      example:
+        blocked: This store only accepts registered agent operators.
+        extraMinutes: 1
+        reason: "risky agent: undo window +6h"
+    ConfiguredIntegrations:
+      type: object
+      required:
+        - paypal
+        - channel3
+        - database
+      properties:
+        paypal:
+          type: boolean
+          description: PayPal sandbox client id and secret are set.
+          example: true
+        channel3:
+          type: boolean
+          description: The product catalog key is set.
+          example: true
+        database:
+          type: boolean
+          description: The Postgres connection string is set.
+          example: true
+      description: Which integrations have credentials set. Never the values.
+      example:
+        paypal: true
+        channel3: true
+        database: true
+    VariantOption:
+      type: object
+      required:
+        - name
+        - values
+      properties:
+        name:
+          type: string
+          description: Option name, for example Size.
+          example: Size
+        values:
+          type: array
+          items:
+            type: string
+            description: One entry in values.
+            example: "10.5"
+          description: Available values, for example S, M, L.
+          example:
+            - "10.5"
+      description: One option a product comes in, with its values.
+      example:
+        name: Size
+        values:
+          - "10.5"
+    ChainEventRef:
+      type: object
+      required:
+        - seq
+        - hash
+      properties:
+        seq:
+          type: integer
+          description: Position in the hash chain, starting at 1.
+          example: 1
+        hash:
+          type: string
+          description: SHA-256 of this event chained to the previous event's hash.
+          example: 7bf66d54681f2b73e2f05ee0d49b5a68776908620751daaf0102b9f0b17fcac6
+      description: The first event in the mandate's hash chain (MANDATE_SIGNED).
+      example:
+        seq: 1
+        hash: 7bf66d54681f2b73e2f05ee0d49b5a68776908620751daaf0102b9f0b17fcac6
+    IntegrityCheck:
+      type: object
+      required:
+        - digestMatches
+        - signatureValid
+        - chainIntact
+      properties:
+        digestMatches:
+          type: boolean
+          description: The stored digest matches the mandate recomputed now.
+          example: true
+        signatureValid:
+          type: boolean
+          description: The shopper's signature verifies against the mandate.
+          example: true
+        chainIntact:
+          type: boolean
+          description: Every event's hash links correctly to the one before.
+          example: true
+        chainBrokenAt:
+          type: integer
+          description: The first event whose hash doesn't link, when the chain is broken.
+          example: 4
+      description: A fresh check, run on every read.
+      example:
+        digestMatches: true
+        signatureValid: true
+        chainIntact: true
+        chainBrokenAt: 4
+    UndoWindowFactor:
+      type: object
+      required:
+        - factor
+        - minutes
+      properties:
+        factor:
+          type: string
+          description: What added time, in plain words.
+          example: order total $116.97
+        minutes:
+          type: integer
+          description: Minutes it added.
+          example: 1
+      description: One reason the undo window is as long as it is.
+      example:
+        factor: order total $116.97
+        minutes: 1
+    TrustFactor:
+      type: object
+      required:
+        - label
+        - points
+      properties:
+        label:
+          type: string
+          description: What earned or cost points.
+          example: unregistered name
+        points:
+          type: integer
+          description: Points added (negative when taken away).
+          example: 1
+      description: One part of an agent's trust score.
+      example:
+        label: unregistered name
+        points: 1
+    Cart:
+      type: object
+      required:
+        - title
+        - variant
+        - price
+        - currency
+        - quantity
+      properties:
+        title:
+          type: string
+          description: Product title.
+          example: UA Infinite Pro Men's Running Shoes
+        brand:
+          type: string
+          nullable: true
+          description: Brand name, when known.
+          example: Under Armour
+        variant:
+          type: object
+          additionalProperties:
+            type: string
+            description: The value for one key in variant.
+            example: Size 10.5 · Color Black
+          description: The exact variant bought.
+          example:
+            key: Size 10.5 · Color Black
+        price:
+          type: number
+          description: Price per item in currency units.
+          example: 1.5
+        currency:
+          type: string
+          description: ISO 4217 currency code.
+          example: USD
+        quantity:
+          type: integer
+          description: Number of items.
+          example: 1
+        retailer:
+          type: string
+          description: The retailer's domain.
+          example: underarmour.com
+        imageUrl:
+          type: string
+          nullable: true
+          description: Product image URL, when there is one.
+          example: https://cdn.trychannel3.com/example.jpg
+      description: What the agent put in the cart.
+      example:
+        title: UA Infinite Pro Men's Running Shoes
+        brand: Under Armour
+        variant:
+          key: Size 10.5 · Color Black
+        price: 1.5
+        currency: USD
+        quantity: 1
+        retailer: underarmour.com
+        imageUrl: https://cdn.trychannel3.com/example.jpg
+    Order:
+      type: object
+      required:
+        - id
+        - status
+        - amount
+        - currency
+        - quantity
+        - product
+        - paypal
+      properties:
+        id:
+          type: string
+          format: uuid
+          description: Undo order id.
+          example: edd288bc-42d0-41d3-9b87-14915f3ff2c6
+        status:
+          $ref: "#/components/schemas/OrderStatus"
+        amount:
+          type: string
+          example: "116.97"
+          description: Total held or charged, as a decimal string.
+        currency:
+          type: string
+          description: ISO 4217 currency code.
+          example: USD
+        quantity:
+          type: integer
+          description: Number of items.
+          example: 1
+        product:
+          $ref: "#/components/schemas/Product"
+        agent:
+          type: object
+          additionalProperties: true
+          description: The agent's reasoning, confidence, guard checks and operator, as recorded at checkout.
+          example: {}
+        paypal:
+          $ref: "#/components/schemas/PayPalIds"
+        resolution:
+          type: object
+          nullable: true
+          description: The latest Undo, with verdict, evidence, money action and any agent payout.
+          additionalProperties: true
+          example: {}
+      description: The purchase.
+      example:
+        id: edd288bc-42d0-41d3-9b87-14915f3ff2c6
+        status: AUTHORIZED
+        amount: "116.97"
+        currency: USD
+        quantity: 1
+        product:
+          channel3Id: w25336I
+          title: UA Infinite Pro Men's Running Shoes
+          brand: Under Armour
+          description: >-
+            These men's running shoes from Under Armour, the UA Infinite Pro, are designed for endurance with a focus on
+            comfort and support. They feature a breathable e…
+          price: 116.97
+          currency: USD
+          imageUrl: https://cdn.trychannel3.com/aed9ec20-0e99-49b6-b011-2425732889be?aid=01M5D44F1Y9VDE34RVPPTF1H15&mid=oKaH
+          sourceUrl: https://buy.trychannel3.com/w25336I-oKaH-Wqce8l?o=01KVATPXMQW09XVTMRDEW2Q1Y9&aid=01M5D44F1Y9VDE34RVPPTF1H15
+          sourceDomain: underarmour.com
+          colors:
+            - "#1e1e20"
+            - "#d5d4d8"
+          attributes:
+            activity:
+              - Running
+            pattern:
+              - Texture
+              - Geometric
+            closure-type:
+              - Straps
+              - Lace-up
+            heel-height-type:
+              - Flat
+              - Low
+            footwear-material:
+              - Mesh
+              - Polyester
+            shoe-fit:
+              - Regular
+            shoe-features:
+              - Breathable design
+              - Cushioned
+            toe-style:
+              - Round
+            outsole-material:
+              - Rubber
+            footwear-support-type:
+              - Neutral
+              - Stability
+            lining-material:
+              - Synthetic
+          variant:
+            Size: "10.5"
+          variantOptions:
+            - name: Color
+              values:
+                - Black
+                - White
+            - name: Size
+              values:
+                - "7"
+                - "8"
+        agent: {}
+        paypal:
+          orderId: edd288bc-42d0-41d3-9b87-14915f3ff2c6
+          authorizationId: 4LD43914UL8743542
+          captureId: 4087729233507714F
+        resolution: {}
+    MandateSummary:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          description: Mandate id.
+          example: edd288bc-42d0-41d3-9b87-14915f3ff2c6
+        request:
+          type: string
+          description: The shopper's request in their own words.
+          example: A black hoodie in size M under $80
+        intent:
+          $ref: "#/components/schemas/IntentDraft"
+        status:
+          type: string
+          description: Mandate status.
+          example: FULFILLED
+        shopperKey:
+          type: string
+          description: The shopper's public key. Undo requests must be signed by it.
+          example: aHBQ5B27O2BiDV0oWgOigpsXZKjOfhcYYMch5pZ5H0c=
+      description: The mandate this purchase was made under.
+      example:
+        id: edd288bc-42d0-41d3-9b87-14915f3ff2c6
+        request: A black hoodie in size M under $80
+        intent:
+          item: hoodie
+          category: hoodie
+          quantity: 1
+          maxPrice: 80
+          currency: USD
+          attributes:
+            size: M
+            color: black
+          gender: male
+          brands:
+            - Under Armour
+          deadline: "2026-11-01"
+          notes: Prefer cotton.
+          mustAsk: []
+        status: FULFILLED
+        shopperKey: aHBQ5B27O2BiDV0oWgOigpsXZKjOfhcYYMch5pZ5H0c=
+    EventChain:
+      type: object
+      required:
+        - intact
+        - events
+      properties:
+        intact:
+          type: boolean
+          description: Every hash links correctly.
+          example: true
+        events:
+          type: array
+          items:
+            $ref: "#/components/schemas/ChainEvent"
+          description: Events, oldest first.
+          example:
+            - seq: 0
+              type: MANDATE_SIGNED
+              createdAt: "2026-10-20T04:18:18.268Z"
+              hash: 91b50424c310c5106b3c9873427ada9d3ffccf45c9834d1c2df342316b5a25d8
+              proof:
+                kind: signature
+                how: Ed25519 signature from the shopper's device verified against the mandate's exact bytes.
+                ref: 7bf66d54681f2b73e2f05ee0d49b5a68776908620751daaf0102b9f0b17fcac6
+      description: The mandate's event chain, with a proof on every step.
+      example:
+        intact: true
+        events:
+          - seq: 0
+            type: MANDATE_SIGNED
+            createdAt: "2026-10-20T04:18:18.268Z"
+            hash: 91b50424c310c5106b3c9873427ada9d3ffccf45c9834d1c2df342316b5a25d8
+            proof:
+              kind: signature
+              how: Ed25519 signature from the shopper's device verified against the mandate's exact bytes.
+              ref: 7bf66d54681f2b73e2f05ee0d49b5a68776908620751daaf0102b9f0b17fcac6
+    EvidenceItem:
+      type: object
+      required:
+        - source
+        - finding
+      properties:
+        source:
+          $ref: "#/components/schemas/EvidenceSource"
+        finding:
+          type: string
+          description: The finding, in plain words.
+          example: "attribute:size: mandate required 10, agent bought 10.5"
+      description: One finding behind a verdict and where it came from.
+      example:
+        source: mandate_check
+        finding: "attribute:size: mandate required 10, agent bought 10.5"
+    UndoOutcome:
+      type: object
+      required:
+        - action
+        - status
+        - paypal
+      properties:
+        action:
+          $ref: "#/components/schemas/MoneyAction"
+        status:
+          $ref: "#/components/schemas/OrderStatus"
+        paypal:
+          type: object
+          description: The PayPal ids behind the money movement.
+          additionalProperties:
+            type: string
+            nullable: true
+            description: The value for one key in paypal.
+            example: reachable
+          example:
+            key: reachable
+        evidenceDigest:
+          type: string
+          description: SHA-256 of the evidence pack sent with a merchant claim.
+          example: 9d2f1c0b7a4e5f6d8c3b2a1908f7e6d5c4b3a291807f6e5d4c3b2a1908f7e6d5
+      description: What happened to the money and the order's new status.
+      example:
+        action:
+          type: REFUND_FULL
+          reason: "agent broke the mandate: full refund, liability on the agent operator"
+        status: AUTHORIZED
+        paypal:
+          key: reachable
+        evidenceDigest: 9d2f1c0b7a4e5f6d8c3b2a1908f7e6d5c4b3a291807f6e5d4c3b2a1908f7e6d5
+    MerchantKpis:
+      type: object
+      required:
+        - agentOrders
+        - undone
+        - feesAvoided
+        - billedToAgents
+        - merchantProtected
+        - needsAction
+        - heldNow
+      properties:
+        agentOrders:
+          type: integer
+          description: Orders placed by agents (not counting abandoned checkouts).
+          example: 1
+        undone:
+          type: integer
+          description: Orders that were undone.
+          example: 1
+        feesAvoided:
+          type: number
+          description: Estimated PayPal fees avoided by voiding instead of refunding.
+          example: 1.5
+        billedToAgents:
+          type: number
+          description: Money paid back to the store by agent operators through PayPal Payouts.
+          example: 1.5
+        merchantProtected:
+          type: integer
+          description: Undos where the shopper changed their mind and the store was protected.
+          example: 1
+        needsAction:
+          type: integer
+          description: Orders waiting for the store's decision.
+          example: 1
+        heldNow:
+          type: number
+          description: Money held right now with an undo window open.
+          example: 1.5
+      description: Headline numbers for the store.
+      example:
+        agentOrders: 1
+        undone: 1
+        feesAvoided: 1.5
+        billedToAgents: 1.5
+        merchantProtected: 1
+        needsAction: 1
+        heldNow: 1.5
+    AgentRecord:
+      type: object
+      required:
+        - name
+        - verified
+        - trust
+        - effect
+      properties:
+        name:
+          type: string
+          description: The agent operator's name.
+          example: Careless demo agent
+        verified:
+          type: boolean
+          description: Whether the agent presented a registered operator key.
+          example: true
+        via:
+          type: string
+          nullable: true
+          description: "How the agent connected: web or mcp."
+          example: web
+        purchases:
+          type: integer
+          description: Purchases made at this store.
+          example: 1
+        faults:
+          type: integer
+          description: Undos where the agent was at fault.
+          example: 1
+        trust:
+          $ref: "#/components/schemas/Trust"
+        effect:
+          $ref: "#/components/schemas/RuleEffect"
+      additionalProperties: true
+      description: An agent's record at this store and what the rules do to it.
+      example:
+        name: Careless demo agent
+        verified: true
+        via: web
+        purchases: 1
+        faults: 1
+        trust:
+          score: 62
+          tier: trusted
+          factors:
+            - label: unregistered name
+              points: 50
+            - label: 4 clean purchases
+              points: 12
+        effect:
+          blocked: This store only accepts registered agent operators.
+          extraMinutes: 1
+          reason: "risky agent: undo window +6h"
+    UndoWindowStatus:
+      type: object
+      description: "The undo window on an order: how long, why, and whether it is still open."
+      required:
+        - minutes
+        - factors
+        - open
+      properties:
+        minutes:
+          type: integer
+          description: Total window length.
+          example: 1080
+        factors:
+          type: array
+          description: Why the window is this long, factor by factor.
+          items:
+            $ref: "#/components/schemas/UndoWindowFactor"
+          example:
+            - factor: order total $116.97
+              minutes: 360
+            - factor: agent bypassed Undo's pre-purchase check
+              minutes: 720
+        endsAt:
+          type: string
+          format: date-time
+          nullable: true
+          description: When the window closes.
+          example: "2026-10-20T16:30:00.000Z"
+        open:
+          type: boolean
+          description: "True while the money is only held and the window hasn't closed: Undo is a free void."
+          example: true
+        minutesLeft:
+          type: integer
+          nullable: true
+          description: Minutes until the window closes.
+          example: 1
+      example:
+        minutes: 1080
+        factors:
+          - factor: order total $116.97
+            minutes: 360
+          - factor: agent bypassed Undo's pre-purchase check
+            minutes: 720
+        endsAt: "2026-10-20T16:30:00.000Z"
+        open: true
+        minutesLeft: 1
+    DraftMandateRequest:
+      type: object
+      required:
+        - request
+      properties:
+        request:
+          type: string
+          minLength: 3
+          maxLength: 1000
+          description: The shopper's own words.
+          example: A black hoodie in size M under $80
+      description: The shopper's words to turn into a draft.
+      example:
+        request: A black hoodie in size M under $80
+    ShopMandateRequest:
+      type: object
+      properties:
+        simulate:
+          $ref: "#/components/schemas/SimulateMode"
+      description: Options for a shopping run. Send an empty object for a normal run.
+      example:
+        simulate: unguarded_wrong_variant
+    MandateRequestSigned:
+      type: object
+      required:
+        - mandateId
+        - digest
+      properties:
+        mandateId:
+          type: string
+          format: uuid
+          description: The stored mandate's id.
+          example: 2f4069f0-2367-4f08-acc6-d9cf1cf6669a
+        digest:
+          type: string
+          description: SHA-256 of the canonical mandate.
+          example: 7bf66d54681f2b73e2f05ee0d49b5a68776908620751daaf0102b9f0b17fcac6
+      description: A mandate request that was signed and stored.
+      example:
+        mandateId: 2f4069f0-2367-4f08-acc6-d9cf1cf6669a
+        digest: 7bf66d54681f2b73e2f05ee0d49b5a68776908620751daaf0102b9f0b17fcac6
+    ResolveOrderRequest:
+      type: object
+      required:
+        - action
+      properties:
+        action:
+          $ref: "#/components/schemas/ResolveAction"
+      description: What the merchant decided.
+      example:
+        action: accept_claim
+    ResolveOrderResult:
+      type: object
+      required:
+        - orderId
+      properties:
+        orderId:
+          type: string
+          format: uuid
+          description: The order that was resolved.
+          example: edd288bc-42d0-41d3-9b87-14915f3ff2c6
+      additionalProperties: true
+      description: What the merchant's decision did.
+      example:
+        orderId: edd288bc-42d0-41d3-9b87-14915f3ff2c6
+    ActivityFeed:
+      type: object
+      required:
+        - events
+      properties:
+        events:
+          type: array
+          items:
+            $ref: "#/components/schemas/ActivityEvent"
+          description: Events, newest first.
+          example:
+            - id: 226
+              at: "2026-10-20T12:38:24.861Z"
+              type: MERCHANT_RULES_CHANGED
+              kind: record
+              how: Recorded in the chain.
+              orderId: null
+              amount: null
+              agent: null
+              ref: null
+      description: The store's latest activity.
+      example:
+        events:
+          - id: 226
+            at: "2026-10-20T12:38:24.861Z"
+            type: MERCHANT_RULES_CHANGED
+            kind: record
+            how: Recorded in the chain.
+            orderId: null
+            amount: null
+            agent: null
+            ref: null
+    MandateRequestAction:
+      oneOf:
+        - $ref: "#/components/schemas/AnswerAction"
+        - $ref: "#/components/schemas/PrepareAction"
+        - $ref: "#/components/schemas/SignAction"
+      discriminator:
+        propertyName: action
+        mapping:
+          answer: "#/components/schemas/AnswerAction"
+          prepare: "#/components/schemas/PrepareAction"
+          sign: "#/components/schemas/SignAction"
+      description: One of answer, prepare or sign, chosen by action.
+      example:
+        action: answer
+        answers:
+          What size?: M
+    MandateRequestActionResult:
+      oneOf:
+        - $ref: "#/components/schemas/DraftResult"
+        - $ref: "#/components/schemas/PreparedMandate"
+      description: The new draft after answer, or the mandate to sign after prepare.
+      example:
+        draft:
+          item: black hoodie
+          category: hoodie
+          quantity: 1
+          maxPrice: 80
+          currency: USD
+          attributes:
+            color: black
+            size: M
+          mustAsk: []
+        ready:
+          ok: true
+    SimulateMode:
+      type: string
+      enum:
+        - unguarded_wrong_variant
+      description: Demo agents that misbehave on purpose.
+      example: unguarded_wrong_variant
+    ResolveAction:
+      type: string
+      enum:
+        - accept_claim
+        - return_received
+        - retry_settlement
+      description: What the merchant decides about an order.
+      example: accept_claim
+    Gender:
+      type: string
+      enum:
+        - male
+        - female
+      description: Men's or women's products.
+      example: male
+    SearchMode:
+      type: string
+      enum:
+        - default
+        - agentic
+      description: How the catalog reads the query.
+      example: default
+    NotReadyReason:
+      type: string
+      enum:
+        - open_questions
+        - missing_budget
+      description: Why a draft can't be signed yet.
+      example: open_questions
+    PayWith:
+      type: string
+      enum:
+        - saved_wallet
+      description: How the agent may pay.
+      example: saved_wallet
+    MandateStatus:
+      type: string
+      enum:
+        - ACTIVE
+        - FULFILLED
+        - REVOKED
+        - EXPIRED
+      description: Where a mandate stands.
+      example: ACTIVE
+    TrustTier:
+      type: string
+      enum:
+        - trusted
+        - neutral
+        - risky
+      description: An agent's trust band.
+      example: trusted
+    CheckoutStatus:
+      type: string
+      enum:
+        - CHECKOUT_CREATED
+        - AUTHORIZED
+      description: Where a new checkout stands.
+      example: CHECKOUT_CREATED
+    PaidWith:
+      type: string
+      enum:
+        - approval
+        - saved_wallet
+      description: How a purchase was paid.
+      example: approval
+    MandateRequestStatus:
+      type: string
+      enum:
+        - PENDING
+        - SIGNED
+        - EXPIRED
+      description: Where a mandate request stands.
+      example: PENDING
+    EvidenceFormat:
+      type: string
+      enum:
+        - undo-evidence-v1
+      description: Evidence file format.
+      example: undo-evidence-v1
+    Verdict:
+      type: string
+      enum:
+        - AGENT_FAULT
+        - MERCHANT_FAULT
+        - SHOPPER_CHANGED_MIND
+        - INCONCLUSIVE
+      description: Who was at fault.
+      example: AGENT_FAULT
+    EvidenceSource:
+      type: string
+      enum:
+        - mandate_check
+        - agent_record
+        - delivered_photo
+        - ai_judgement
+        - shopper
+      description: Where a finding came from.
+      example: mandate_check
+    MoneyActionType:
+      type: string
+      enum:
+        - VOID
+        - REFUND_FULL
+        - OPEN_CLAIM
+        - AUTHORIZE_RETURN
+        - REVIEW
+        - NONE
+      description: What happens to the money.
+      example: VOID
+    RateLimitCode:
+      type: string
+      enum:
+        - rate_limited
+      description: The error code on a 429.
+      example: rate_limited
+    AnswerActionName:
+      type: string
+      enum:
+        - answer
+      description: Always answer.
+      example: answer
+    PrepareActionName:
+      type: string
+      enum:
+        - prepare
+      description: Always prepare.
+      example: prepare
+    SignActionName:
+      type: string
+      enum:
+        - sign
+      description: Always sign.
+      example: sign
+    Liability:
+      type: string
+      nullable: true
+      enum:
+        - agent_operator
+        - merchant
+        - shopper
+      description: Who pays. Null when a person still has to decide.
+      example: agent_operator

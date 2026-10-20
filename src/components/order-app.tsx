@@ -5,6 +5,8 @@ import { useParams } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { DeviceKeyUnsupported, getDeviceKey, sha256Hex, undoMessage } from "@/lib/device-key";
 import { proofSummary, type Proof, type ProofKind } from "@/lib/proof";
+import { preparePhoto } from "@/lib/photo";
+import { PhoneHandoff } from "./phone-handoff";
 import { useFocusTrap } from "./use-focus-trap";
 import { VerifyPanel } from "./verify-panel";
 import { Badge, Container, PillButton, PillLink, StatusBadge, VERDICT, VerdictBadge, cx, money, shortHash } from "./ui";
@@ -88,24 +90,6 @@ function useCountdown(endsAt: string | null) {
   const s = Math.floor((ms % 60_000) / 1000);
   const pad = (n: number) => String(n).padStart(2, "0");
   return { ms, text: `${h}:${pad(m)}:${pad(s)}`, spoken: `${h} hours ${m} minutes` };
-}
-
-/** Phone photos are often 5–10 MB: downscale to ≤1600px JPEG before hashing, signing and upload. */
-async function preparePhoto(file: File): Promise<{ dataUrl: string; bytes: ArrayBuffer }> {
-  const bitmap = await createImageBitmap(file);
-  const scale = Math.min(1, 1600 / Math.max(bitmap.width, bitmap.height));
-  const canvas = document.createElement("canvas");
-  canvas.width = Math.round(bitmap.width * scale);
-  canvas.height = Math.round(bitmap.height * scale);
-  canvas.getContext("2d")!.drawImage(bitmap, 0, 0, canvas.width, canvas.height);
-  const blob: Blob = await new Promise((res, rej) => canvas.toBlob((b) => (b ? res(b) : rej(new Error("encode failed"))), "image/jpeg", 0.85));
-  const bytes = await blob.arrayBuffer();
-  const dataUrl = await new Promise<string>((res) => {
-    const r = new FileReader();
-    r.onload = () => res(r.result as string);
-    r.readAsDataURL(blob);
-  });
-  return { dataUrl, bytes };
 }
 
 function windowWhy(minutes: number) {
@@ -403,9 +387,12 @@ export function OrderApp() {
                   <button type="button" className="min-h-11 cursor-pointer px-3 text-body-sm underline" onClick={() => setPhoto(null)}>Remove</button>
                 </div>
               ) : (
-                <label htmlFor="photo" className="inline-flex min-h-11 cursor-pointer items-center gap-2 rounded-full border border-ink/25 px-5 text-body-sm transition-colors hover:border-ink has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-offset-2 has-[:focus-visible]:outline-ink">
-                  <Camera className="size-4" aria-hidden /> Add a photo of what arrived (optional)
-                </label>
+                <div className="flex flex-wrap items-center gap-2">
+                  <label htmlFor="photo" className="inline-flex min-h-11 cursor-pointer items-center gap-2 rounded-full border border-ink/25 px-5 text-body-sm transition-colors hover:border-ink has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-offset-2 has-[:focus-visible]:outline-ink">
+                    <Camera className="size-4" aria-hidden /> Add a photo of what arrived (optional)
+                  </label>
+                  <PhoneHandoff orderId={id} onPhoto={setPhoto} />
+                </div>
               )}
             </div>
             {error && <p role="alert" className="mt-4 rounded-[16px] bg-bad-bg p-3 text-body-sm text-bad">{error}</p>}

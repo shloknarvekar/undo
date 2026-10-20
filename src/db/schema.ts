@@ -134,3 +134,20 @@ export const merchantSettings = pgTable("merchant_settings", {
   value: jsonb("value").notNull(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
 });
+
+/**
+ * A one-time link that lets the shopper's phone send a photo of what arrived to the order page on their computer.
+ * Only the SHA-256 of the token is stored. The photo is held until the computer collects it, then cleared; it only
+ * becomes evidence if the shopper's device key signs an undo over its hash.
+ */
+export const photoHandoffs = pgTable("photo_handoffs", {
+  id: text("id").primaryKey(), // sha256 of the token
+  orderId: uuid("order_id")
+    .notNull()
+    .references(() => orders.id),
+  status: text("status", { enum: ["WAITING", "READY", "USED"] }).notNull().default("WAITING"),
+  dataUrl: text("data_url"),
+  sha256: text("sha256"),
+  expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+});

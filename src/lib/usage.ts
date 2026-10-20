@@ -36,6 +36,7 @@ export const ROUTE_LIMITS = {
   mcp: [{ max: 60, ms: MIN }, { max: 600, ms: HOUR }], // outside agents; tool calls are chatty, budgets still apply
   wallet: [{ max: 5, ms: MIN }, { max: 20, ms: HOUR }], // saving or forgetting a PayPal wallet
   merchant: [{ max: 10, ms: MIN }, { max: 60, ms: HOUR }], // changing the store's agent rules
+  photo: [{ max: 10, ms: MIN }, { max: 60, ms: HOUR }], // phone photo links and uploads
 } satisfies Record<string, Window[]>;
 export type RouteLimit = keyof typeof ROUTE_LIMITS;
 

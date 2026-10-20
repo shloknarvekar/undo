@@ -46,7 +46,9 @@ The app runs on Render's free plan. After a while without visitors it sleeps; th
    size M, under $80"*, sign the mandate (your browser makes a device key), and let the agent shop. Approve the
    payment with a **PayPal sandbox personal account**. You land on the order page with the undo countdown running.
    Tick *"Demo: use a careless agent"* first to see an agent-fault purchase.
-3. **Undo it.** Press *Undo this purchase*, give a reason, and sign. Open any step in the order's event chain to see
+3. **Undo it.** Press *Undo this purchase*, give a reason, and sign. For a wrong item, *Use my phone's camera* shows
+   a one-time QR code: scan it, snap what arrived, and the photo appears on your computer by itself. The phone only
+   hands over the photo; your computer's key still signs the undo, over the photo's hash. Open any step in the order's event chain to see
    how it was decided: which checks were rules, which were AI, and the exact PayPal API call and id behind each
    money movement.
 4. **Let the agent pay by itself.** On the mandate screen, tick *Let the agent pay without asking me* and save your

@@ -21,7 +21,7 @@ const STEPS = [
   },
   {
     title: "Money is held, not taken",
-    body: "PayPal authorizes the payment and Undo sets an undo window by risk: minutes for a sure thing, hours when something couldn't be verified.",
+    body: "PayPal authorizes the payment, with your approval or, if you signed for it, your saved wallet. Undo sets an undo window by risk: minutes for a sure thing, hours when something couldn't be verified.",
     api: "PayPal Orders v2 · AUTHORIZE",
   },
   {

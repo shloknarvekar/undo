@@ -49,9 +49,13 @@ The app runs on Render's free plan. After a while without visitors it sleeps; th
 3. **Undo it.** Press *Undo this purchase*, give a reason, and sign. Open any step in the order's event chain to see
    how it was decided: which checks were rules, which were AI, and the exact PayPal API call and id behind each
    money movement.
-4. **See the merchant side.** [`/merchant`](https://undo-1c56.onrender.com/merchant) lists every agent order with
+4. **Let the agent pay by itself.** On the mandate screen, tick *Let the agent pay without asking me* and save your
+   sandbox PayPal wallet once (PayPal Vault). The choice is signed into the mandate, the agent then pays with no
+   redirect, the money is still only held, and the undo window gets two extra hours. *Forget it* deletes the wallet
+   at PayPal.
+5. **See the merchant side.** [`/merchant`](https://undo-1c56.onrender.com/merchant) lists every agent order with
    its verdict, who pays, and any payout from an agent operator.
-5. **Use your own agent.** Connect Claude (or any MCP client) to the MCP server below and ask it to buy something.
+6. **Use your own agent.** Connect Claude (or any MCP client) to the MCP server below and ask it to buy something.
 
 ---
 

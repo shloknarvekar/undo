@@ -1,6 +1,6 @@
 @import "tailwindcss";
 
-/* Undo design tokens — see design-system/undo/MASTER.md. Named by role: swap the three field colors to rebrand. */
+/* Undo design tokens. Named by role: swap the three field colors to rebrand. */
 @theme {
   --color-field: #c6f432; /* Rewind — hot field */
   --color-mist: #eefbc9; /* Rewind Mist — tint */

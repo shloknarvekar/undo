@@ -253,17 +253,7 @@ tests/                 unit tests (node:test)
 
 ---
 
-## AI tools used
-
-**To build Undo:**
-
-- **Claude Code** (Anthropic, Claude Opus) wrote most of the code with the author: architecture, the PayPal and
-  Channel3 integrations, the fault engine, the MCP server, tests, the UI, and this README. Every PayPal flow was
-  verified against the live sandbox, not just generated.
-- **Claude Code skills:** *ui-ux-pro-max* (design system and UI review) and *impeccable* (frontend audit and polish).
-- **Claude** (claude.ai) as a real MCP client, to test the MCP server end to end.
-
-**Inside the product:**
+## AI inside the product
 
 - **Google Gemini** (`gemini-flash-lite-latest`, free tier, via the Vercel AI SDK) turns the shopper's words into a
   draft mandate, ranks products that already passed the guard, and checks complaints and delivery photos when the

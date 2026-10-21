@@ -1,0 +1,56 @@
+---
+title: Undo API
+description: Ctrl+Z for AI agent purchases, built on PayPal.
+---
+
+AI agents can already buy things for people. Undo makes those purchases reversible and makes it clear who pays when one goes wrong.
+
+A shopper signs a **mandate**: what an agent may buy and for how much. The signature comes from a key that never leaves their device. The agent shops inside that mandate, PayPal only **authorizes** the money, and an undo window opens. If something is wrong, the shopper presses Undo. A fault check decides who was at fault, and the money moves:
+
+- **Inside the window:** a free void. The hold is released and no money moves.
+- **After capture:** a refund, a claim sent to the merchant, or a return. Unclear cases go to a person.
+- **Agent at fault:** the agent's operator pays the merchant back through PayPal Payouts.
+
+Every step is written to a hash-chained event log, and anyone can check it without trusting Undo.
+
+<Callout type="warn" title="Sandbox">
+This API runs on the PayPal sandbox. No real money moves. Costly endpoints are rate limited per visitor; see [Errors and limits](/guides/errors-and-limits).
+</Callout>
+
+## Start here
+
+<Cards>
+
+<Card title="Quickstart" href="/guides/quickstart">
+Read a real finished order in one call, with curl, TypeScript or Python.
+</Card>
+
+<Card title="How Undo works" href="/guides/how-undo-works">
+Mandates, held payments, the undo window, verdicts and payouts.
+</Card>
+
+<Card title="Signing" href="/guides/signing">
+The exact strings a shopper's device signs, with working code.
+</Card>
+
+<Card title="Verify an order yourself" href="/guides/verify-evidence">
+Re-check every hash and signature on an order with 40 lines of Node.
+</Card>
+
+<Card title="API Reference" href="/api">
+Every operation, with real examples and a live playground.
+</Card>
+
+<Card title="SDKs" href="/sdks">
+Typed clients for TypeScript, Python and C#.
+</Card>
+
+</Cards>
+
+## Base URL
+
+```text
+https://undo-1c56.onrender.com
+```
+
+There's no sign-in. Anything a shopper authorizes, like a mandate or an Undo, carries an Ed25519 signature from their device instead.

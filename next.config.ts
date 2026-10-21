@@ -14,6 +14,14 @@ const nextConfig: NextConfig = {
       },
     },
   },
+  // The API docs portal is a static build in public/docs (APIMatic, see portal/). Its pages are folders with an
+  // index.html; real files (scripts, styles, llms.txt, page .md copies) match first, so this only maps page paths.
+  async rewrites() {
+    return [
+      { source: "/docs", destination: "/docs/index.html" },
+      { source: "/docs/:path*", destination: "/docs/:path*/index.html" },
+    ];
+  },
 };
 
 export default nextConfig;

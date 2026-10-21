@@ -15,6 +15,7 @@
     "spike:dispute-create": "tsx scripts/spike-dispute-create.ts",
     "spike:webhooks": "tsx scripts/spike-webhooks.ts",
     "test": "tsx --test tests/*.test.ts",
+    "docs:build": "node -e \"require('fs').copyFileSync('public/openapi.yaml','portal/src/spec/undo.yaml')\" && apimatic portal generate --input=portal --destination=public/docs --force",
     "db:generate": "drizzle-kit generate",
     "db:migrate": "tsx scripts/migrate.ts",
     "spike:mandate": "tsx scripts/spike-mandate.ts",

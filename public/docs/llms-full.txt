@@ -1,0 +1,707 @@
+# Connect an AI agent (/docs/guides/agents-mcp)
+
+
+
+Outside agents connect over MCP (Streamable HTTP) instead of calling the HTTP API directly. The agent never signs anything: it asks for a mandate, the shopper signs it on their own device, and from then on the agent can only buy what that mandate allows.
+
+```text
+https://undo-1c56.onrender.com/api/mcp
+```
+
+## Claude Code [#claude-code]
+
+```bash
+claude mcp add --transport http undo https://undo-1c56.onrender.com/api/mcp
+```
+
+On claude.ai or Claude Desktop, add a custom connector with the same URL.
+
+## Tools [#tools]
+
+| Tool                   | What it does                                                                   |
+| ---------------------- | ------------------------------------------------------------------------------ |
+| `undo_request_mandate` | Ask the shopper for a mandate. Returns a link they open to review and sign it. |
+| `undo_get_mandate`     | Check whether the mandate is signed, and read its limits.                      |
+| `undo_search_products` | Search the live catalog inside the mandate's limits.                           |
+| `undo_check_cart`      | Check a cart against the mandate before proposing it.                          |
+| `undo_propose_cart`    | Buy. Opens a PayPal checkout that only holds the money.                        |
+| `undo_get_order`       | Read the order, its undo window and its record.                                |
+
+## Registered and unregistered agents [#registered-and-unregistered-agents]
+
+Agents without a key are recorded as **unregistered**. An operator whose key Undo has registered connects with `Authorization: Bearer <key>` and becomes **registered**. A mandate signed for a registered agent can only be used with that key.
+
+The store can refuse low-trust agents or give their purchases a longer undo window; see [`GET /api/merchant/agents`](/api/undo/merchant/listMerchantAgents) and [`PUT /api/merchant/rules`](/api/undo/merchant/updateMerchantRules). When an agent breaks a mandate, its operator is the one who pays the merchant back.
+
+
+# Errors and limits (/docs/guides/errors-and-limits)
+
+
+
+## Error shape [#error-shape]
+
+Every error is JSON with a stable `error` code. Some add a `detail` in plain words, and validation errors list `issues`.
+
+```json
+{ "error": "invalid_request", "issues": [{ "code": "too_small", "message": "String must contain at least 3 character(s)", "path": ["request"] }] }
+```
+
+## Common codes [#common-codes]
+
+| Status | `error`                                                   | Meaning                                                                        |
+| ------ | --------------------------------------------------------- | ------------------------------------------------------------------------------ |
+| 400    | `invalid_request`                                         | The body failed validation; see `issues`.                                      |
+| 403    | `bad_signature`                                           | The signature doesn't verify against the mandate's key.                        |
+| 403    | `agent_blocked`                                           | The store's rules refuse this agent; `detail` says why.                        |
+| 404    | `not_found`                                               | No such order, mandate or request.                                             |
+| 409    | `purchase_already_open`                                   | The mandate already has a live purchase; `orderId` names it.                   |
+| 409    | `not_undoable`                                            | The order isn't held or captured any more, for example it was already voided.  |
+| 409    | `order_changed_retry`                                     | The order changed while this request ran. Read it again and retry.             |
+| 413    | `photo_too_large`                                         | The photo is over 4 MB.                                                        |
+| 422    | `open_questions`, `missing_budget`                        | The draft can't be signed yet; `mustAsk` lists what's missing.                 |
+| 422    | `stale_request`                                           | `requestedAt` is more than 15 minutes from the server's clock.                 |
+| 422    | `no_compliant_product`                                    | Nothing in the catalog fits the mandate; `considered` lists what was checked.  |
+| 422    | `mandate_does_not_match_request`                          | The signed mandate differs from the request the agent made.                    |
+| 429    | `rate_limited`                                            | Too many requests, or a free-tier budget is spent. Wait `Retry-After` seconds. |
+| 502    | `paypal_checkout_failed`, `undo_failed`, `channel3_error` | PayPal or the catalog failed. Safe to retry.                                   |
+| 503    | `ai_unavailable`, `parser_unavailable`                    | The AI model is unavailable. Try again shortly.                                |
+
+## Rate limits [#rate-limits]
+
+Limits are per visitor, over sliding windows. A `429` response carries a `Retry-After` header and a `retryAfter` field in seconds.
+
+| What                       | Per minute | Per hour |
+| -------------------------- | ---------- | -------- |
+| Drafting a mandate         | 6          | 30       |
+| Shopping inside a mandate  | 4          | 20       |
+| Product search             | 10         | 60       |
+| Undo                       | 6          | 30       |
+| MCP tool calls             | 60         | 600      |
+| Changing the store's rules | 10         | 60       |
+
+The AI model and the product catalog also have daily and monthly budgets shared by everyone. When one is spent, those endpoints return `429` until it resets.
+
+## Retries [#retries]
+
+Every money call to PayPal carries a fixed `PayPal-Request-Id` per order, so retrying a void, capture or refund never moves money twice.
+
+
+# How Undo works (/docs/guides/how-undo-works)
+
+
+
+## 1. The shopper signs a mandate [#1-the-shopper-signs-a-mandate]
+
+A mandate is what an agent may buy: the item, size, colour, brands, quantity and a price ceiling, in the shopper's own words and as structured limits. It lasts 14 days and allows one live purchase at a time.
+
+1. [`POST /api/mandates/draft`](/api/undo/mandates/draftMandate) turns the shopper's words into a draft. If something is unclear, `mustAsk` lists the questions to answer first.
+2. [`POST /api/mandates/prepare`](/api/undo/mandates/prepareMandate) builds the exact mandate and the string to sign.
+3. The shopper's device signs it with its Ed25519 key; see [Signing](/guides/signing).
+4. [`POST /api/mandates`](/api/undo/mandates/storeMandate) re-checks everything and stores it. This becomes event 0 of the mandate's hash chain.
+
+When an outside agent asks for a mandate over MCP, the shopper gets a link to a [mandate request](/api/undo/mandate-requests/getMandateRequest) instead. The agent's name goes inside the signed bytes, so liability follows it.
+
+## 2. The agent shops, and PayPal only holds the money [#2-the-agent-shops-and-paypal-only-holds-the-money]
+
+[`POST /api/mandates/{mandateId}/shop`](/api/undo/shopping/shopMandate) has Undo's agent search the live catalog and pick a product. Undo then checks the cart against the signed limits, re-reading the product at its exact variant. Only then does PayPal see a cart, and the checkout is created in **AUTHORIZE** mode, so the money is held, not taken.
+
+If the shopper allowed it in the mandate (`payWith: saved_wallet`), the agent can pay with their saved PayPal wallet without a click. The money is still only held.
+
+## 3. The undo window [#3-the-undo-window]
+
+While the window is open, Undo is a free void. Its length depends on the risk:
+
+| Factor                                                        | Adds                 |
+| ------------------------------------------------------------- | -------------------- |
+| Order total under $20 / under $100 / under $300 / $300 and up | 0 / 1 / 6 / 24 hours |
+| An attribute matched only loosely                             | 3 hours              |
+| An attribute couldn't be verified from the listing            | 6 hours              |
+| Agent confidence below 0.7                                    | 6 hours              |
+| The catalog substituted a requested option                    | 12 hours             |
+| The agent skipped Undo's check before buying                  | 12 hours             |
+| The agent paid with the saved wallet, with no click           | 2 hours              |
+| The store's rules for low-trust agents                        | as configured        |
+
+The total is capped at 48 hours. Every order lists its factors in `undoWindow.factors`. When the window closes, the money is captured.
+
+## 4. The shopper presses Undo [#4-the-shopper-presses-undo]
+
+[`POST /api/orders/{orderId}/undo`](/api/undo/orders/undoOrder) must be signed by the mandate's key. A photo of what arrived is optional. The fault check weighs the mandate check, the agent's record, the photo and an AI reading, and returns a verdict:
+
+| Verdict                | Who pays             | Inside the window | After capture                                                |
+| ---------------------- | -------------------- | ----------------- | ------------------------------------------------------------ |
+| `AGENT_FAULT`          | The agent's operator | Void              | Full refund, then a Payout from the operator to the merchant |
+| `MERCHANT_FAULT`       | The merchant         | Void              | A claim with an evidence pack sent to the merchant           |
+| `SHOPPER_CHANGED_MIND` | The shopper          | Void              | A return; refund on arrival, minus a 15% restocking fee      |
+| `INCONCLUSIVE`         | A person decides     | Review            | Review                                                       |
+
+If the confidence is below 0.7, the case goes to a person. What the shopper says is recorded as a claim, not as evidence.
+
+## 5. The record [#5-the-record]
+
+Every step is an event in the mandate's chain: the cart, the hold, the void or capture, the verdict, the refund, the payout. Each event's hash covers the one before it. [`GET /api/orders/{orderId}/evidence`](/api/undo/orders/getOrderEvidence) returns the raw chain and the signed mandate, so you can [verify it yourself](/guides/verify-evidence).
+
+
+# Quickstart (/docs/guides/quickstart)
+
+
+
+This order is a finished case from the live sandbox: a careless agent bought shoes in size 10.5 when the shopper signed for 10. The money had already been captured when the shopper pressed Undo. The fault check found the agent at fault, so the shopper got a full refund and the agent's operator paid the merchant back through PayPal Payouts.
+
+## Read the order [#read-the-order]
+
+```bash title="curl"
+curl -s https://undo-1c56.onrender.com/api/orders/edd288bc-42d0-41d3-9b87-14915f3ff2c6
+```
+
+```ts title="TypeScript"
+import { UndoApiClient } from "undo-api";
+
+const client = new UndoApiClient();
+const { order, undoWindow, chain } = await client.orders.getOrder({
+  orderId: "edd288bc-42d0-41d3-9b87-14915f3ff2c6",
+});
+
+console.log(order.status, order.amount); // REFUNDED 116.97
+console.log(chain.intact, chain.events.length); // true 12
+```
+
+```python title="Python"
+from undo_api import UndoApiClient
+
+view = UndoApiClient().orders.get_order("edd288bc-42d0-41d3-9b87-14915f3ff2c6")
+print(view.order.status, view.order.amount)  # REFUNDED 116.97
+print(view.chain.intact, len(view.chain.events))  # True 12
+```
+
+## What comes back [#what-comes-back]
+
+| Field              | What it tells you                                                                                              |
+| ------------------ | -------------------------------------------------------------------------------------------------------------- |
+| `order.status`     | Where the purchase stands. `AUTHORIZED` means the money is only held and Undo is a free void.                  |
+| `order.paypal`     | The PayPal order, authorization and capture ids behind it.                                                     |
+| `order.resolution` | The verdict, the evidence, what happened to the money, and any payout from the agent's operator.               |
+| `undoWindow`       | How long the window is, why, and whether it's still open.                                                      |
+| `chain.events`     | Every step, oldest first. Each one carries a `proof` saying how it was decided and which PayPal call backs it. |
+
+## Next [#next]
+
+* [How Undo works](/guides/how-undo-works): the flow from mandate to payout.
+* [Verify an order yourself](/guides/verify-evidence): check the hashes and signatures without trusting Undo.
+* The [API Reference](/api) lists every operation with examples you can run in the playground.
+
+
+# Signing (/docs/guides/signing)
+
+
+
+Undo never signs for a shopper. Their device holds an Ed25519 key pair. The public key, raw 32 bytes in base64, is the mandate's `shopperKey`, and every signature is base64 of the 64-byte Ed25519 signature over a UTF-8 string.
+
+## Canonical JSON [#canonical-json]
+
+Hashes are taken over **canonical JSON**: object keys sorted at every level, `undefined` values dropped, no spaces.
+
+```js
+const canonical = (v) => JSON.stringify(sort(v));
+const sort = (v) =>
+  Array.isArray(v) ? v.map(sort)
+  : v && typeof v === "object"
+    ? Object.fromEntries(Object.keys(v).filter((k) => v[k] !== undefined).sort().map((k) => [k, sort(v[k])]))
+    : v;
+```
+
+## Signing a mandate [#signing-a-mandate]
+
+```text
+undo-intent-mandate-v1:<sha256 hex of canonical(mandate)>
+```
+
+[`POST /api/mandates/prepare`](/api/undo/mandates/prepareMandate) returns this string as `signingMessage`. Sign it exactly as given and send the mandate plus the signature to [`POST /api/mandates`](/api/undo/mandates/storeMandate). The server recomputes the digest, so changing one byte of the mandate breaks the signature.
+
+```js title="Browser (WebCrypto)"
+const keys = await crypto.subtle.generateKey({ name: "Ed25519" }, false, ["sign", "verify"]);
+const raw = new Uint8Array(await crypto.subtle.exportKey("raw", keys.publicKey));
+const shopperKey = btoa(String.fromCharCode(...raw));
+
+// ...prepare the mandate with shopperKey, then:
+const sig = await crypto.subtle.sign("Ed25519", keys.privateKey, new TextEncoder().encode(signingMessage));
+const signature = btoa(String.fromCharCode(...new Uint8Array(sig)));
+```
+
+## Signing an Undo [#signing-an-undo]
+
+```text
+undo-request-v1:<orderId>:<sha256 hex of reason>:<sha256 hex of photo bytes, or ->:<requestedAt>
+```
+
+* `reason` is the text sent in the body, hashed as UTF-8.
+* The photo hash covers the decoded image bytes, not the data URL. Use `-` when there's no photo.
+* `requestedAt` is an ISO 8601 timestamp, and it must be within 15 minutes of the server's clock.
+
+The key must be the one in the order's mandate (`mandate.shopperKey` on [`GET /api/orders/{orderId}`](/api/undo/orders/getOrder)). Any other key gets `403 bad_signature`.
+
+<Callout type="info">
+  Keep the private key non-extractable, as above. If the browser's storage is cleared, that mandate can't be undone from another device, by design.
+</Callout>
+
+
+# Verify an order yourself (/docs/guides/verify-evidence)
+
+
+
+[`GET /api/orders/{orderId}/evidence`](/api/undo/orders/getOrderEvidence) returns the order's raw event chain exactly as hashed, and the signed mandate exactly as stored. Nothing is pre-verified, on purpose. This script checks all of it with Node's built-in crypto and no dependencies.
+
+```js title="verify.mjs"
+import { createHash, createPublicKey, verify } from "node:crypto";
+
+const canonical = (v) => JSON.stringify(sort(v));
+const sort = (v) =>
+  Array.isArray(v) ? v.map(sort)
+  : v && typeof v === "object" ? Object.fromEntries(Object.keys(v).filter((k) => v[k] !== undefined).sort().map((k) => [k, sort(v[k])]))
+  : v;
+const sha256 = (s) => createHash("sha256").update(s, "utf8").digest("hex");
+const ed25519Key = (b64) =>
+  createPublicKey({ key: Buffer.concat([Buffer.from("302a300506032b6570032100", "hex"), Buffer.from(b64, "base64")]), format: "der", type: "spki" });
+
+const orderId = process.argv[2] ?? "edd288bc-42d0-41d3-9b87-14915f3ff2c6";
+const { mandate, events } = await (await fetch(`https://undo-1c56.onrender.com/api/orders/${orderId}/evidence`)).json();
+
+// 1. Every event's hash links to the one before it.
+let prev = "0".repeat(64);
+for (const e of events) {
+  const { subjectId, seq, type, payload, createdAt } = e;
+  const ok = e.prevHash === prev && e.hash === sha256(prev + canonical({ subjectId, seq, type, payload, createdAt }));
+  console.log(ok ? "ok  " : "BAD ", e.seq, e.type);
+  prev = e.hash;
+}
+
+// 2. The shopper's device signed this exact mandate.
+const digest = sha256(canonical(mandate));
+const message = `undo-intent-mandate-v${mandate.version}:${digest}`;
+const signed = events.find((e) => e.type === "MANDATE_SIGNED").payload;
+console.log("mandate digest matches:", digest === signed.digest);
+console.log("shopper signature valid:", verify(null, Buffer.from(message, "utf8"), ed25519Key(mandate.shopperKey), Buffer.from(signed.signature, "base64")));
+
+// 3. The Undo request was signed by the same key.
+const undo = events.find((e) => e.type === "UNDO_REQUESTED")?.payload;
+if (undo) {
+  const msg = `undo-request-v1:${orderId}:${sha256(undo.reason)}:${undo.photoSha256 ?? "-"}:${undo.requestedAt}`;
+  console.log("undo signature valid:", verify(null, Buffer.from(msg, "utf8"), ed25519Key(mandate.shopperKey), Buffer.from(undo.signature, "base64")));
+}
+```
+
+Run it on the finished refund case:
+
+```bash
+node verify.mjs edd288bc-42d0-41d3-9b87-14915f3ff2c6
+```
+
+```text
+ok   0 MANDATE_SIGNED
+ok   1 CART_PROPOSED
+ok   2 CHECKOUT_CREATED
+ok   3 PAYMENT_AUTHORIZED
+ok   4 WINDOW_FAST_FORWARDED
+ok   5 PAYMENT_CAPTURED
+ok   6 UNDO_REQUESTED
+ok   7 VERDICT
+ok   8 PAYMENT_REFUNDED
+ok   9 LIABILITY_ASSIGNED
+ok   10 LIABILITY_PAYOUT_SENT
+ok   11 LIABILITY_SETTLED
+mandate digest matches: true
+shopper signature valid: true
+undo signature valid: true
+```
+
+## How the chain works [#how-the-chain-works]
+
+* Events are numbered from 0. The first event's `prevHash` is 64 zeros.
+* `hash = sha256(prevHash + canonical({ subjectId, seq, type, payload, createdAt }))`.
+* Editing any event changes its hash, so the next event's `prevHash` stops matching and every check after it fails.
+
+The same checks run in the browser on every order page under **Verify in my browser**, with buttons that tamper with a copy so you can watch them fail.
+
+
+# Undo API (/docs/)
+
+
+
+AI agents can already buy things for people. Undo makes those purchases reversible and makes it clear who pays when one goes wrong.
+
+A shopper signs a **mandate**: what an agent may buy and for how much. The signature comes from a key that never leaves their device. The agent shops inside that mandate, PayPal only **authorizes** the money, and an undo window opens. If something is wrong, the shopper presses Undo. A fault check decides who was at fault, and the money moves:
+
+* **Inside the window:** a free void. The hold is released and no money moves.
+* **After capture:** a refund, a claim sent to the merchant, or a return. Unclear cases go to a person.
+* **Agent at fault:** the agent's operator pays the merchant back through PayPal Payouts.
+
+Every step is written to a hash-chained event log, and anyone can check it without trusting Undo.
+
+<Callout type="warn" title="Sandbox">
+  This API runs on the PayPal sandbox. No real money moves. Costly endpoints are rate limited per visitor; see [Errors and limits](/guides/errors-and-limits).
+</Callout>
+
+## Start here [#start-here]
+
+<Cards>
+  <Card title="Quickstart" href="/guides/quickstart">
+    Read a real finished order in one call, with curl, TypeScript or Python.
+  </Card>
+
+  <Card title="How Undo works" href="/guides/how-undo-works">
+    Mandates, held payments, the undo window, verdicts and payouts.
+  </Card>
+
+  <Card title="Signing" href="/guides/signing">
+    The exact strings a shopper's device signs, with working code.
+  </Card>
+
+  <Card title="Verify an order yourself" href="/guides/verify-evidence">
+    Re-check every hash and signature on an order with 40 lines of Node.
+  </Card>
+
+  <Card title="API Reference" href="/api">
+    Every operation, with real examples and a live playground.
+  </Card>
+
+  <Card title="SDKs" href="/sdks">
+    Typed clients for TypeScript, Python and C#.
+  </Card>
+</Cards>
+
+## Base URL [#base-url]
+
+```text
+https://undo-1c56.onrender.com
+```
+
+There's no sign-in. Anything a shopper authorizes, like a mandate or an Undo, carries an Ed25519 signature from their device instead.
+
+
+# C# SDK (/docs/sdks/csharp)
+
+[Download SDK](/docs/__downloads/sdk/csharp.zip)
+
+## Intro [#intro]
+
+The Undo API SDK provides access to the Undo API REST APIs.
+
+Ctrl+Z for AI agent purchases, built on PayPal.
+
+Undo sits between a shopping agent and PayPal. A shopper signs a mandate (what the agent may buy, for how much)
+with a key that never leaves their device. The agent shops inside it, PayPal only **authorizes** the money, and
+an undo window opens. Pressing Undo runs a fault check and routes the money: a free void inside the window, or a
+refund, a merchant claim or a return after capture. When the agent was at fault, its operator pays the merchant
+back through PayPal Payouts. Every step is written to a hash-chained event log anyone can verify.
+
+**Signing.** Mandates and undo requests are signed with Ed25519 by the shopper's device key. The API never
+signs for a shopper. The exact strings to sign are given with each operation.
+
+**Sandbox.** This deployment runs on the PayPal sandbox; no real money moves. Costly endpoints are rate limited
+per visitor and answer `429` with a `Retry-After` header when the limit or the free-tier budget is reached.
+
+**Agents.** Third-party agents usually connect over MCP (Streamable HTTP at `/api/mcp`, JSON-RPC, not described
+here). This document covers the HTTP API that the web app, agents and merchants call directly.
+
+## Installation [#installation]
+
+Add the SDK as a project reference into your solution:
+
+```bash
+dotnet add reference <path-to-sdk>/src/UndoApi/UndoApi.csproj
+```
+
+The project takes its build settings from the files around it, so reference it in place.
+
+## Quick Start [#quick-start]
+
+### Dependency Injection [#dependency-injection]
+
+Register the client with `IServiceCollection` and resolve it from the container. The `HttpClient` is managed by `IHttpClientFactory`. Configure the client's behavior through `UndoApiClientOptions`.
+
+```csharp
+services.AddUndoApiClient(options =>
+{
+    options.Environment = ServerEnvironment.Production;
+    // TODO: configure more client options here
+});
+```
+
+### Direct Instantiation [#direct-instantiation]
+
+Create the client by passing an `HttpClient` you manage yourself. Configure the client's behavior through `UndoApiClientOptions`.
+
+```csharp
+var httpClient = new HttpClient();
+// TODO: configure more client options here
+var options = new UndoApiClientOptions { Environment = ServerEnvironment.Production };
+var client = new UndoApiClient(httpClient, options);
+```
+
+# SDKs (/docs/sdks)
+
+- [TypeScript](/docs/sdks/typescript): [Download SDK](/docs/__downloads/sdk/typescript.zip)
+
+- [Python](/docs/sdks/python): [Download SDK](/docs/__downloads/sdk/python.zip)
+
+- [C#](/docs/sdks/csharp): [Download SDK](/docs/__downloads/sdk/csharp.zip)
+
+# Python SDK (/docs/sdks/python)
+
+[Download SDK](/docs/__downloads/sdk/python.zip)
+
+## Intro [#intro]
+
+The Undo API SDK provides access to the Undo API REST APIs.
+
+Ctrl+Z for AI agent purchases, built on PayPal.
+
+Undo sits between a shopping agent and PayPal. A shopper signs a mandate (what the agent may buy, for how much)
+with a key that never leaves their device. The agent shops inside it, PayPal only **authorizes** the money, and
+an undo window opens. Pressing Undo runs a fault check and routes the money: a free void inside the window, or a
+refund, a merchant claim or a return after capture. When the agent was at fault, its operator pays the merchant
+back through PayPal Payouts. Every step is written to a hash-chained event log anyone can verify.
+
+**Signing.** Mandates and undo requests are signed with Ed25519 by the shopper's device key. The API never
+signs for a shopper. The exact strings to sign are given with each operation.
+
+**Sandbox.** This deployment runs on the PayPal sandbox; no real money moves. Costly endpoints are rate limited
+per visitor and answer `429` with a `Retry-After` header when the limit or the free-tier budget is reached.
+
+**Agents.** Third-party agents usually connect over MCP (Streamable HTTP at `/api/mcp`, JSON-RPC, not described
+here). This document covers the HTTP API that the web app, agents and merchants call directly.
+
+## Installation [#installation]
+
+Add the SDK to your project from its folder, with whichever package manager your project uses. Give each tool a path containing a slash, such as `../undo-api` — a bare folder name is looked up on PyPI instead, and resolves to whatever project holds that name there:
+
+```bash
+pip install <path-to-sdk>
+```
+
+```bash
+uv add <path-to-sdk>
+```
+
+```bash
+poetry add <path-to-sdk>
+```
+
+## Quick Start [#quick-start]
+
+### Synchronous client [#synchronous-client]
+
+Construct `UndoApiClient` with keyword arguments, and call `close()` when you are done. Every argument is optional.
+
+```python
+from undo_api import UndoApiClient
+
+client = UndoApiClient()
+
+client.close()
+```
+
+Alternatively, scope it — `with UndoApiClient(...) as client:` closes the pool on exit.
+
+### Asynchronous client [#asynchronous-client]
+
+`AsyncUndoApiClient` mirrors `UndoApiClient` with **identical method names**, and every endpoint method is a coroutine. It takes the same arguments, with some differences — for example, the transport argument is `custom_async_http_client`.
+
+```python
+from asyncio import run
+
+from undo_api import AsyncUndoApiClient
+
+async def main() -> None:
+    client = AsyncUndoApiClient()
+    await client.aclose()
+
+run(main())
+```
+
+Alternatively, scope it — `async with AsyncUndoApiClient(...) as client:` closes the pool on exit.
+
+# TypeScript SDK (/docs/sdks/typescript)
+
+[Download SDK](/docs/__downloads/sdk/typescript.zip)
+
+## Intro [#intro]
+
+The Undo API SDK provides access to the Undo API REST APIs.
+
+Ctrl+Z for AI agent purchases, built on PayPal.
+
+Undo sits between a shopping agent and PayPal. A shopper signs a mandate (what the agent may buy, for how much)
+with a key that never leaves their device. The agent shops inside it, PayPal only **authorizes** the money, and
+an undo window opens. Pressing Undo runs a fault check and routes the money: a free void inside the window, or a
+refund, a merchant claim or a return after capture. When the agent was at fault, its operator pays the merchant
+back through PayPal Payouts. Every step is written to a hash-chained event log anyone can verify.
+
+**Signing.** Mandates and undo requests are signed with Ed25519 by the shopper's device key. The API never
+signs for a shopper. The exact strings to sign are given with each operation.
+
+**Sandbox.** This deployment runs on the PayPal sandbox; no real money moves. Costly endpoints are rate limited
+per visitor and answer `429` with a `Retry-After` header when the limit or the free-tier budget is reached.
+
+**Agents.** Third-party agents usually connect over MCP (Streamable HTTP at `/api/mcp`, JSON-RPC, not described
+here). This document covers the HTTP API that the web app, agents and merchants call directly.
+
+## Installation [#installation]
+
+The SDK compiles to `dist/` before it can be referenced — run its `build` script once in the SDK folder, then add it to your project by path:
+
+```bash
+npm install <path-to-sdk>
+```
+
+## Quick Start [#quick-start]
+
+Create one client and reuse it. Configure its behaviour through `ClientOptions`.
+
+```ts
+import { UndoApiClient } from "undo-api";
+
+const client = new UndoApiClient({});
+```
+
+Nothing in `ClientOptions` is required — `new UndoApiClient()` compiles — and each option left out falls back to its default. This API declares one environment, so there is no environment to select and no host to state at the construction site.
+
+### From CommonJS [#from-commonjs]
+
+The package ships both dialects from a single entry, so `require` works with full types. In a TypeScript CommonJS file use the `import ... = require(...)` form — a plain destructuring `require` runs fine but gives you `any`.
+
+```ts
+import sdk = require("undo-api");
+
+const client = new sdk.UndoApiClient({});
+```
+
+# Check the service (/docs/api/undo/service/getHealth)
+
+`GET /api/health`
+
+Shallow health check. With `deep`, also proves the service can reach PayPal sandbox and the database. Never returns secret values.
+
+# Search products (/docs/api/undo/products/searchProducts)
+
+`POST /api/products/search`
+
+Searches the live catalog with structured filters. Rate limited per visitor.
+
+# Get a product at a variant (/docs/api/undo/products/getProduct)
+
+`GET /api/products/{productId}`
+
+Fresh product detail resolved to the requested variant. Pass options as `option_<Name>=<value>` query
+parameters, for example `option_Size=M&option_Color=Black`. `relaxed` lists any option the catalog could not honor.
+
+
+# Draft a mandate from the shopper's words (/docs/api/undo/mandates/draftMandate)
+
+`POST /api/mandates/draft`
+
+Turns a plain request into structured limits for the shopper to review. Nothing is stored. Rate limited per visitor.
+
+# Build the exact mandate to sign (/docs/api/undo/mandates/prepareMandate)
+
+`POST /api/mandates/prepare`
+
+Returns the mandate the shopper's device must sign and the exact `signingMessage`
+(`undo-intent-mandate-v1:<sha256 of the canonical mandate JSON>`). Stateless; nothing is stored.
+
+
+# Store a signed mandate (/docs/api/undo/mandates/storeMandate)
+
+`POST /api/mandates`
+
+Re-verifies the signature, freshness, expiry and readiness, then writes the first event of the mandate's hash chain.
+
+# Get a mandate and check its integrity (/docs/api/undo/mandates/getMandate)
+
+`GET /api/mandates/{mandateId}`
+
+The mandate, its status, the search it permits, and a fresh check of its digest, signature and event chain.
+
+# Shop inside a mandate (/docs/api/undo/shopping/shopMandate)
+
+`POST /api/mandates/{mandateId}/shop`
+
+Undo's agent searches, checks the cart against the signed limits, and opens a PayPal checkout in AUTHORIZE
+mode. Without a saved wallet the shopper approves at `approveUrl`; with one (and only if the mandate allows it)
+the money is held straight away. One live purchase per mandate. Rate limited per visitor.
+
+
+# Get a mandate request (/docs/api/undo/mandate-requests/getMandateRequest)
+
+`GET /api/mandate-requests/{requestId}`
+
+The draft an outside agent asked the shopper to sign, who is asking, and whether it is signed yet.
+
+# Answer, prepare or sign a mandate request (/docs/api/undo/mandate-requests/actOnMandateRequest)
+
+`POST /api/mandate-requests/{requestId}`
+
+- `answer`: answers the agent's open questions; the draft is re-read from the new text.
+- `prepare`: the exact mandate this device's key must sign.
+- `sign`: stores the signed mandate; it must match the request byte for byte (same words, limits and agent).
+
+
+# Get an order (/docs/api/undo/orders/getOrder)
+
+`GET /api/orders/{orderId}`
+
+The purchase, the live undo window, the mandate behind it, and its verified event chain. Each event carries its proof.
+
+# Download the evidence for an order (/docs/api/undo/orders/getOrderEvidence)
+
+`GET /api/orders/{orderId}/evidence`
+
+Everything needed to check an order without trusting Undo: the raw hash-chained events exactly as hashed and
+the signed mandate exactly as stored. Nothing is pre-verified, on purpose.
+
+
+# Undo a purchase (/docs/api/undo/orders/undoOrder)
+
+`POST /api/orders/{orderId}/undo`
+
+The Undo button. Must be signed by the mandate's shopper key over
+`undo-request-v1:<orderId>:<sha256 hex of reason>:<sha256 hex of photo bytes, or ->:<requestedAt>`.
+`requestedAt` must be within 15 minutes of now. Runs the fault check, then routes the money: a void inside
+the window, or a refund, merchant claim, return or human review after capture. Rate limited per visitor.
+
+
+# Resolve an order as the merchant (/docs/api/undo/merchant/resolveOrder)
+
+`POST /api/orders/{orderId}/resolve`
+
+The merchant's side of an Undo. Sandbox only.
+
+# List agent orders (/docs/api/undo/merchant/listMerchantOrders)
+
+`GET /api/merchant/orders`
+
+Every agent order (latest 300) with its verdict, who pays and any agent payout, plus headline numbers.
+
+# List agents and their trust scores (/docs/api/undo/merchant/listMerchantAgents)
+
+`GET /api/merchant/agents`
+
+Every agent that has shopped here, its record and trust score with every point explained, and what the store's rules do to it.
+
+# Get the store's agent rules (/docs/api/undo/merchant/getMerchantRules)
+
+`GET /api/merchant/rules`
+
+The rules the store applies to agents at checkout: block below a trust score, lengthen the undo window below a score, or accept only registered operators.
+
+# Update the store's agent rules (/docs/api/undo/merchant/updateMerchantRules)
+
+`PUT /api/merchant/rules`
+
+Applies from the next checkout, for Undo's agent and every MCP agent. Each change is recorded in the store's event chain.
+
+# Stream the store's activity (/docs/api/undo/merchant/listMerchantActivity)
+
+`GET /api/merchant/activity`
+
+Every step Undo records, newest first (up to 60). Pass `after` to get only events newer than that id.

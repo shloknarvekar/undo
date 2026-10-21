@@ -1,0 +1,4 @@
+{
+  "title": "Guides",
+  "pages": ["quickstart", "how-undo-works", "signing", "verify-evidence", "agents-mcp", "errors-and-limits"]
+}

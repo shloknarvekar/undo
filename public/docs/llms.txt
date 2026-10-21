@@ -1,0 +1,53 @@
+# Docs
+
+- Overview
+  - [Undo API](/docs/): Ctrl+Z for AI agent purchases, built on PayPal.
+- Guides
+  - [Quickstart](/docs/guides/quickstart): Read a real finished order in one call.
+  - [How Undo works](/docs/guides/how-undo-works): From a signed mandate to a held payment, an undo window, a verdict and a payout.
+  - [Signing](/docs/guides/signing): The exact strings a shopper's device signs, and how.
+  - [Verify an order yourself](/docs/guides/verify-evidence): Re-check every hash and signature on an order without trusting Undo.
+  - [Connect an AI agent](/docs/guides/agents-mcp): Let any MCP-capable agent shop under a shopper's mandate.
+  - [Errors and limits](/docs/guides/errors-and-limits): What errors look like, the common codes, and the rate limits.
+- API Reference
+  - Service: Health and deploy checks.
+    - [Check the service](/docs/api/undo/service/getHealth): Shallow health check. With `deep`, also proves the service can reach PayPal sandbox and the database. Never returns secret values.
+  - Products: Live product catalog search and detail, resolved to an exact variant.
+    - [Search products](/docs/api/undo/products/searchProducts): Searches the live catalog with structured filters. Rate limited per visitor.
+    - [Get a product at a variant](/docs/api/undo/products/getProduct): Fresh product detail resolved to the requested variant. Pass options as `option_<Name>=<value>` query
+parameters, for example `option_Size=M&option_Color=Black`. `relaxed` lists any option the catalog could not honor.
+  - Mandates: Drafting, preparing, signing and reading shopper-signed intent mandates.
+    - [Draft a mandate from the shopper's words](/docs/api/undo/mandates/draftMandate): Turns a plain request into structured limits for the shopper to review. Nothing is stored. Rate limited per visitor.
+    - [Build the exact mandate to sign](/docs/api/undo/mandates/prepareMandate): Returns the mandate the shopper's device must sign and the exact `signingMessage`
+(`undo-intent-mandate-v1:<sha256 of the canonical mandate JSON>`). Stateless; nothing is stored.
+    - [Store a signed mandate](/docs/api/undo/mandates/storeMandate): Re-verifies the signature, freshness, expiry and readiness, then writes the first event of the mandate's hash chain.
+    - [Get a mandate and check its integrity](/docs/api/undo/mandates/getMandate): The mandate, its status, the search it permits, and a fresh check of its digest, signature and event chain.
+  - Shopping: Let Undo's agent shop inside a mandate and open a PayPal checkout that only authorizes the money.
+    - [Shop inside a mandate](/docs/api/undo/shopping/shopMandate): Undo's agent searches, checks the cart against the signed limits, and opens a PayPal checkout in AUTHORIZE
+mode. Without a saved wallet the shopper approves at `approveUrl`; with one (and only if the mandate allows it)
+the money is held straight away. One live purchase per mandate. Rate limited per visitor.
+  - Mandate requests: The shopper's side of a mandate an outside agent asked for.
+    - [Get a mandate request](/docs/api/undo/mandate-requests/getMandateRequest): The draft an outside agent asked the shopper to sign, who is asking, and whether it is signed yet.
+    - [Answer, prepare or sign a mandate request](/docs/api/undo/mandate-requests/actOnMandateRequest): - `answer`: answers the agent's open questions; the draft is re-read from the new text.
+- `prepare`: the exact mandate this device's key must sign.
+- `sign`: stores the signed mandate; it must match the request byte for byte (same words, limits and agent).
+  - Orders: Purchases, their undo windows, the Undo button, and the evidence to verify them.
+    - [Get an order](/docs/api/undo/orders/getOrder): The purchase, the live undo window, the mandate behind it, and its verified event chain. Each event carries its proof.
+    - [Download the evidence for an order](/docs/api/undo/orders/getOrderEvidence): Everything needed to check an order without trusting Undo: the raw hash-chained events exactly as hashed and
+the signed mandate exactly as stored. Nothing is pre-verified, on purpose.
+    - [Undo a purchase](/docs/api/undo/orders/undoOrder): The Undo button. Must be signed by the mandate's shopper key over
+`undo-request-v1:<orderId>:<sha256 hex of reason>:<sha256 hex of photo bytes, or ->:<requestedAt>`.
+`requestedAt` must be within 15 minutes of now. Runs the fault check, then routes the money: a void inside
+the window, or a refund, merchant claim, return or human review after capture. Rate limited per visitor.
+  - Merchant: The store's view. Sandbox demo store; merchant sign-in comes with production use.
+    - [Resolve an order as the merchant](/docs/api/undo/merchant/resolveOrder): The merchant's side of an Undo. Sandbox only.
+    - [List agent orders](/docs/api/undo/merchant/listMerchantOrders): Every agent order (latest 300) with its verdict, who pays and any agent payout, plus headline numbers.
+    - [List agents and their trust scores](/docs/api/undo/merchant/listMerchantAgents): Every agent that has shopped here, its record and trust score with every point explained, and what the store's rules do to it.
+    - [Get the store's agent rules](/docs/api/undo/merchant/getMerchantRules): The rules the store applies to agents at checkout: block below a trust score, lengthen the undo window below a score, or accept only registered operators.
+    - [Update the store's agent rules](/docs/api/undo/merchant/updateMerchantRules): Applies from the next checkout, for Undo's agent and every MCP agent. Each change is recorded in the store's event chain.
+    - [Stream the store's activity](/docs/api/undo/merchant/listMerchantActivity): Every step Undo records, newest first (up to 60). Pass `after` to get only events newer than that id.
+- SDKs
+  - [SDKs](/docs/sdks): Client libraries for this API.
+  - [TypeScript SDK](/docs/sdks/typescript): Install and start using the TypeScript SDK.
+  - [Python SDK](/docs/sdks/python): Install and start using the Python SDK.
+  - [C# SDK](/docs/sdks/csharp): Install and start using the C# SDK.

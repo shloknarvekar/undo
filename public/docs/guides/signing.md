@@ -1,0 +1,52 @@
+# Signing (/docs/guides/signing)
+
+
+
+Undo never signs for a shopper. Their device holds an Ed25519 key pair. The public key, raw 32 bytes in base64, is the mandate's `shopperKey`, and every signature is base64 of the 64-byte Ed25519 signature over a UTF-8 string.
+
+## Canonical JSON [#canonical-json]
+
+Hashes are taken over **canonical JSON**: object keys sorted at every level, `undefined` values dropped, no spaces.
+
+```js
+const canonical = (v) => JSON.stringify(sort(v));
+const sort = (v) =>
+  Array.isArray(v) ? v.map(sort)
+  : v && typeof v === "object"
+    ? Object.fromEntries(Object.keys(v).filter((k) => v[k] !== undefined).sort().map((k) => [k, sort(v[k])]))
+    : v;
+```
+
+## Signing a mandate [#signing-a-mandate]
+
+```text
+undo-intent-mandate-v1:<sha256 hex of canonical(mandate)>
+```
+
+[`POST /api/mandates/prepare`](/api/undo/mandates/prepareMandate) returns this string as `signingMessage`. Sign it exactly as given and send the mandate plus the signature to [`POST /api/mandates`](/api/undo/mandates/storeMandate). The server recomputes the digest, so changing one byte of the mandate breaks the signature.
+
+```js title="Browser (WebCrypto)"
+const keys = await crypto.subtle.generateKey({ name: "Ed25519" }, false, ["sign", "verify"]);
+const raw = new Uint8Array(await crypto.subtle.exportKey("raw", keys.publicKey));
+const shopperKey = btoa(String.fromCharCode(...raw));
+
+// ...prepare the mandate with shopperKey, then:
+const sig = await crypto.subtle.sign("Ed25519", keys.privateKey, new TextEncoder().encode(signingMessage));
+const signature = btoa(String.fromCharCode(...new Uint8Array(sig)));
+```
+
+## Signing an Undo [#signing-an-undo]
+
+```text
+undo-request-v1:<orderId>:<sha256 hex of reason>:<sha256 hex of photo bytes, or ->:<requestedAt>
+```
+
+* `reason` is the text sent in the body, hashed as UTF-8.
+* The photo hash covers the decoded image bytes, not the data URL. Use `-` when there's no photo.
+* `requestedAt` is an ISO 8601 timestamp, and it must be within 15 minutes of the server's clock.
+
+The key must be the one in the order's mandate (`mandate.shopperKey` on [`GET /api/orders/{orderId}`](/api/undo/orders/getOrder)). Any other key gets `403 bad_signature`.
+
+<Callout type="info">
+  Keep the private key non-extractable, as above. If the browser's storage is cleared, that mandate can't be undone from another device, by design.
+</Callout>

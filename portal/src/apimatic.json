@@ -1,0 +1,31 @@
+{
+  "$schema": "https://cdn.jsdelivr.net/npm/@apimatic/cli@beta/apimatic.schema.json",
+  "schemaVersion": 1,
+  "portal": {
+    "site": {
+      "name": "Undo API",
+      "url": "https://undo-1c56.onrender.com/docs",
+      "description": "Ctrl+Z for AI agent purchases, built on PayPal. Signed mandates, held payments, a fault check on every undo, and a hash-chained record anyone can verify."
+    },
+    "brand": {
+      "logo": {
+        "light": "static/images/undo-logo-light.svg",
+        "dark": "static/images/undo-logo-dark.svg"
+      },
+      "favicon": "static/images/favicon.ico",
+      "colors": {
+        "primary": { "light": "#0a1238", "dark": "#c6f432" }
+      },
+      "colorMode": "both"
+    },
+    "navigation": {
+      "links": [
+        { "label": "Live demo", "url": "https://undo-1c56.onrender.com/shop" },
+        { "label": "Threat model", "url": "https://undo-1c56.onrender.com/security" },
+        { "label": "OpenAPI spec", "url": "https://undo-1c56.onrender.com/openapi.yaml" }
+      ]
+    },
+    "ai": { "pageActions": true }
+  },
+  "languages": { "typescript": {}, "python": {}, "csharp": {} }
+}

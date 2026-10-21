@@ -461,7 +461,7 @@ paths:
                 id: 2f4069f0-2367-4f08-acc6-d9cf1cf6669a
                 digest: 7bf66d54681f2b73e2f05ee0d49b5a68776908620751daaf0102b9f0b17fcac6
                 event:
-                  seq: 1
+                  seq: 0
                   hash: 91b50424c310c5106b3c9873427ada9d3ffccf45c9834d1c2df342316b5a25d8
         "400":
           $ref: "#/components/responses/InvalidRequest"
@@ -2451,7 +2451,7 @@ components:
         id: 2f4069f0-2367-4f08-acc6-d9cf1cf6669a
         digest: 7bf66d54681f2b73e2f05ee0d49b5a68776908620751daaf0102b9f0b17fcac6
         event:
-          seq: 1
+          seq: 0
           hash: 91b50424c310c5106b3c9873427ada9d3ffccf45c9834d1c2df342316b5a25d8
     ChainEventSummary:
       type: object
@@ -2463,7 +2463,7 @@ components:
       properties:
         seq:
           type: integer
-          description: Position in the hash chain, starting at 1.
+          description: Position in the hash chain, starting at 0.
           example: 0
         type:
           type: string
@@ -2900,7 +2900,7 @@ components:
       properties:
         seq:
           type: integer
-          description: Position in the hash chain, starting at 1.
+          description: Position in the hash chain, starting at 0.
           example: 0
         type:
           type: string
@@ -4147,7 +4147,7 @@ components:
       properties:
         seq:
           type: integer
-          description: Position in the hash chain, starting at 1.
+          description: Position in the hash chain, starting at 0.
           example: 1
         hash:
           type: string

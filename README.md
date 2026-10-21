@@ -196,6 +196,15 @@ print(order.order.status, order.chain.intact)  # REFUNDED True
 
 Each SDK's README covers install, every operation, errors and retries.
 
+### Postman collection
+
+[`public/postman/undo.postman_collection.json`](public/postman/undo.postman_collection.json) (also at
+[/postman/undo.postman_collection.json](https://undo-1c56.onrender.com/postman/undo.postman_collection.json)) is
+generated from the spec with APIMatic, and every request carries a test. `npm run test:api` runs it against the live
+service with Newman: 16 requests and 32 assertions, all green. That includes the two refusals that matter: a replayed
+signed mandate and an old signed Undo both get a 422. Shopping, resolving an order and changing the store's rules are
+in a separate "Changes state" folder that the automated run skips.
+
 ---
 
 ## Tech stack

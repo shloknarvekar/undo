@@ -1,0 +1,1996 @@
+{
+  "info": {
+    "name": "Undo API",
+    "_postman_id": "e3e97a17-ba5f-4a8f-a42e-b63d0422cc63",
+    "description": "Ctrl+Z for AI agent purchases, built on PayPal.\n\nUndo sits between a shopping agent and PayPal. A shopper signs a mandate (what the agent may buy, for how much)\nwith a key that never leaves their device. The agent shops inside it, PayPal only **authorizes** the money, and\nan undo window opens. Pressing Undo runs a fault check and routes the money: a free void inside the window, or a\nrefund, a merchant claim or a return after capture. When the agent was at fault, its operator pays the merchant\nback through PayPal Payouts. Every step is written to a hash-chained event log anyone can verify.\n\n**Signing.** Mandates and undo requests are signed with Ed25519 by the shopper's device key. The API never\nsigns for a shopper. The exact strings to sign are given with each operation.\n\n**Sandbox.** This deployment runs on the PayPal sandbox; no real money moves. Costly endpoints are rate limited\nper visitor and answer `429` with a `Retry-After` header when the limit or the free-tier budget is reached.\n\n**Agents.** Third-party agents usually connect over MCP (Streamable HTTP at `/api/mcp`, JSON-RPC, not described\nhere). This document covers the HTTP API that the web app, agents and merchants call directly.\n",
+    "schema": "https://schema.getpostman.com/json/collection/v2.0.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "Products",
+      "description": "Live product catalog search and detail, resolved to an exact variant.",
+      "item": [
+        {
+          "id": "eaf93d08-6ac1-4f8b-83c4-756f176e0945",
+          "name": "Search products",
+          "request": {
+            "url": {
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "products",
+                "search"
+              ],
+              "raw": "{{baseUrl}}/api/products/search",
+              "query": []
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "description": "",
+                "disabled": false
+              },
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "disabled": false
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\"query\":\"black hoodie\",\"maxPrice\":80,\"color\":\"black\",\"limit\":5}",
+              "disabled": false
+            },
+            "description": "Searches the live catalog with structured filters. Rate limited per visitor."
+          },
+          "response": [
+            {
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json",
+                  "disabled": false
+                }
+              ],
+              "body": "{\"category\":\"hoodies\",\"products\":[{\"channel3Id\":\"w25336I\",\"title\":\"UA Infinite Pro Men's Running Shoes\",\"brand\":\"Under Armour\",\"description\":\"These men's running shoes from Under Armour, the UA Infinite Pro, are designed for endurance with a focus on comfort and support. They feature a breathable e…\",\"price\":116.97,\"currency\":\"USD\",\"imageUrl\":\"https://cdn.trychannel3.com/aed9ec20-0e99-49b6-b011-2425732889be?aid=01M5D44F1Y9VDE34RVPPTF1H15&mid=oKaH\",\"sourceUrl\":\"https://buy.trychannel3.com/w25336I-oKaH-Wqce8l?o=01KVATPXMQW09XVTMRDEW2Q1Y9&aid=01M5D44F1Y9VDE34RVPPTF1H15\",\"sourceDomain\":\"underarmour.com\",\"colors\":[\"#1e1e20\",\"#d5d4d8\"],\"attributes\":{\"activity\":[\"Running\"],\"pattern\":[\"Texture\",\"Geometric\"],\"closure-type\":[\"Straps\",\"Lace-up\"],\"heel-height-type\":[\"Flat\",\"Low\"],\"footwear-material\":[\"Mesh\",\"Polyester\"],\"shoe-fit\":[\"Regular\"],\"shoe-features\":[\"Breathable design\",\"Cushioned\"],\"toe-style\":[\"Round\"],\"outsole-material\":[\"Rubber\"],\"footwear-support-type\":[\"Neutral\",\"Stability\"],\"lining-material\":[\"Synthetic\"]},\"variant\":{\"Size\":\"10.5\"},\"variantOptions\":[{\"name\":\"Color\",\"values\":[\"Black\",\"White\"]},{\"name\":\"Size\",\"values\":[\"7\",\"8\"]}]}]}",
+              "status": "Matching products with an offer.",
+              "code": 200,
+              "name": "Response_200",
+              "id": "1d84e711-d5f0-4d10-94bf-5745f339f8c6"
+            },
+            {
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json",
+                  "disabled": false
+                }
+              ],
+              "body": "{\r\n  \"error\": \"invalid_request\",\r\n  \"issues\": [\r\n    {\r\n      \"code\": \"too_small\",\r\n      \"message\": \"String must contain at least 3 character(s)\",\r\n      \"path\": [\r\n        \"request\"\r\n      ]\r\n    }\r\n  ]\r\n}",
+              "status": "The body failed validation; `issues` lists each problem.",
+              "code": 400,
+              "name": "Response_400",
+              "id": "1e3dbbbd-e5d4-42af-9dcb-6ba9eb5ccaef"
+            },
+            {
+              "header": [
+                {
+                  "key": "Retry-After",
+                  "value": "",
+                  "disabled": false
+                },
+                {
+                  "key": "Content-Type",
+                  "value": "application/json",
+                  "disabled": false
+                }
+              ],
+              "body": "{\r\n  \"error\": \"rate_limited\",\r\n  \"detail\": \"That's a lot of tries in a short time. Give it 2 minutes and try again.\",\r\n  \"retryAfter\": 120\r\n}",
+              "status": "Too many requests from this visitor, or the free-tier budget is spent.",
+              "code": 429,
+              "name": "Response_429",
+              "id": "bb1646b3-cb7f-47a4-8458-033f90b21d73"
+            },
+            {
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json",
+                  "disabled": false
+                }
+              ],
+              "body": "{\r\n  \"error\": \"paypal_checkout_failed\",\r\n  \"detail\": \"PayPal returned 500\"\r\n}",
+              "status": "PayPal, the catalog or the AI model failed.",
+              "code": 502,
+              "name": "Response_502",
+              "id": "d49a21a2-ee4b-417c-bef0-c4b5cfdb8c8e"
+            }
+          ],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status is 200\", () => pm.response.to.have.status(200));",
+                  "const body = pm.response.json();",
+                  "pm.test(\"returns products\", () => pm.expect(body.products).to.be.an(\"array\"));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "id": "ff1ff8a9-f4d5-4bb8-97d9-78794e5df3ee",
+          "name": "Get a product at a variant",
+          "request": {
+            "url": {
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "products",
+                ":productId"
+              ],
+              "query": [
+                {
+                  "key": "option_Size",
+                  "value": "10.5",
+                  "description": "Variant option."
+                },
+                {
+                  "key": "option_Color",
+                  "value": "Black",
+                  "description": "Variant option."
+                }
+              ],
+              "variable": [
+                {
+                  "id": "productId",
+                  "key": "productId",
+                  "value": "w25336I",
+                  "type": "string",
+                  "description": "Catalog product id (`channel3Id` from a search)."
+                }
+              ],
+              "raw": "{{baseUrl}}/api/products/:productId?option_Size=10.5&option_Color=Black"
+            },
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "disabled": false
+              }
+            ],
+            "description": "Fresh product detail resolved to the requested variant. Pass options as `option_<Name>=<value>` query\nparameters, for example `option_Size=M&option_Color=Black`. `relaxed` lists any option the catalog could not honor.\n"
+          },
+          "response": [
+            {
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json",
+                  "disabled": false
+                }
+              ],
+              "body": "{\"product\":{\"channel3Id\":\"w25336I\",\"title\":\"UA Infinite Pro Men's Running Shoes\",\"brand\":\"Under Armour\",\"description\":\"These men's running shoes from Under Armour, the UA Infinite Pro, are designed for endurance with a focus on comfort and support. They feature a breathable e…\",\"price\":116.97,\"currency\":\"USD\",\"imageUrl\":\"https://cdn.trychannel3.com/aed9ec20-0e99-49b6-b011-2425732889be?aid=01M5D44F1Y9VDE34RVPPTF1H15&mid=oKaH\",\"sourceUrl\":\"https://buy.trychannel3.com/w25336I-oKaH-Wqce8l?o=01KVATPXMQW09XVTMRDEW2Q1Y9&aid=01M5D44F1Y9VDE34RVPPTF1H15\",\"sourceDomain\":\"underarmour.com\",\"colors\":[\"#1e1e20\",\"#d5d4d8\"],\"attributes\":{\"activity\":[\"Running\"],\"pattern\":[\"Texture\",\"Geometric\"],\"closure-type\":[\"Straps\",\"Lace-up\"],\"heel-height-type\":[\"Flat\",\"Low\"],\"footwear-material\":[\"Mesh\",\"Polyester\"],\"shoe-fit\":[\"Regular\"],\"shoe-features\":[\"Breathable design\",\"Cushioned\"],\"toe-style\":[\"Round\"],\"outsole-material\":[\"Rubber\"],\"footwear-support-type\":[\"Neutral\",\"Stability\"],\"lining-material\":[\"Synthetic\"]},\"variant\":{\"Size\":\"10.5\"},\"variantOptions\":[{\"name\":\"Color\",\"values\":[\"Black\",\"White\"]},{\"name\":\"Size\",\"values\":[\"7\",\"8\"]}]},\"relaxed\":[]}",
+              "status": "The product at the closest available variant.",
+              "code": 200,
+              "name": "Response_200",
+              "id": "1260197f-b1b4-44f3-89b6-613db49c82ea"
+            },
+            {
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json",
+                  "disabled": false
+                }
+              ],
+              "body": "{\r\n  \"error\": \"not_found\"\r\n}",
+              "status": "Not found.",
+              "code": 404,
+              "name": "Response_404",
+              "id": "e67b8603-6e56-482e-9966-0772ff92508a"
+            },
+            {
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json",
+                  "disabled": false
+                }
+              ],
+              "body": "{\r\n  \"error\": \"paypal_checkout_failed\",\r\n  \"detail\": \"PayPal returned 500\"\r\n}",
+              "status": "PayPal, the catalog or the AI model failed.",
+              "code": 502,
+              "name": "Response_502",
+              "id": "af28424c-1878-4e76-aab3-70b77129f143"
+            }
+          ],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status is 200\", () => pm.response.to.have.status(200));",
+                  "const body = pm.response.json();",
+                  "pm.test(\"resolves the exact variant\", () => { pm.expect(body.product.channel3Id).to.eql(\"w25336I\"); pm.expect(body.product.variant.Size).to.eql(\"10.5\"); pm.expect(body.relaxed).to.have.length(0); });"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Mandates",
+      "description": "Drafting, preparing, signing and reading shopper-signed intent mandates.",
+      "item": [
+        {
+          "id": "11ecd2da-b38a-4d49-adde-a982010f3744",
+          "name": "Draft a mandate from the shopper's words",
+          "request": {
+            "url": {
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "mandates",
+                "draft"
+              ],
+              "raw": "{{baseUrl}}/api/mandates/draft",
+              "query": []
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "description": "",
+                "disabled": false
+              },
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "disabled": false
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\"request\":\"A black hoodie in size M under $80\"}",
+              "disabled": false
+            },
+            "description": "Turns a plain request into structured limits for the shopper to review. Nothing is stored. Rate limited per visitor."
+          },
+          "response": [
+            {
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json",
+                  "disabled": false
+                }
+              ],
+              "body": "{\"draft\":{\"item\":\"black hoodie\",\"category\":\"hoodie\",\"quantity\":1,\"maxPrice\":80,\"currency\":\"USD\",\"attributes\":{\"color\":\"black\",\"size\":\"M\"},\"mustAsk\":[]},\"ready\":{\"ok\":true}}",
+              "status": "The draft and whether it can be signed as is.",
+              "code": 200,
+              "name": "Response_200",
+              "id": "91f65334-4fbe-452c-996f-0ec972c27434"
+            },
+            {
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json",
+                  "disabled": false
+                }
+              ],
+              "body": "{\r\n  \"error\": \"invalid_request\",\r\n  \"issues\": [\r\n    {\r\n      \"code\": \"too_small\",\r\n      \"message\": \"String must contain at least 3 character(s)\",\r\n      \"path\": [\r\n        \"request\"\r\n      ]\r\n    }\r\n  ]\r\n}",
+              "status": "The body failed validation; `issues` lists each problem.",
+              "code": 400,
+              "name": "Response_400",
+              "id": "5d92118b-4a3f-4e1f-98f1-dcc6d9f7d429"
+            },
+            {
+              "header": [
+                {
+                  "key": "Retry-After",
+                  "value": "",
+                  "disabled": false
+                },
+                {
+                  "key": "Content-Type",
+                  "value": "application/json",
+                  "disabled": false
+                }
+              ],
+              "body": "{\r\n  \"error\": \"rate_limited\",\r\n  \"detail\": \"That's a lot of tries in a short time. Give it 2 minutes and try again.\",\r\n  \"retryAfter\": 120\r\n}",
+              "status": "Too many requests from this visitor, or the free-tier budget is spent.",
+              "code": 429,
+              "name": "Response_429",
+              "id": "f36354f7-861c-4227-a141-84d82dc8f3e4"
+            },
+            {
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json",
+                  "disabled": false
+                }
+              ],
+              "body": "{\r\n  \"error\": \"paypal_checkout_failed\",\r\n  \"detail\": \"PayPal returned 500\"\r\n}",
+              "status": "PayPal, the catalog or the AI model failed.",
+              "code": 502,
+              "name": "Response_502",
+              "id": "f41310d3-b322-499e-ae9b-1e885a84de6d"
+            },
+            {
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json",
+                  "disabled": false
+                }
+              ],
+              "body": "{\r\n  \"error\": \"ai_unavailable\"\r\n}",
+              "status": "The AI model is unavailable right now.",
+              "code": 503,
+              "name": "Response_503",
+              "id": "c3a25113-ac69-4da0-8de5-5e27474eb5f0"
+            }
+          ],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status is 200\", () => pm.response.to.have.status(200));",
+                  "const body = pm.response.json();",
+                  "pm.test(\"drafts limits\", () => pm.expect(body.draft.maxPrice).to.be.a(\"number\"));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "id": "082c58bf-f278-4cb9-be5a-6d1aff828844",
+          "name": "Build the exact mandate to sign",
+          "request": {
+            "url": {
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "mandates",
+                "prepare"
+              ],
+              "raw": "{{baseUrl}}/api/mandates/prepare",
+              "query": []
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "description": "",
+                "disabled": false
+              },
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "disabled": false
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\"request\":\"A black hoodie in size M under $80\",\"draft\":{\"item\":\"black hoodie\",\"category\":\"hoodie\",\"quantity\":1,\"maxPrice\":80,\"currency\":\"USD\",\"attributes\":{\"color\":\"black\",\"size\":\"M\"},\"mustAsk\":[]},\"shopperKey\":\"aHBQ5B27O2BiDV0oWgOigpsXZKjOfhcYYMch5pZ5H0c=\"}",
+              "disabled": false
+            },
+            "description": "Returns the mandate the shopper's device must sign and the exact `signingMessage`\n(`undo-intent-mandate-v1:<sha256 of the canonical mandate JSON>`). Stateless; nothing is stored.\n"
+          },
+          "response": [
+            {
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json",
+                  "disabled": false
+                }
+              ],
+              "body": "{\"mandate\":{\"version\":1,\"id\":\"2f4069f0-2367-4f08-acc6-d9cf1cf6669a\",\"createdAt\":\"2026-10-20T04:18:17.928Z\",\"expiresAt\":\"2026-11-03T04:18:17.928Z\",\"shopperKey\":\"aHBQ5B27O2BiDV0oWgOigpsXZKjOfhcYYMch5pZ5H0c=\",\"request\":\"Buy me black men's running shoes, size 10, under $120\",\"intent\":{\"item\":\"running shoes\",\"category\":\"running shoes\",\"quantity\":1,\"maxPrice\":120,\"currency\":\"USD\",\"attributes\":{\"size\":\"10\",\"color\":\"black\"},\"gender\":\"male\",\"mustAsk\":[]}},\"signingMessage\":\"undo-intent-mandate-v1:7bf66d54681f2b73e2f05ee0d49b5a68776908620751daaf0102b9f0b17fcac6\"}",
+              "status": "The mandate and the string to sign.",
+              "code": 200,
+              "name": "Response_200",
+              "id": "d2d0373a-12ea-4e7b-ae12-da9061efef26"
+            },
+            {
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json",
+                  "disabled": false
+                }
+              ],
+              "body": "{\r\n  \"error\": \"invalid_request\",\r\n  \"issues\": [\r\n    {\r\n      \"code\": \"too_small\",\r\n      \"message\": \"String must contain at least 3 character(s)\",\r\n      \"path\": [\r\n        \"request\"\r\n      ]\r\n    }\r\n  ]\r\n}",
+              "status": "The body failed validation; `issues` lists each problem.",
+              "code": 400,
+              "name": "Response_400",
+              "id": "68f8312b-7cdc-426c-8614-6b43d673e853"
+            },
+            {
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json",
+                  "disabled": false
+                }
+              ],
+              "body": "{\r\n  \"error\": \"open_questions\",\r\n  \"mustAsk\": [\r\n    \"What size?\"\r\n  ]\r\n}",
+              "status": "The draft still has open questions or no budget.",
+              "code": 422,
+              "name": "Response_422",
+              "id": "71364c6b-03c5-4675-8156-eb3d77111f99"
+            }
+          ],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status is 200\", () => pm.response.to.have.status(200));",
+                  "const body = pm.response.json();",
+                  "pm.test(\"gives the string to sign\", () => pm.expect(body.signingMessage).to.match(/^undo-intent-mandate-v1:[0-9a-f]{64}$/));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "id": "6479dbfa-c308-46db-816c-7cc1d0791117",
+          "name": "Store a signed mandate",
+          "request": {
+            "url": {
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "mandates"
+              ],
+              "raw": "{{baseUrl}}/api/mandates",
+              "query": []
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "description": "",
+                "disabled": false
+              },
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "disabled": false
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\"mandate\":{\"version\":1,\"id\":\"2f4069f0-2367-4f08-acc6-d9cf1cf6669a\",\"createdAt\":\"2026-10-20T04:18:17.928Z\",\"expiresAt\":\"2026-11-03T04:18:17.928Z\",\"shopperKey\":\"aHBQ5B27O2BiDV0oWgOigpsXZKjOfhcYYMch5pZ5H0c=\",\"request\":\"Buy me black men's running shoes, size 10, under $120\",\"intent\":{\"item\":\"running shoes\",\"category\":\"running shoes\",\"quantity\":1,\"maxPrice\":120,\"currency\":\"USD\",\"attributes\":{\"size\":\"10\",\"color\":\"black\"},\"gender\":\"male\",\"mustAsk\":[]}},\"signature\":\"derQBgmEoL8kvl3vfHVsmqTVAkGTSvb2ShqDoVFKdSC5U5PpGkYAUsDzgSd80QyEpGEPh4966mrEQ9CzBw0IDA==\"}",
+              "disabled": false
+            },
+            "description": "Re-verifies the signature, freshness, expiry and readiness, then writes the first event of the mandate's hash chain."
+          },
+          "response": [
+            {
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json",
+                  "disabled": false
+                }
+              ],
+              "body": "{\"id\":\"2f4069f0-2367-4f08-acc6-d9cf1cf6669a\",\"digest\":\"7bf66d54681f2b73e2f05ee0d49b5a68776908620751daaf0102b9f0b17fcac6\",\"event\":{\"seq\":0,\"hash\":\"91b50424c310c5106b3c9873427ada9d3ffccf45c9834d1c2df342316b5a25d8\"}}",
+              "status": "Stored.",
+              "code": 201,
+              "name": "Response_201",
+              "id": "b26cfb06-c16d-4c6c-84a6-665f004134d8"
+            },
+            {
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json",
+                  "disabled": false
+                }
+              ],
+              "body": "{\r\n  \"error\": \"invalid_request\",\r\n  \"issues\": [\r\n    {\r\n      \"code\": \"too_small\",\r\n      \"message\": \"String must contain at least 3 character(s)\",\r\n      \"path\": [\r\n        \"request\"\r\n      ]\r\n    }\r\n  ]\r\n}",
+              "status": "The body failed validation; `issues` lists each problem.",
+              "code": 400,
+              "name": "Response_400",
+              "id": "44b64b6f-7162-4d97-8c48-6e79f29ea1e2"
+            },
+            {
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json",
+                  "disabled": false
+                }
+              ],
+              "body": "{\r\n  \"error\": \"bad_signature\"\r\n}",
+              "status": "Refused, for example a bad signature.",
+              "code": 403,
+              "name": "Response_403",
+              "id": "b98a09b1-e443-4f44-9984-a3fdd22c4a0f"
+            },
+            {
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json",
+                  "disabled": false
+                }
+              ],
+              "body": "{\r\n  \"error\": \"not_undoable\",\r\n  \"status\": \"VOIDED\"\r\n}",
+              "status": "The resource is not in a state that allows this.",
+              "code": 409,
+              "name": "Response_409",
+              "id": "c05c968d-3191-4574-b477-e8c3ec56ac22"
+            },
+            {
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json",
+                  "disabled": false
+                }
+              ],
+              "body": "{\r\n  \"error\": \"stale_request\"\r\n}",
+              "status": "Valid shape, but the content can't be accepted.",
+              "code": 422,
+              "name": "Response_422",
+              "id": "26c13a94-ec81-4122-9ea7-dc19cf93b366"
+            }
+          ],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"a replayed signed mandate is refused\", () => pm.expect(pm.response.code).to.be.oneOf([403, 409, 422]));",
+                  "const body = pm.response.json();",
+                  "pm.test(\"says why\", () => pm.expect(body.error).to.be.a(\"string\"));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "id": "a04cb915-c304-4be7-a8ac-b862ea0aae46",
+          "name": "Get a mandate and check its integrity",
+          "request": {
+            "url": {
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "mandates",
+                ":mandateId"
+              ],
+              "variable": [
+                {
+                  "id": "mandateId",
+                  "key": "mandateId",
+                  "value": "2f4069f0-2367-4f08-acc6-d9cf1cf6669a",
+                  "type": "string",
+                  "description": "Mandate id."
+                }
+              ],
+              "raw": "{{baseUrl}}/api/mandates/:mandateId",
+              "query": []
+            },
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "disabled": false
+              }
+            ],
+            "description": "The mandate, its status, the search it permits, and a fresh check of its digest, signature and event chain."
+          },
+          "response": [
+            {
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json",
+                  "disabled": false
+                }
+              ],
+              "body": "{\"mandate\":{\"version\":1,\"id\":\"2f4069f0-2367-4f08-acc6-d9cf1cf6669a\",\"createdAt\":\"2026-10-20T04:18:17.928Z\",\"expiresAt\":\"2026-11-03T04:18:17.928Z\",\"shopperKey\":\"aHBQ5B27O2BiDV0oWgOigpsXZKjOfhcYYMch5pZ5H0c=\",\"request\":\"Buy me black men's running shoes, size 10, under $120\",\"intent\":{\"item\":\"running shoes\",\"category\":\"running shoes\",\"quantity\":1,\"maxPrice\":120,\"currency\":\"USD\",\"attributes\":{\"size\":\"10\",\"color\":\"black\"},\"gender\":\"male\",\"mustAsk\":[]}},\"status\":\"FULFILLED\",\"search\":{\"query\":\"black running shoes\",\"category\":\"running shoes\",\"maxPrice\":120,\"color\":\"black\",\"gender\":\"male\"},\"integrity\":{\"digestMatches\":true,\"signatureValid\":true,\"chainIntact\":true},\"events\":[{\"seq\":0,\"type\":\"MANDATE_SIGNED\",\"createdAt\":\"2026-10-20T04:18:18.268Z\",\"hash\":\"91b50424c310c5106b3c9873427ada9d3ffccf45c9834d1c2df342316b5a25d8\"},{\"seq\":1,\"type\":\"CART_PROPOSED\",\"createdAt\":\"2026-10-20T04:18:18.832Z\",\"hash\":\"89f7646662727852af27cbdf1e326a17b6cc76c2bd462031bbf8f1f29622e323\"}]}",
+              "status": "The mandate with a live integrity check.",
+              "code": 200,
+              "name": "Response_200",
+              "id": "d2b68ca6-1a61-4e92-b25c-7495cf8b71e0"
+            },
+            {
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json",
+                  "disabled": false
+                }
+              ],
+              "body": "{\r\n  \"error\": \"not_found\"\r\n}",
+              "status": "Not found.",
+              "code": 404,
+              "name": "Response_404",
+              "id": "19838596-a28f-402a-9174-27ad0138bb7a"
+            }
+          ],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status is 200\", () => pm.response.to.have.status(200));",
+                  "const body = pm.response.json();",
+                  "pm.test(\"digest, signature and chain all verify\", () => { pm.expect(body.integrity.digestMatches).to.be.true; pm.expect(body.integrity.signatureValid).to.be.true; pm.expect(body.integrity.chainIntact).to.be.true; });"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Mandate requests",
+      "description": "The shopper's side of a mandate an outside agent asked for.",
+      "item": [
+        {
+          "id": "2fa61eb3-3c43-4dbc-a8bc-5d9a1493d73a",
+          "name": "Get a mandate request",
+          "request": {
+            "url": {
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "mandate-requests",
+                ":requestId"
+              ],
+              "variable": [
+                {
+                  "id": "requestId",
+                  "key": "requestId",
+                  "value": "7d1f0c2a-3b4e-4f5a-9c6d-8e7f1a2b3c4d",
+                  "type": "string",
+                  "description": "Mandate request id."
+                }
+              ],
+              "raw": "{{baseUrl}}/api/mandate-requests/:requestId",
+              "query": []
+            },
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "disabled": false
+              }
+            ],
+            "description": "The draft an outside agent asked the shopper to sign, who is asking, and whether it is signed yet."
+          },
+          "response": [
+            {
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json",
+                  "disabled": false
+                }
+              ],
+              "body": "{\"id\":\"7d1f0c2a-3b4e-4f5a-9c6d-8e7f1a2b3c4d\",\"request\":\"A black hoodie in size M under $80\",\"draft\":{\"item\":\"black hoodie\",\"category\":\"hoodie\",\"quantity\":1,\"maxPrice\":80,\"currency\":\"USD\",\"attributes\":{\"color\":\"black\",\"size\":\"M\"},\"mustAsk\":[]},\"ready\":{\"ok\":true},\"agent\":{\"name\":\"Claude\",\"verified\":false},\"status\":\"PENDING\",\"mandateId\":null,\"expiresAt\":\"2026-10-21T18:00:00.000Z\"}",
+              "status": "The request.",
+              "code": 200,
+              "name": "Response_200",
+              "id": "2b4d73c9-d072-4cf6-b2a5-317a7c72898c"
+            },
+            {
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json",
+                  "disabled": false
+                }
+              ],
+              "body": "{\r\n  \"error\": \"not_found\"\r\n}",
+              "status": "Not found.",
+              "code": 404,
+              "name": "Response_404",
+              "id": "6dec4583-db70-4234-9b1f-3cb34414f1ef"
+            }
+          ],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status is 404\", () => pm.response.to.have.status(404));",
+                  "const body = pm.response.json();",
+                  "pm.test(\"unknown request id is not_found\", () => pm.expect(body.error).to.eql(\"not_found\"));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "id": "3b5e4c76-e993-40bd-a6e6-5586f615c4dc",
+          "name": "Answer, prepare or sign a mandate request",
+          "request": {
+            "url": {
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "mandate-requests",
+                ":requestId"
+              ],
+              "variable": [
+                {
+                  "id": "requestId",
+                  "key": "requestId",
+                  "value": "7d1f0c2a-3b4e-4f5a-9c6d-8e7f1a2b3c4d",
+                  "type": "string",
+                  "description": "Mandate request id."
+                }
+              ],
+              "raw": "{{baseUrl}}/api/mandate-requests/:requestId",
+              "query": []
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "description": "",
+                "disabled": false
+              },
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "disabled": false
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\"action\":\"answer\",\"answers\":{\"What size?\":\"M\"}}",
+              "disabled": false
+            },
+            "description": "- `answer`: answers the agent's open questions; the draft is re-read from the new text.\n- `prepare`: the exact mandate this device's key must sign.\n- `sign`: stores the signed mandate; it must match the request byte for byte (same words, limits and agent).\n"
+          },
+          "response": [
+            {
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json",
+                  "disabled": false
+                }
+              ],
+              "body": "{\r\n  \"draft\": {\r\n    \"item\": \"black hoodie\",\r\n    \"category\": \"hoodie\",\r\n    \"quantity\": 1,\r\n    \"maxPrice\": 80,\r\n    \"currency\": \"USD\",\r\n    \"attributes\": {\r\n      \"color\": \"black\",\r\n      \"size\": \"M\"\r\n    },\r\n    \"mustAsk\": []\r\n  },\r\n  \"ready\": {\r\n    \"ok\": true\r\n  }\r\n}",
+              "status": "Answered (new draft) or prepared (mandate and signing message).",
+              "code": 200,
+              "name": "Response_200",
+              "id": "07bd64fe-f483-4d5c-b35e-f8701d82ab6a"
+            },
+            {
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json",
+                  "disabled": false
+                }
+              ],
+              "body": "{\"mandateId\":\"2f4069f0-2367-4f08-acc6-d9cf1cf6669a\",\"digest\":\"7bf66d54681f2b73e2f05ee0d49b5a68776908620751daaf0102b9f0b17fcac6\"}",
+              "status": "Signed and stored.",
+              "code": 201,
+              "name": "Response_201",
+              "id": "a84777b2-0f26-463c-a2c1-b3baa08e5c6a"
+            },
+            {
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json",
+                  "disabled": false
+                }
+              ],
+              "body": "{\r\n  \"error\": \"invalid_request\",\r\n  \"issues\": [\r\n    {\r\n      \"code\": \"too_small\",\r\n      \"message\": \"String must contain at least 3 character(s)\",\r\n      \"path\": [\r\n        \"request\"\r\n      ]\r\n    }\r\n  ]\r\n}",
+              "status": "The body failed validation; `issues` lists each problem.",
+              "code": 400,
+              "name": "Response_400",
+              "id": "1a51ef17-06a3-43dc-a5ac-3cb276b2eb9e"
+            },
+            {
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json",
+                  "disabled": false
+                }
+              ],
+              "body": "{\r\n  \"error\": \"not_found\"\r\n}",
+              "status": "Not found.",
+              "code": 404,
+              "name": "Response_404",
+              "id": "319d3eb7-8f83-481b-af0b-48320ab621ce"
+            },
+            {
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json",
+                  "disabled": false
+                }
+              ],
+              "body": "{\r\n  \"error\": \"not_undoable\",\r\n  \"status\": \"VOIDED\"\r\n}",
+              "status": "The resource is not in a state that allows this.",
+              "code": 409,
+              "name": "Response_409",
+              "id": "b84c660f-976c-47ed-8e27-aa3b84f7a2b4"
+            },
+            {
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json",
+                  "disabled": false
+                }
+              ],
+              "body": "{\r\n  \"error\": \"stale_request\"\r\n}",
+              "status": "Valid shape, but the content can't be accepted.",
+              "code": 422,
+              "name": "Response_422",
+              "id": "c123eae6-54ce-4ae3-bfa7-6f33653aab1d"
+            },
+            {
+              "header": [
+                {
+                  "key": "Retry-After",
+                  "value": "",
+                  "disabled": false
+                },
+                {
+                  "key": "Content-Type",
+                  "value": "application/json",
+                  "disabled": false
+                }
+              ],
+              "body": "{\r\n  \"error\": \"rate_limited\",\r\n  \"detail\": \"That's a lot of tries in a short time. Give it 2 minutes and try again.\",\r\n  \"retryAfter\": 120\r\n}",
+              "status": "Too many requests from this visitor, or the free-tier budget is spent.",
+              "code": 429,
+              "name": "Response_429",
+              "id": "f97450e7-cf92-42f5-9867-e162866c269b"
+            }
+          ],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status is 404\", () => pm.response.to.have.status(404));",
+                  "const body = pm.response.json();",
+                  "pm.test(\"unknown request id is not_found\", () => pm.expect(body.error).to.eql(\"not_found\"));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Orders",
+      "description": "Purchases, their undo windows, the Undo button, and the evidence to verify them.",
+      "item": [
+        {
+          "id": "bac57382-3591-44b2-84b4-c7d1e00eacc8",
+          "name": "Get an order",
+          "request": {
+            "url": {
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "orders",
+                ":orderId"
+              ],
+              "variable": [
+                {
+                  "id": "orderId",
+                  "key": "orderId",
+                  "value": "edd288bc-42d0-41d3-9b87-14915f3ff2c6",
+                  "type": "string",
+                  "description": "Undo order id."
+                }
+              ],
+              "raw": "{{baseUrl}}/api/orders/:orderId",
+              "query": []
+            },
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "disabled": false
+              }
+            ],
+            "description": "The purchase, the live undo window, the mandate behind it, and its verified event chain. Each event carries its proof."
+          },
+          "response": [
+            {
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json",
+                  "disabled": false
+                }
+              ],
+              "body": "{\"order\":{\"id\":\"edd288bc-42d0-41d3-9b87-14915f3ff2c6\",\"status\":\"REFUNDED\",\"amount\":\"116.97\",\"currency\":\"USD\",\"quantity\":1,\"product\":{\"brand\":\"Under Armour\",\"price\":116.97,\"title\":\"UA Infinite Pro Men's Running Shoes\",\"colors\":[\"#1e1e20\",\"#d5d4d8\"],\"variant\":{\"Size\":\"10.5\",\"Color\":\"Black\"},\"currency\":\"USD\",\"imageUrl\":\"https://cdn.trychannel3.com/aed9ec20-0e99-49b6-b011-2425732889be?aid=01M5BRG5D3YC8J46QPWBYB58RG&mid=oKaH\",\"sourceUrl\":\"https://buy.trychannel3.com/w25336I-oKaH-Wqce8l?o=01KVATPXMQW09XVTMRDEW2Q1Y9&aid=01M5BRG5D3YC8J46QPWBYB58RG\",\"attributes\":{\"pattern\":[\"Texture\",\"Geometric\"],\"activity\":[\"Running\"],\"shoe-fit\":[\"Regular\"],\"toe-style\":[\"Round\"],\"closure-type\":[\"Straps\",\"Lace-up\"],\"shoe-features\":[\"Breathable design\",\"Cushioned\"],\"lining-material\":[\"Synthetic\"],\"heel-height-type\":[\"Flat\",\"Low\"],\"outsole-material\":[\"Rubber\"],\"footwear-material\":[\"Mesh\",\"Polyester\"],\"footwear-support-type\":[\"Neutral\",\"Stability\"]},\"channel3Id\":\"w25336I\",\"description\":\"These men's running shoes from Under Armour, the UA Infinite Pro, are designed for endurance with a focus on comfort and support. They feature a breathable e…\",\"sourceDomain\":\"underarmour.com\",\"variantOptions\":[{\"name\":\"Color\",\"values\":[\"Black\",\"White\"]},{\"name\":\"Size\",\"values\":[\"7\",\"8\"]}]},\"agent\":{\"guard\":{\"relaxed\":[],\"bypassed\":true,\"violations\":[{\"rule\":\"attribute:size\",\"actual\":\"10.5\",\"expected\":\"10\"}]},\"model\":null,\"operator\":{\"via\":\"web\",\"name\":\"Careless demo agent\",\"verified\":false},\"searches\":[{\"query\":\"black running shoes\",\"filters\":\"price+gender+category_ids+colors\"}],\"reasoning\":\"Picked UA Infinite Pro Men's Running Shoes in Black / 10.5 — looked like the best match.\",\"requested\":{\"Size\":\"10\",\"Color\":\"Black\"},\"simulated\":\"unguarded_wrong_variant\",\"confidence\":0.9,\"considered\":[{\"id\":\"w25336I\",\"ok\":false,\"price\":116.97,\"title\":\"UA Infinite Pro Men's Running Shoes\"}],\"unverified\":[],\"approximate\":[]},\"paypal\":{\"orderId\":\"1X507517Y8961004F\",\"authorizationId\":\"4LD43914UL8743542\",\"captureId\":\"4087729233507714F\"},\"resolution\":{\"at\":\"2026-10-20T04:36:46.194Z\",\"action\":{\"type\":\"REFUND_FULL\",\"reason\":\"agent broke the mandate: full refund, liability on the agent operator\"},\"decision\":{\"verdict\":\"AGENT_FAULT\",\"evidence\":[{\"source\":\"shopper\",\"finding\":\"This isn't what I asked for.\"},{\"source\":\"mandate_check\",\"finding\":\"attribute:size: mandate required 10, agent bought 10.5\"}],\"liability\":\"agent_operator\",\"confidence\":1},\"settlement\":{\"at\":\"2026-10-20T04:36:47.717Z\",\"to\":\"8QKQG7YKAEQLW\",\"from\":\"Careless demo agent\",\"amount\":\"116.97\",\"status\":\"SUCCESS\",\"attempt\":1,\"currency\":\"USD\",\"payoutItemId\":\"Z8UUKQLA3ERPQ\",\"payoutBatchId\":\"Q2GJQLQFMJWTY\",\"transactionId\":\"3JU78306XG5327728\"}}},\"undoWindow\":{\"factors\":[{\"factor\":\"order total $116.97\",\"minutes\":360},{\"factor\":\"agent bypassed Undo's pre-purchase check\",\"minutes\":720}],\"minutes\":1080,\"endsAt\":\"2026-10-20T04:36:44.167Z\",\"open\":false,\"minutesLeft\":0},\"mandate\":{\"id\":\"2f4069f0-2367-4f08-acc6-d9cf1cf6669a\",\"request\":\"Buy me black men's running shoes, size 10, under $120\",\"intent\":{\"item\":\"running shoes\",\"category\":\"running shoes\",\"quantity\":1,\"maxPrice\":120,\"currency\":\"USD\",\"attributes\":{\"size\":\"10\",\"color\":\"black\"},\"gender\":\"male\",\"mustAsk\":[]},\"status\":\"FULFILLED\",\"shopperKey\":\"aHBQ5B27O2BiDV0oWgOigpsXZKjOfhcYYMch5pZ5H0c=\"},\"chain\":{\"intact\":true,\"events\":[{\"seq\":0,\"type\":\"MANDATE_SIGNED\",\"createdAt\":\"2026-10-20T04:18:18.268Z\",\"hash\":\"91b50424c310c5106b3c9873427ada9d3ffccf45c9834d1c2df342316b5a25d8\",\"proof\":{\"kind\":\"signature\",\"how\":\"Ed25519 signature from the shopper's device verified against the mandate's exact bytes.\",\"ref\":\"7bf66d54681f2b73e2f05ee0d49b5a68776908620751daaf0102b9f0b17fcac6\"}},{\"seq\":1,\"type\":\"CART_PROPOSED\",\"createdAt\":\"2026-10-20T04:18:18.832Z\",\"hash\":\"89f7646662727852af27cbdf1e326a17b6cc76c2bd462031bbf8f1f29622e323\",\"proof\":{\"kind\":\"rule\",\"how\":\"Proposed without Undo's guard.\",\"checks\":[{\"by\":\"rule\",\"text\":\"The agent skipped Undo's pre-purchase guard (careless demo agent).\"},{\"by\":\"rule\",\"text\":\"Breaks the mandate: size should be 10, is 10.5.\"}]}}]}}",
+              "status": "The order.",
+              "code": 200,
+              "name": "Response_200",
+              "id": "25a8fcfb-9acb-4f79-86ec-ae0ec0045543"
+            },
+            {
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json",
+                  "disabled": false
+                }
+              ],
+              "body": "{\r\n  \"error\": \"not_found\"\r\n}",
+              "status": "Not found.",
+              "code": 404,
+              "name": "Response_404",
+              "id": "e99152e4-1592-487a-906d-392373f5f1fb"
+            }
+          ],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status is 200\", () => pm.response.to.have.status(200));",
+                  "const body = pm.response.json();",
+                  "pm.test(\"refund case: refunded, chain intact\", () => { pm.expect(body.order.status).to.eql(\"REFUNDED\"); pm.expect(body.chain.intact).to.be.true; });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "id": "a76a1bc5-126e-4bf2-ac23-6c521387c1e6",
+          "name": "Download the evidence for an order",
+          "request": {
+            "url": {
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "orders",
+                ":orderId",
+                "evidence"
+              ],
+              "variable": [
+                {
+                  "id": "orderId",
+                  "key": "orderId",
+                  "value": "edd288bc-42d0-41d3-9b87-14915f3ff2c6",
+                  "type": "string",
+                  "description": "Undo order id."
+                }
+              ],
+              "raw": "{{baseUrl}}/api/orders/:orderId/evidence",
+              "query": []
+            },
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "disabled": false
+              }
+            ],
+            "description": "Everything needed to check an order without trusting Undo: the raw hash-chained events exactly as hashed and\nthe signed mandate exactly as stored. Nothing is pre-verified, on purpose.\n"
+          },
+          "response": [
+            {
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json",
+                  "disabled": false
+                }
+              ],
+              "body": "{\"format\":\"undo-evidence-v1\",\"orderId\":\"edd288bc-42d0-41d3-9b87-14915f3ff2c6\",\"mandate\":{\"id\":\"2f4069f0-2367-4f08-acc6-d9cf1cf6669a\",\"intent\":{\"item\":\"running shoes\",\"gender\":\"male\",\"mustAsk\":[],\"category\":\"running shoes\",\"currency\":\"USD\",\"maxPrice\":120,\"quantity\":1,\"attributes\":{\"size\":\"10\",\"color\":\"black\"}},\"request\":\"Buy me black men's running shoes, size 10, under $120\",\"version\":1,\"createdAt\":\"2026-10-20T04:18:17.928Z\",\"expiresAt\":\"2026-11-03T04:18:17.928Z\",\"shopperKey\":\"aHBQ5B27O2BiDV0oWgOigpsXZKjOfhcYYMch5pZ5H0c=\"},\"events\":[{\"subjectId\":\"2f4069f0-2367-4f08-acc6-d9cf1cf6669a\",\"seq\":0,\"type\":\"MANDATE_SIGNED\",\"payload\":{\"digest\":\"7bf66d54681f2b73e2f05ee0d49b5a68776908620751daaf0102b9f0b17fcac6\",\"signature\":\"derQBgmEoL8kvl3vfHVsmqTVAkGTSvb2ShqDoVFKdSC5U5PpGkYAUsDzgSd80QyEpGEPh4966mrEQ9CzBw0IDA==\"},\"createdAt\":\"2026-10-20T04:18:18.268Z\",\"prevHash\":\"0000000000000000000000000000000000000000000000000000000000000000\",\"hash\":\"91b50424c310c5106b3c9873427ada9d3ffccf45c9834d1c2df342316b5a25d8\"},{\"subjectId\":\"2f4069f0-2367-4f08-acc6-d9cf1cf6669a\",\"seq\":1,\"type\":\"CART_PROPOSED\",\"payload\":{\"risk\":{\"factors\":[{\"factor\":\"order total $116.97\",\"minutes\":360},{\"factor\":\"agent bypassed Undo's pre-purchase check\",\"minutes\":720}],\"minutes\":1080},\"agent\":{\"guard\":{\"relaxed\":[],\"bypassed\":true,\"violations\":[{\"rule\":\"attribute:size\",\"actual\":\"10.5\",\"expected\":\"10\"}]},\"model\":null,\"operator\":{\"via\":\"web\",\"name\":\"Careless demo agent\",\"verified\":false},\"searches\":[{\"query\":\"black running shoes\",\"filters\":\"price+gender+category_ids+colors\"}],\"reasoning\":\"Picked UA Infinite Pro Men's Running Shoes in Black / 10.5 — looked like the best match.\",\"requested\":{\"Size\":\"10\",\"Color\":\"Black\"},\"simulated\":\"unguarded_wrong_variant\",\"confidence\":0.9,\"considered\":[{\"id\":\"w25336I\",\"ok\":false,\"price\":116.97,\"title\":\"UA Infinite Pro Men's Running Shoes\"}],\"unverified\":[],\"approximate\":[]},\"orderId\":\"edd288bc-42d0-41d3-9b87-14915f3ff2c6\",\"product\":{\"brand\":\"Under Armour\",\"price\":116.97,\"title\":\"UA Infinite Pro Men's Running Shoes\",\"colors\":[\"#1e1e20\",\"#d5d4d8\"],\"variant\":{\"Size\":\"10.5\",\"Color\":\"Black\"},\"currency\":\"USD\",\"imageUrl\":\"https://cdn.trychannel3.com/aed9ec20-0e99-49b6-b011-2425732889be?aid=01M5BRG5D3YC8J46QPWBYB58RG&mid=oKaH\",\"sourceUrl\":\"https://buy.trychannel3.com/w25336I-oKaH-Wqce8l?o=01KVATPXMQW09XVTMRDEW2Q1Y9&aid=01M5BRG5D3YC8J46QPWBYB58RG\",\"attributes\":{\"pattern\":[\"Texture\",\"Geometric\"],\"activity\":[\"Running\"],\"shoe-fit\":[\"Regular\"],\"toe-style\":[\"Round\"],\"closure-type\":[\"Straps\",\"Lace-up\"],\"shoe-features\":[\"Breathable design\",\"Cushioned\"],\"lining-material\":[\"Synthetic\"],\"heel-height-type\":[\"Flat\",\"Low\"],\"outsole-material\":[\"Rubber\"],\"footwear-material\":[\"Mesh\",\"Polyester\"],\"footwear-support-type\":[\"Neutral\",\"Stability\"]},\"channel3Id\":\"w25336I\",\"description\":\"These men's running shoes from Under Armour, the UA Infinite Pro, are designed for endurance with a focus on comfort and support. They feature a breathable e…\",\"sourceDomain\":\"underarmour.com\",\"variantOptions\":[{\"name\":\"Color\",\"values\":[\"Black\",\"White\"]},{\"name\":\"Size\",\"values\":[\"7\",\"8\"]}]},\"quantity\":1},\"createdAt\":\"2026-10-20T04:18:18.832Z\",\"prevHash\":\"91b50424c310c5106b3c9873427ada9d3ffccf45c9834d1c2df342316b5a25d8\",\"hash\":\"89f7646662727852af27cbdf1e326a17b6cc76c2bd462031bbf8f1f29622e323\"}]}",
+              "status": "The evidence file (`undo-evidence-v1`).",
+              "code": 200,
+              "name": "Response_200",
+              "id": "53a640db-ca02-4021-80bc-1becb62cb78f"
+            },
+            {
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json",
+                  "disabled": false
+                }
+              ],
+              "body": "{\r\n  \"error\": \"not_found\"\r\n}",
+              "status": "Not found.",
+              "code": 404,
+              "name": "Response_404",
+              "id": "ea9e7e65-fbfb-4077-a9fa-f361fe9ea1cf"
+            }
+          ],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status is 200\", () => pm.response.to.have.status(200));",
+                  "const body = pm.response.json();",
+                  "pm.test(\"raw evidence\", () => { pm.expect(body.format).to.eql(\"undo-evidence-v1\"); pm.expect(body.events.length).to.be.above(0); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "id": "dc0c62ad-c4e0-4513-944a-14daab25444f",
+          "name": "Undo a purchase",
+          "request": {
+            "url": {
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "orders",
+                ":orderId",
+                "undo"
+              ],
+              "variable": [
+                {
+                  "id": "orderId",
+                  "key": "orderId",
+                  "value": "edd288bc-42d0-41d3-9b87-14915f3ff2c6",
+                  "type": "string",
+                  "description": "Undo order id."
+                }
+              ],
+              "raw": "{{baseUrl}}/api/orders/:orderId/undo",
+              "query": []
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "description": "",
+                "disabled": false
+              },
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "disabled": false
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\"reason\":\"This isn't what I asked for.\",\"requestedAt\":\"2026-10-20T16:30:00.000Z\",\"signature\":\"derQBgmEoL8kvl3vfHVsmqTVAkGTSvb2ShqDoVFKdSC5U5PpGkYAUsDzgSd80QyEpGEPh4966mrEQ9CzBw0IDA==\"}",
+              "disabled": false
+            },
+            "description": "The Undo button. Must be signed by the mandate's shopper key over\n`undo-request-v1:<orderId>:<sha256 hex of reason>:<sha256 hex of photo bytes, or ->:<requestedAt>`.\n`requestedAt` must be within 15 minutes of now. Runs the fault check, then routes the money: a void inside\nthe window, or a refund, merchant claim, return or human review after capture. Rate limited per visitor.\n"
+          },
+          "response": [
+            {
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json",
+                  "disabled": false
+                }
+              ],
+              "body": "{\"orderId\":\"edd288bc-42d0-41d3-9b87-14915f3ff2c6\",\"decision\":{\"verdict\":\"AGENT_FAULT\",\"evidence\":[{\"source\":\"shopper\",\"finding\":\"This isn't what I asked for.\"},{\"source\":\"mandate_check\",\"finding\":\"attribute:size: mandate required 10, agent bought 10.5\"}],\"liability\":\"agent_operator\",\"confidence\":1},\"outcome\":{\"action\":{\"type\":\"REFUND_FULL\",\"reason\":\"agent broke the mandate: full refund, liability on the agent operator\"},\"status\":\"REFUNDED\",\"paypal\":{}}}",
+              "status": "The verdict and what happened to the money.",
+              "code": 200,
+              "name": "Response_200",
+              "id": "7c7f6aca-0b6d-4c69-adca-eae7d126c818"
+            },
+            {
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json",
+                  "disabled": false
+                }
+              ],
+              "body": "{\r\n  \"error\": \"invalid_request\",\r\n  \"issues\": [\r\n    {\r\n      \"code\": \"too_small\",\r\n      \"message\": \"String must contain at least 3 character(s)\",\r\n      \"path\": [\r\n        \"request\"\r\n      ]\r\n    }\r\n  ]\r\n}",
+              "status": "The body failed validation; `issues` lists each problem.",
+              "code": 400,
+              "name": "Response_400",
+              "id": "fddc16db-715e-46e0-8260-64b2962a9783"
+            },
+            {
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json",
+                  "disabled": false
+                }
+              ],
+              "body": "{\r\n  \"error\": \"bad_signature\"\r\n}",
+              "status": "Refused, for example a bad signature.",
+              "code": 403,
+              "name": "Response_403",
+              "id": "d7160e86-cc52-4f83-aa50-a25cc775dd41"
+            },
+            {
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json",
+                  "disabled": false
+                }
+              ],
+              "body": "{\r\n  \"error\": \"not_found\"\r\n}",
+              "status": "Not found.",
+              "code": 404,
+              "name": "Response_404",
+              "id": "fb9ee3da-742a-479c-9a89-1497fb549941"
+            },
+            {
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json",
+                  "disabled": false
+                }
+              ],
+              "body": "{\r\n  \"error\": \"not_undoable\",\r\n  \"status\": \"VOIDED\"\r\n}",
+              "status": "The resource is not in a state that allows this.",
+              "code": 409,
+              "name": "Response_409",
+              "id": "3023c2a6-75c9-40e8-ada4-4e94760f5cc6"
+            },
+            {
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json",
+                  "disabled": false
+                }
+              ],
+              "body": "{\r\n  \"error\": \"photo_too_large\",\r\n  \"maxBytes\": 4194304\r\n}",
+              "status": "The photo is over 4 MB.",
+              "code": 413,
+              "name": "Response_413",
+              "id": "e75d08a0-d157-4143-8cbf-1a49049aa025"
+            },
+            {
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json",
+                  "disabled": false
+                }
+              ],
+              "body": "{\r\n  \"error\": \"stale_request\"\r\n}",
+              "status": "Valid shape, but the content can't be accepted.",
+              "code": 422,
+              "name": "Response_422",
+              "id": "2c6d7b96-10a3-420b-a770-e639728d0ebd"
+            },
+            {
+              "header": [
+                {
+                  "key": "Retry-After",
+                  "value": "",
+                  "disabled": false
+                },
+                {
+                  "key": "Content-Type",
+                  "value": "application/json",
+                  "disabled": false
+                }
+              ],
+              "body": "{\r\n  \"error\": \"rate_limited\",\r\n  \"detail\": \"That's a lot of tries in a short time. Give it 2 minutes and try again.\",\r\n  \"retryAfter\": 120\r\n}",
+              "status": "Too many requests from this visitor, or the free-tier budget is spent.",
+              "code": 429,
+              "name": "Response_429",
+              "id": "5fc4fe0d-17bb-4b64-82ad-0307908affa8"
+            },
+            {
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json",
+                  "disabled": false
+                }
+              ],
+              "body": "{\r\n  \"error\": \"paypal_checkout_failed\",\r\n  \"detail\": \"PayPal returned 500\"\r\n}",
+              "status": "PayPal, the catalog or the AI model failed.",
+              "code": 502,
+              "name": "Response_502",
+              "id": "d4614216-bb19-4b67-8b41-291d2236961a"
+            }
+          ],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"an old signed undo is refused\", () => pm.expect(pm.response.code).to.be.oneOf([403, 409, 422]));",
+                  "const body = pm.response.json();",
+                  "pm.test(\"says why\", () => pm.expect(body.error).to.be.oneOf([\"stale_request\", \"bad_signature\", \"not_undoable\"]));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Merchant",
+      "description": "The store's view. Sandbox demo store; merchant sign-in comes with production use.",
+      "item": [
+        {
+          "id": "76618644-8d7d-4757-a3fa-c1cad871a693",
+          "name": "List agent orders",
+          "request": {
+            "url": {
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "merchant",
+                "orders"
+              ],
+              "raw": "{{baseUrl}}/api/merchant/orders",
+              "query": []
+            },
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "disabled": false
+              }
+            ],
+            "description": "Every agent order (latest 300) with its verdict, who pays and any agent payout, plus headline numbers."
+          },
+          "response": [
+            {
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json",
+                  "disabled": false
+                }
+              ],
+              "body": "{\"kpis\":{\"agentOrders\":22,\"undone\":16,\"feesAvoided\":54.209861000000004,\"billedToAgents\":293.93,\"merchantProtected\":3,\"needsAction\":0,\"heldNow\":0},\"orders\":[{\"id\":\"0b1b3bb1-f411-406a-87b7-0bf32f55ed61\",\"createdAt\":\"2026-10-20T12:14:48.268Z\",\"status\":\"VOIDED\",\"amount\":59.99,\"currency\":\"USD\",\"product\":\"Mens Boxy Hoodie\",\"brand\":\"Cernucci\",\"variant\":\"Size M\",\"imageUrl\":\"https://cdn.trychannel3.com/b9e090b6-615d-4117-a827-c1dad96f2a12?aid=01M5CKRKZAQ4Z7XXEQEKMJVC9V&mid=m7kZ\",\"retailer\":\"us.cernucci.com\",\"request\":\"A black hoodie, size M, under $80\",\"agentConfidence\":0.8,\"guardBypassed\":false,\"simulated\":null,\"agentName\":\"Undo web agent\",\"agentVerified\":true,\"agentVia\":\"web\",\"verdict\":\"MERCHANT_FAULT\",\"verdictConfidence\":1,\"liability\":\"merchant\",\"settlement\":null,\"settledAmount\":0,\"action\":\"VOID\",\"windowEndsAt\":\"2026-10-20T19:15:15.261Z\",\"windowMinutesLeft\":null,\"paypalRef\":\"8L594057D91511610\"},{\"id\":\"f4e45935-229f-48f8-918a-be44a4997a9f\",\"createdAt\":\"2026-10-20T07:49:05.299Z\",\"status\":\"VOIDED\",\"amount\":116.97,\"currency\":\"USD\",\"product\":\"UA Infinite Pro Men's Running Shoes\",\"brand\":\"Under Armour\",\"variant\":\"Size 10.5 · Color Black\",\"imageUrl\":\"https://cdn.trychannel3.com/aed9ec20-0e99-49b6-b011-2425732889be?aid=01M5C4J3G46ER2Y26PBPQ3QGZB&mid=oKaH\",\"retailer\":\"underarmour.com\",\"request\":\"Black men's running shoes, size 10, under $120\",\"agentConfidence\":0.9,\"guardBypassed\":true,\"simulated\":\"unguarded_wrong_variant\",\"agentName\":\"Careless demo agent\",\"agentVerified\":false,\"agentVia\":\"web\",\"verdict\":\"AGENT_FAULT\",\"verdictConfidence\":1,\"liability\":\"agent_operator\",\"settlement\":null,\"settledAmount\":0,\"action\":\"VOID\",\"windowEndsAt\":\"2026-10-21T07:49:23.031Z\",\"windowMinutesLeft\":null,\"paypalRef\":\"3LJ53399FX105624A\"}]}",
+              "status": "Orders and KPIs.",
+              "code": 200,
+              "name": "Response_200",
+              "id": "967a608d-17cc-4347-976f-cb93bcee85e9"
+            }
+          ],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status is 200\", () => pm.response.to.have.status(200));",
+                  "const body = pm.response.json();",
+                  "pm.test(\"orders and KPIs\", () => { pm.expect(body.orders).to.be.an(\"array\"); pm.expect(body.kpis.agentOrders).to.be.a(\"number\"); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "id": "032c11f1-9b57-404c-8245-eeeabdc9ad51",
+          "name": "List agents and their trust scores",
+          "request": {
+            "url": {
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "merchant",
+                "agents"
+              ],
+              "raw": "{{baseUrl}}/api/merchant/agents",
+              "query": []
+            },
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "disabled": false
+              }
+            ],
+            "description": "Every agent that has shopped here, its record and trust score with every point explained, and what the store's rules do to it."
+          },
+          "response": [
+            {
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json",
+                  "disabled": false
+                }
+              ],
+              "body": "{\"rules\":{\"blockBelow\":null,\"extendBelow\":50,\"extendMinutes\":360,\"blockUnverified\":false},\"agents\":[{\"name\":\"Careless demo agent\",\"verified\":false,\"via\":\"web\",\"purchases\":11,\"faults\":9,\"refused\":0,\"bypassed\":11,\"lastSeen\":\"2026-10-20T07:49:05.299Z\",\"trust\":{\"score\":0,\"tier\":\"risky\",\"factors\":[{\"label\":\"unregistered name\",\"points\":50},{\"label\":\"2 clean purchases\",\"points\":6}]},\"effect\":{\"blocked\":null,\"extraMinutes\":360,\"reason\":\"merchant rule: Careless demo agent trust 0, below 50\"}},{\"name\":\"Spike Agent\",\"verified\":false,\"via\":\"mcp\",\"purchases\":0,\"faults\":0,\"refused\":4,\"bypassed\":0,\"lastSeen\":\"2026-10-18T07:44:53.243Z\",\"trust\":{\"score\":30,\"tier\":\"risky\",\"factors\":[{\"label\":\"unregistered name\",\"points\":50},{\"label\":\"4 carts refused by the guard\",\"points\":-20}]},\"effect\":{\"blocked\":null,\"extraMinutes\":360,\"reason\":\"merchant rule: Spike Agent trust 30, below 50\"}}]}",
+              "status": "Agents and the store's rules.",
+              "code": 200,
+              "name": "Response_200",
+              "id": "313051a1-ce1f-47b4-89f8-72e38d497d1f"
+            }
+          ],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status is 200\", () => pm.response.to.have.status(200));",
+                  "const body = pm.response.json();",
+                  "pm.test(\"agents with scores\", () => pm.expect(body.agents[0].trust.score).to.be.a(\"number\"));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "id": "0ca4af4d-7e47-4575-b854-88e4989bea02",
+          "name": "Get the store's agent rules",
+          "request": {
+            "url": {
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "merchant",
+                "rules"
+              ],
+              "raw": "{{baseUrl}}/api/merchant/rules",
+              "query": []
+            },
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "disabled": false
+              }
+            ],
+            "description": "The rules the store applies to agents at checkout: block below a trust score, lengthen the undo window below a score, or accept only registered operators."
+          },
+          "response": [
+            {
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json",
+                  "disabled": false
+                }
+              ],
+              "body": "{\"blockBelow\":null,\"extendBelow\":50,\"extendMinutes\":360,\"blockUnverified\":false}",
+              "status": "The rules.",
+              "code": 200,
+              "name": "Response_200",
+              "id": "39d79b47-dfec-4476-844c-cdb2037a1114"
+            }
+          ],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status is 200\", () => pm.response.to.have.status(200));",
+                  "const body = pm.response.json();",
+                  "pm.test(\"rules\", () => pm.expect(body).to.have.property(\"extendMinutes\"));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "id": "8e5afbb1-5bfb-481c-89a1-b0634c2a0d4d",
+          "name": "Stream the store's activity",
+          "request": {
+            "url": {
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "merchant",
+                "activity"
+              ],
+              "query": [
+                {
+                  "key": "after",
+                  "value": "1200",
+                  "description": "Only events with an id greater than this.",
+                  "disabled": false
+                }
+              ],
+              "raw": "{{baseUrl}}/api/merchant/activity?after=1200"
+            },
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "disabled": false
+              }
+            ],
+            "description": "Every step Undo records, newest first (up to 60). Pass `after` to get only events newer than that id."
+          },
+          "response": [
+            {
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json",
+                  "disabled": false
+                }
+              ],
+              "body": "{\"events\":[{\"id\":226,\"at\":\"2026-10-20T12:38:24.861Z\",\"type\":\"MERCHANT_RULES_CHANGED\",\"kind\":\"record\",\"how\":\"Recorded in the chain.\",\"orderId\":null,\"amount\":null,\"agent\":null,\"ref\":null},{\"id\":225,\"at\":\"2026-10-20T12:17:27.554Z\",\"type\":\"PAYMENT_VOIDED\",\"kind\":\"paypal\",\"how\":\"Authorization voided: no money moved and no fees.\",\"orderId\":\"0b1b3bb1-f411-406a-87b7-0bf32f55ed61\",\"amount\":null,\"agent\":null,\"ref\":\"8L594057D91511610\"}]}",
+              "status": "Activity events.",
+              "code": 200,
+              "name": "Response_200",
+              "id": "2838d29f-89d3-43d6-b878-fd098ec93375"
+            }
+          ],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status is 200\", () => pm.response.to.have.status(200));",
+                  "const body = pm.response.json();",
+                  "pm.test(\"events\", () => pm.expect(body.events).to.be.an(\"array\"));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Service",
+      "description": "Health and deploy checks.",
+      "item": [
+        {
+          "id": "b23bc346-4f7d-4106-beec-31cf03261ab3",
+          "name": "Check the service",
+          "request": {
+            "url": {
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "health"
+              ],
+              "query": [
+                {
+                  "key": "deep",
+                  "value": "1",
+                  "description": "Present (any value) to also check PayPal and the database.",
+                  "disabled": false
+                }
+              ],
+              "raw": "{{baseUrl}}/api/health?deep=1"
+            },
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "disabled": false
+              }
+            ],
+            "description": "Shallow health check. With `deep`, also proves the service can reach PayPal sandbox and the database. Never returns secret values."
+          },
+          "response": [
+            {
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json",
+                  "disabled": false
+                }
+              ],
+              "body": "{\"ok\":true,\"service\":\"undo\",\"commit\":\"319894e\",\"configured\":{\"paypal\":true,\"channel3\":true,\"database\":true}}",
+              "status": "Healthy.",
+              "code": 200,
+              "name": "Response_200",
+              "id": "2eb9c3da-8de6-4319-8caa-fd19d5e642a6"
+            },
+            {
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json",
+                  "disabled": false
+                }
+              ],
+              "body": "{\r\n  \"ok\": false,\r\n  \"service\": \"undo\",\r\n  \"commit\": \"a1dd1af\",\r\n  \"configured\": {\r\n    \"paypal\": true,\r\n    \"channel3\": true,\r\n    \"database\": true\r\n  },\r\n  \"paypal\": \"Client Authentication failed\"\r\n}",
+              "status": "A deep check failed.",
+              "code": 503,
+              "name": "Response_503",
+              "id": "91372c45-a908-43c2-9504-8979e193d39e"
+            }
+          ],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status is 200\", () => pm.response.to.have.status(200));",
+                  "const body = pm.response.json();",
+                  "pm.test(\"healthy\", () => pm.expect(body.ok).to.be.true);"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Changes state (run by hand)",
+      "description": "These create orders, spend the demo's AI and catalog budgets, or change the store's rules, so the automated run leaves them out.",
+      "item": [
+        {
+          "id": "209f2225-f743-4f6b-b8f5-905dd93ac7dc",
+          "name": "Shop inside a mandate",
+          "request": {
+            "url": {
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "mandates",
+                ":mandateId",
+                "shop"
+              ],
+              "variable": [
+                {
+                  "id": "mandateId",
+                  "key": "mandateId",
+                  "value": "2f4069f0-2367-4f08-acc6-d9cf1cf6669a",
+                  "type": "string",
+                  "description": "Mandate id."
+                }
+              ],
+              "raw": "{{baseUrl}}/api/mandates/:mandateId/shop",
+              "query": []
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "description": "",
+                "disabled": false
+              },
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "disabled": false
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{}",
+              "disabled": false
+            },
+            "description": "Undo's agent searches, checks the cart against the signed limits, and opens a PayPal checkout in AUTHORIZE\nmode. Without a saved wallet the shopper approves at `approveUrl`; with one (and only if the mandate allows it)\nthe money is held straight away. One live purchase per mandate. Rate limited per visitor.\n"
+          },
+          "response": [
+            {
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json",
+                  "disabled": false
+                }
+              ],
+              "body": "{\"orderId\":\"edd288bc-42d0-41d3-9b87-14915f3ff2c6\",\"approveUrl\":\"https://www.sandbox.paypal.com/checkoutnow?token=1X507517Y8961004F\",\"status\":\"CHECKOUT_CREATED\",\"windowEndsAt\":null,\"paidWith\":\"approval\",\"cart\":{\"title\":\"UA Infinite Pro Men's Running Shoes\",\"brand\":\"Under Armour\",\"variant\":{\"Size\":\"10.5\",\"Color\":\"Black\"},\"price\":116.97,\"currency\":\"USD\",\"quantity\":1,\"retailer\":\"underarmour.com\",\"imageUrl\":\"https://cdn.trychannel3.com/aed9ec20-0e99-49b6-b011-2425732889be?aid=01M5BRG5D3YC8J46QPWBYB58RG&mid=oKaH\"},\"agent\":{\"reasoning\":\"Picked UA Infinite Pro Men's Running Shoes in Black / 10.5 — looked like the best match.\",\"confidence\":0.9,\"unverified\":[],\"guard\":{\"relaxed\":[],\"bypassed\":true,\"violations\":[{\"rule\":\"attribute:size\",\"actual\":\"10.5\",\"expected\":\"10\"}]},\"considered\":[{\"id\":\"w25336I\",\"ok\":false,\"price\":116.97,\"title\":\"UA Infinite Pro Men's Running Shoes\"}]},\"undoWindow\":{\"minutes\":1080,\"factors\":[{\"factor\":\"order total $116.97\",\"minutes\":360},{\"factor\":\"agent bypassed Undo's pre-purchase check\",\"minutes\":720}]},\"trust\":{\"score\":50,\"tier\":\"neutral\"}}",
+              "status": "Checkout opened.",
+              "code": 201,
+              "name": "Response_201",
+              "id": "6e8217d3-e417-4d08-9e77-603bdc5860db"
+            },
+            {
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json",
+                  "disabled": false
+                }
+              ],
+              "body": "{\r\n  \"error\": \"agent_blocked\",\r\n  \"detail\": \"This store only accepts registered agent operators.\"\r\n}",
+              "status": "The store's rules refused this agent.",
+              "code": 403,
+              "name": "Response_403",
+              "id": "18591ae9-e98a-42ad-93b6-2f98dfd9d85c"
+            },
+            {
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json",
+                  "disabled": false
+                }
+              ],
+              "body": "{\r\n  \"error\": \"not_found\"\r\n}",
+              "status": "Not found.",
+              "code": 404,
+              "name": "Response_404",
+              "id": "cc01918a-7155-466c-b476-f57d3690b82b"
+            },
+            {
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json",
+                  "disabled": false
+                }
+              ],
+              "body": "{\r\n  \"error\": \"purchase_already_open\",\r\n  \"orderId\": \"edd288bc-42d0-41d3-9b87-14915f3ff2c6\"\r\n}",
+              "status": "The mandate is not active, or a purchase is already open (`orderId` names it).",
+              "code": 409,
+              "name": "Response_409",
+              "id": "8542666a-acac-47da-a03f-2a21d345b964"
+            },
+            {
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json",
+                  "disabled": false
+                }
+              ],
+              "body": "{\r\n  \"error\": \"no_compliant_product\",\r\n  \"considered\": 8\r\n}",
+              "status": "No product fits the mandate.",
+              "code": 422,
+              "name": "Response_422",
+              "id": "a3dfe544-59e8-4b46-a2bc-4e5c57897b81"
+            },
+            {
+              "header": [
+                {
+                  "key": "Retry-After",
+                  "value": "",
+                  "disabled": false
+                },
+                {
+                  "key": "Content-Type",
+                  "value": "application/json",
+                  "disabled": false
+                }
+              ],
+              "body": "{\r\n  \"error\": \"rate_limited\",\r\n  \"detail\": \"That's a lot of tries in a short time. Give it 2 minutes and try again.\",\r\n  \"retryAfter\": 120\r\n}",
+              "status": "Too many requests from this visitor, or the free-tier budget is spent.",
+              "code": 429,
+              "name": "Response_429",
+              "id": "f72bdad0-a3de-44bc-bb17-3878ac7a5cf2"
+            },
+            {
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json",
+                  "disabled": false
+                }
+              ],
+              "body": "{\r\n  \"error\": \"paypal_checkout_failed\",\r\n  \"detail\": \"PayPal returned 500\"\r\n}",
+              "status": "PayPal, the catalog or the AI model failed.",
+              "code": 502,
+              "name": "Response_502",
+              "id": "ea922769-7a71-4c2d-a026-dd1b13e6c12a"
+            },
+            {
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json",
+                  "disabled": false
+                }
+              ],
+              "body": "{\r\n  \"error\": \"ai_unavailable\"\r\n}",
+              "status": "The AI model is unavailable right now.",
+              "code": 503,
+              "name": "Response_503",
+              "id": "af0e941e-fac6-4ca1-9d71-aed9d822eb8e"
+            }
+          ]
+        },
+        {
+          "id": "2da48ad3-48b2-40e5-9d71-e605fddab226",
+          "name": "Resolve an order as the merchant",
+          "request": {
+            "url": {
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "orders",
+                ":orderId",
+                "resolve"
+              ],
+              "variable": [
+                {
+                  "id": "orderId",
+                  "key": "orderId",
+                  "value": "edd288bc-42d0-41d3-9b87-14915f3ff2c6",
+                  "type": "string",
+                  "description": "Undo order id."
+                }
+              ],
+              "raw": "{{baseUrl}}/api/orders/:orderId/resolve",
+              "query": []
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "description": "",
+                "disabled": false
+              },
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "disabled": false
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\"action\":\"retry_settlement\"}",
+              "disabled": false
+            },
+            "description": "The merchant's side of an Undo. Sandbox only."
+          },
+          "response": [
+            {
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json",
+                  "disabled": false
+                }
+              ],
+              "body": "{\"orderId\":\"edd288bc-42d0-41d3-9b87-14915f3ff2c6\",\"settlement\":{\"at\":\"2026-10-20T04:36:47.717Z\",\"to\":\"8QKQG7YKAEQLW\",\"from\":\"Careless demo agent\",\"amount\":\"116.97\",\"status\":\"SUCCESS\",\"attempt\":1,\"currency\":\"USD\",\"payoutItemId\":\"Z8UUKQLA3ERPQ\",\"payoutBatchId\":\"Q2GJQLQFMJWTY\",\"transactionId\":\"3JU78306XG5327728\"}}",
+              "status": "Done; the body describes the PayPal actions taken.",
+              "code": 200,
+              "name": "Response_200",
+              "id": "3240a64c-313d-43a7-ba38-df1c08e9767e"
+            },
+            {
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json",
+                  "disabled": false
+                }
+              ],
+              "body": "{\r\n  \"error\": \"invalid_request\",\r\n  \"issues\": [\r\n    {\r\n      \"code\": \"too_small\",\r\n      \"message\": \"String must contain at least 3 character(s)\",\r\n      \"path\": [\r\n        \"request\"\r\n      ]\r\n    }\r\n  ]\r\n}",
+              "status": "The body failed validation; `issues` lists each problem.",
+              "code": 400,
+              "name": "Response_400",
+              "id": "7abe9964-3cc3-42d5-b531-f24e3eb31e17"
+            },
+            {
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json",
+                  "disabled": false
+                }
+              ],
+              "body": "{\r\n  \"error\": \"bad_signature\"\r\n}",
+              "status": "Refused, for example a bad signature.",
+              "code": 403,
+              "name": "Response_403",
+              "id": "074ee649-c8c2-44fd-93c7-2389ac40af08"
+            },
+            {
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json",
+                  "disabled": false
+                }
+              ],
+              "body": "{\r\n  \"error\": \"not_found\"\r\n}",
+              "status": "Not found.",
+              "code": 404,
+              "name": "Response_404",
+              "id": "1ee809b2-b7dd-484b-8798-d93919455212"
+            },
+            {
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json",
+                  "disabled": false
+                }
+              ],
+              "body": "{\r\n  \"error\": \"not_undoable\",\r\n  \"status\": \"VOIDED\"\r\n}",
+              "status": "The resource is not in a state that allows this.",
+              "code": 409,
+              "name": "Response_409",
+              "id": "220817bd-4d9c-46f4-af07-969288294afb"
+            },
+            {
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json",
+                  "disabled": false
+                }
+              ],
+              "body": "{\r\n  \"error\": \"paypal_checkout_failed\",\r\n  \"detail\": \"PayPal returned 500\"\r\n}",
+              "status": "PayPal, the catalog or the AI model failed.",
+              "code": 502,
+              "name": "Response_502",
+              "id": "e22e7e21-88a3-4e2d-b753-2ab72543cc69"
+            }
+          ]
+        },
+        {
+          "id": "b7c2df92-682c-4247-84a7-d3a77fb56515",
+          "name": "Update the store's agent rules",
+          "request": {
+            "url": {
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "merchant",
+                "rules"
+              ],
+              "raw": "{{baseUrl}}/api/merchant/rules",
+              "query": []
+            },
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "description": "",
+                "disabled": false
+              },
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "disabled": false
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\"blockBelow\":null,\"extendBelow\":50,\"extendMinutes\":360,\"blockUnverified\":false}",
+              "disabled": false
+            },
+            "description": "Applies from the next checkout, for Undo's agent and every MCP agent. Each change is recorded in the store's event chain."
+          },
+          "response": [
+            {
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json",
+                  "disabled": false
+                }
+              ],
+              "body": "{\"blockBelow\":null,\"extendBelow\":50,\"extendMinutes\":360,\"blockUnverified\":false}",
+              "status": "The rules now in force.",
+              "code": 200,
+              "name": "Response_200",
+              "id": "bde6064b-dfe3-424c-b79b-683eaa98778c"
+            },
+            {
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json",
+                  "disabled": false
+                }
+              ],
+              "body": "{\r\n  \"error\": \"invalid_request\",\r\n  \"issues\": [\r\n    {\r\n      \"code\": \"too_small\",\r\n      \"message\": \"String must contain at least 3 character(s)\",\r\n      \"path\": [\r\n        \"request\"\r\n      ]\r\n    }\r\n  ]\r\n}",
+              "status": "The body failed validation; `issues` lists each problem.",
+              "code": 400,
+              "name": "Response_400",
+              "id": "c51cafaa-d2fe-4456-bd4a-4898106ee7c5"
+            },
+            {
+              "header": [
+                {
+                  "key": "Retry-After",
+                  "value": "",
+                  "disabled": false
+                },
+                {
+                  "key": "Content-Type",
+                  "value": "application/json",
+                  "disabled": false
+                }
+              ],
+              "body": "{\r\n  \"error\": \"rate_limited\",\r\n  \"detail\": \"That's a lot of tries in a short time. Give it 2 minutes and try again.\",\r\n  \"retryAfter\": 120\r\n}",
+              "status": "Too many requests from this visitor, or the free-tier budget is spent.",
+              "code": 429,
+              "name": "Response_429",
+              "id": "4d19a4f5-1500-4f4a-8ea3-9ac2369a8913"
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "https://undo-1c56.onrender.com",
+      "type": "string"
+    }
+  ],
+  "auth": {
+    "type": "noauth"
+  }
+}

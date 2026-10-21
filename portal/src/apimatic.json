@@ -22,7 +22,8 @@
       "links": [
         { "label": "Live demo", "url": "https://undo-1c56.onrender.com/shop" },
         { "label": "Threat model", "url": "https://undo-1c56.onrender.com/security" },
-        { "label": "OpenAPI spec", "url": "https://undo-1c56.onrender.com/openapi.yaml" }
+        { "label": "OpenAPI spec", "url": "https://undo-1c56.onrender.com/openapi.yaml" },
+        { "label": "Postman", "url": "https://undo-1c56.onrender.com/postman/undo.postman_collection.json" }
       ]
     },
     "ai": { "pageActions": true }

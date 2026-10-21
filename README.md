@@ -160,6 +160,11 @@ On claude.ai or Claude Desktop, add a custom connector with the same URL. Agents
 
 ## HTTP API
 
+**Docs: [undo-1c56.onrender.com/docs](https://undo-1c56.onrender.com/docs)**: guides (quickstart, how Undo works,
+signing, verifying an order yourself, connecting an agent, errors and limits), the full API reference with a live
+playground, and SDK pages. It's an APIMatic portal built from [`portal/`](portal) into `public/docs` with
+`npm run docs:build`.
+
 Everything the web app does goes through a plain JSON API, described in OpenAPI 3.0 at
 [`/openapi.yaml`](https://undo-1c56.onrender.com/openapi.yaml) (source: [`public/openapi.yaml`](public/openapi.yaml)):
 products, mandates (draft, prepare, store, read), shopping inside a mandate, orders and their evidence, the Undo

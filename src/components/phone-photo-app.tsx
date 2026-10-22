@@ -27,7 +27,21 @@ export function PhonePhotoApp() {
   const [photo, setPhoto] = useState<{ dataUrl: string } | null>(null);
   const [state, setState] = useState<"ready" | "preparing" | "sending" | "sent">("ready");
   const [error, setError] = useState<string | null>(token ? null : ERRORS.not_found);
+  // A link that can't take a photo any more (wrong, expired or already used) says so before the camera opens.
+  const [closed, setClosed] = useState(!token);
   const fileRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    if (!token) return;
+    fetch(`/api/orders/${id}/photo-handoff/${encodeURIComponent(token)}?check=1`, { cache: "no-store" })
+      .then(async (r) => {
+        if (r.ok) return;
+        const body = await r.json().catch(() => ({}));
+        setClosed(true);
+        setError(ERRORS[body.error] ?? ERRORS.not_found);
+      })
+      .catch(() => {});
+  }, [id, token]);
 
   useEffect(() => {
     fetch(`/api/orders/${id}`, { cache: "no-store" })
@@ -103,9 +117,9 @@ export function PhonePhotoApp() {
             </div>
           )}
 
-          <input ref={fileRef} id="shot" type="file" accept="image/*" capture="environment" className="sr-only" onChange={(e) => choose(e.target.files?.[0])} />
+          {!closed && <input ref={fileRef} id="shot" type="file" accept="image/*" capture="environment" className="sr-only" onChange={(e) => choose(e.target.files?.[0])} />}
 
-          <div className="mt-6 flex flex-1 flex-col">
+          <div className={closed ? "hidden" : "mt-6 flex flex-1 flex-col"}>
             {photo ? (
               // eslint-disable-next-line @next/next/no-img-element
               <img src={photo.dataUrl} alt="The photo you just took" className="max-h-[46dvh] w-full rounded-[24px] bg-paper object-contain" />

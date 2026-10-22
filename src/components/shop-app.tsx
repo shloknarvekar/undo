@@ -87,6 +87,7 @@ export function ShopApp() {
       const pending = JSON.parse(sessionStorage.getItem(PENDING_KEY) ?? "null") as { request: string; draft: Draft; careless: boolean } | null;
       sessionStorage.removeItem(PENDING_KEY);
       if (!pending) return;
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- restores the draft from sessionStorage after the PayPal return, browser only
       setRequest(pending.request);
       setDraft(pending.draft);
       setCareless(pending.careless);
@@ -230,7 +231,7 @@ export function ShopApp() {
               </PillButton>
             </div>
           </form>
-          <aside className="on-deep rounded-card bg-deep p-[27px] text-paper sm:p-10">
+          <div className="on-deep rounded-card bg-deep p-[27px] text-paper sm:p-10">
             <h2 className="heading-type text-heading-sm">What happens next</h2>
             <ul className="mt-6 space-y-5 text-body">
               <li className="flex gap-3"><Fingerprint className="mt-0.5 size-5 shrink-0 text-field" aria-hidden /> Your request becomes a mandate you sign on this device. The key never leaves your browser.</li>
@@ -238,7 +239,7 @@ export function ShopApp() {
               <li className="flex gap-3"><Undo2 className="mt-0.5 size-5 shrink-0 text-field" aria-hidden /> You approve in PayPal. The money is held, and you get an undo window.</li>
             </ul>
             <p className="mt-8 text-body-sm text-paper/60">Sandbox only. No real money moves.</p>
-          </aside>
+          </div>
         </section>
       )}
 
@@ -308,14 +309,14 @@ export function ShopApp() {
               </PillButton>
             </div>
           </div>
-          <aside className="rounded-card border border-ink/15 bg-paper p-[27px] sm:p-10">
+          <div className="rounded-card border border-ink/15 bg-paper p-[27px] sm:p-10">
             <h2 className="heading-type text-heading-sm">The agent can&apos;t buy anything you didn&apos;t sign.</h2>
             <p className="mt-3 text-body text-muted">
               Undo re-checks every cart against this exact mandate. If anything about it is changed later — even the budget —
               the signature stops verifying and the purchase is refused.
             </p>
             {careless && <Badge tone="warn" className="mt-6" icon={<AlertTriangle className="size-3.5" aria-hidden />}>Careless agent on: it will skip the checks</Badge>}
-          </aside>
+          </div>
         </section>
       )}
 
@@ -422,7 +423,7 @@ function CartView({ r, careless }: { r: ShopResult; careless: boolean }) {
         </details>
       </div>
 
-      <aside className="on-deep flex flex-col rounded-card bg-deep p-[27px] text-paper sm:p-10">
+      <div className="on-deep flex flex-col rounded-card bg-deep p-[27px] text-paper sm:p-10">
         {r.approveUrl === null && (
           <p className="mb-5 inline-flex w-fit items-center gap-2 rounded-full bg-field px-3 py-1 text-body-sm font-medium text-deep">
             <Check className="size-4" aria-hidden /> Paid by your agent, no click needed
@@ -464,7 +465,7 @@ function CartView({ r, careless }: { r: ShopResult; careless: boolean }) {
             </p>
           </>
         )}
-      </aside>
+      </div>
     </section>
   );
 }

@@ -39,7 +39,8 @@ test("paying with the saved wallet is part of what the shopper signs", () => {
   assert.equal(verifyMandate(m, signature).ok, true);
 
   // Stripping it, or adding it to a mandate signed without it, breaks the signature.
-  const { payWith: _drop, ...without } = m;
+  const without = { ...m };
+  delete without.payWith;
   assert.equal(verifyMandate(without, signature).ok, false);
   const plain = prepareMandate("black hoodie size M under $80", intent, key.publicKey);
   assert.equal(plain.payWith, undefined);

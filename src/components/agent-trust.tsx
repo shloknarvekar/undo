@@ -30,6 +30,7 @@ export function AgentTrust({ refreshKey }: { refreshKey: number }) {
   }, []);
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- fetch on mount; state is set after the response
     void load();
   }, [load, refreshKey]);
 

@@ -30,6 +30,7 @@ export function Reveal({ as = "div", className, children }: { as?: "div" | "ul" 
     io.observe(el);
     return () => io.disconnect();
   }, []);
+  // eslint-disable-next-line react-hooks/refs -- passes the ref object to createElement; it is not read during render
   return createElement(as, { ref, className }, children);
 }
 

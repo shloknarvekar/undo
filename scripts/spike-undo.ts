@@ -22,6 +22,7 @@ async function api(method: string, path: string, body?: unknown) {
   const res = await fetch(`${BASE}${path}`, { method, headers: body ? { "Content-Type": "application/json" } : undefined, body: body ? JSON.stringify(body) : undefined });
   return { status: res.status, json: await res.json().catch(() => ({})) };
 }
+// eslint-disable-next-line @typescript-eslint/no-explicit-any -- loose JSON from the live API in a dev script
 function must(r: { status: number; json: any }, ok: number, what: string) {
   if (r.status !== ok) throw new Error(`${what} → ${r.status} ${JSON.stringify(r.json).slice(0, 400)}`);
   return r.json;
@@ -50,6 +51,7 @@ async function deliveredPhoto(): Promise<{ dataUrl: string; sha256: string; what
   throw new Error("no usable delivered-item photo found");
 }
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any -- loose JSON from the live API in a dev script
 type Run = { s: Scenario; key: ReturnType<typeof generateSigningKey>; orderId: string; approveUrl: string; cart: any };
 // Test-buyer keys live only in this git-ignored file, so an unfinished run can be resumed with --resume.
 const STATE = "data/undo-e2e.json";

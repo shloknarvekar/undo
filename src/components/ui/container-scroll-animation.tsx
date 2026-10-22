@@ -23,7 +23,8 @@ export function ScrollTilt({ children, className }: { children: React.ReactNode;
     return () => window.removeEventListener("resize", check);
   }, []);
 
-  const rotateX = useTransform(scrollYProgress, [0, 1], [20, 0]);
+  // A 20° tilt widens the card's near edge in perspective; on a phone that pokes past the screen while it enters.
+  const rotateX = useTransform(scrollYProgress, [0, 1], isMobile ? [6, 0] : [20, 0]);
   // Phones get a smaller tilt-in scale so the card never pokes past the screen edges.
   const scale = useTransform(scrollYProgress, [0, 1], isMobile ? [0.92, 1] : [1.05, 1]);
   const y = useTransform(scrollYProgress, [0, 1], [40, 0]);

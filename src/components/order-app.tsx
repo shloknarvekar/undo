@@ -121,6 +121,7 @@ export function OrderApp() {
   }, [id]);
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- fetch on mount; state is set after the response
     void load();
     getDeviceKey().then((k) => setDeviceKey(k.publicKey)).catch(() => setDeviceKey(""));
   }, [load]);

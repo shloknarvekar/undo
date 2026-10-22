@@ -48,6 +48,15 @@ async function load(orderId: string, token: string) {
   return h ?? null;
 }
 
+/** Whether the phone can still send on this link. Read-only: the phone asks before it offers the camera. */
+export async function checkHandoff(orderId: string, token: string): Promise<{ ok: true; expiresAt: string } | { ok: false; error: HandoffError }> {
+  const h = await load(orderId, token);
+  if (!h) return { ok: false, error: "not_found" };
+  if (h.status !== "WAITING") return { ok: false, error: "already_sent" };
+  if (h.expiresAt.getTime() < Date.now()) return { ok: false, error: "expired" };
+  return { ok: true, expiresAt: h.expiresAt.toISOString() };
+}
+
 /** The phone sends its photo. Once per link, before it expires. */
 export async function receivePhoto(orderId: string, token: string, dataUrl: string): Promise<{ ok: true } | { ok: false; error: HandoffError }> {
   const h = await load(orderId, token);

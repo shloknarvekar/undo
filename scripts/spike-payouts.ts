@@ -66,7 +66,11 @@ async function settle() {
 }
 
 (process.argv[2] === "settle" ? settle() : check()).then(
-  () => process.exit(0),
+  // Exiting at once trips a libuv assertion on Windows while sockets are still closing; give them a moment.
+  () => {
+    process.exitCode = 0;
+    setTimeout(() => process.exit(0), 200).unref();
+  },
   (err) => {
     console.error(`✖ ${err instanceof Error ? err.message : err}`);
     process.exit(1);

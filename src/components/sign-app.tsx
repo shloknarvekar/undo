@@ -63,6 +63,7 @@ export function SignApp() {
     if (res.ok) setData(await res.json());
   }, [id]);
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- fetch on mount; state is set after the response
     void load();
   }, [load]);
 
@@ -201,7 +202,7 @@ export function SignApp() {
         )}
       </section>
 
-      <aside className="on-deep rounded-card bg-deep p-[27px] text-paper sm:p-10">
+      <div className="on-deep rounded-card bg-deep p-[27px] text-paper sm:p-10">
         <h2 className="heading-type text-heading-sm">What you&apos;re agreeing to</h2>
         <ul className="mt-6 space-y-4 text-body text-paper/85">
           <li className="flex gap-3"><Fingerprint className="mt-0.5 size-5 shrink-0 text-field" aria-hidden /> Only {agent.name} may buy, and only within these limits. Your key never leaves this device.</li>
@@ -214,7 +215,7 @@ export function SignApp() {
             Or shop with Undo&apos;s own agent
           </PillLink>
         )}
-      </aside>
+      </div>
     </Container>
   );
 }

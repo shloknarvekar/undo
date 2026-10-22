@@ -110,6 +110,7 @@ export function MerchantConsole() {
   useEffect(() => {
     try {
       const raw = localStorage.getItem(GRID_STATE_KEY);
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- localStorage exists only in the browser, so it is read after hydration
       if (raw) setSavedState(JSON.parse(raw) as GridState);
     } catch {}
   }, []);
@@ -166,6 +167,7 @@ export function MerchantConsole() {
   }, []);
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- fetch on mount and poll; state is set after each response
     void load();
     // Poll only while the tab is visible; catch up as soon as it comes back.
     const t = setInterval(() => document.visibilityState === "visible" && load(), 15000);
@@ -399,6 +401,7 @@ function OrderDrawer({ row, onClose, onChanged }: { row: Row; onClose: () => voi
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- clears the previous order before fetching the next
     setDetail(null);
     fetch(`/api/orders/${row.id}`, { cache: "no-store" }).then(async (r) => r.ok && setDetail(await r.json()));
   }, [row.id, row.status]);

@@ -22,6 +22,7 @@ async function api(method: string, path: string, body?: unknown) {
   const res = await fetch(`${BASE}${path}`, { method, headers: body ? { "Content-Type": "application/json" } : undefined, body: body ? JSON.stringify(body) : undefined });
   return { status: res.status, json: await res.json().catch(() => ({})) };
 }
+// eslint-disable-next-line @typescript-eslint/no-explicit-any -- loose JSON from the live API in a dev script
 function must(r: { status: number; json: any }, ok: number, what: string) {
   if (r.status !== ok) throw new Error(`${what} → ${r.status} ${JSON.stringify(r.json).slice(0, 400)}`);
   return r.json;

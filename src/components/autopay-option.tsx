@@ -50,6 +50,7 @@ export function AutopayOption({
     const url = new URL(window.location.href);
     const back = url.searchParams.get("wallet");
     if (back) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- reads the PayPal return query, only available after hydration
       setNote(RETURN_NOTE[back] ?? null);
       if (back === "saved") onCheckedChange(true);
       url.searchParams.delete("wallet");

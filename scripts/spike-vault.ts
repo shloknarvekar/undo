@@ -50,6 +50,7 @@ async function api(auth: string, method: "GET" | "POST", path: string, body?: un
   return { status: res.status, json, debugId: res.headers.get("paypal-debug-id") };
 }
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any -- loose JSON from PayPal in a dev script
 function failure(step: string, r: { status: number; json: any; debugId: string | null }): never {
   const d = r.json?.details?.[0];
   throw new Error(`${step} → HTTP ${r.status} ${r.json?.name ?? ""}: ${d?.issue ?? ""} ${d?.description ?? r.json?.message ?? ""} (debug id ${r.debugId})`);

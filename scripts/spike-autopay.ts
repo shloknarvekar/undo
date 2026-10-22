@@ -45,7 +45,11 @@ async function main() {
     console.log(`  → Approve saving the wallet as your US SANDBOX PERSONAL buyer:\n     ${s.approveUrl}\n  (Waiting up to 30 min. If this stops, re-run with --resume.)\n`);
     const deadline = Date.now() + 30 * 60_000;
     for (;;) {
-      if (must(await api("GET", `/api/wallets?key=${encodeURIComponent(key.publicKey)}`), 200, "wallet status").saved) break;
+      // A dropped connection during a long wait is retried, not fatal; the deadline still applies.
+      const saved = await api("GET", `/api/wallets?key=${encodeURIComponent(key.publicKey)}`)
+        .then((r) => must(r, 200, "wallet status").saved)
+        .catch(() => false);
+      if (saved) break;
       if (Date.now() > deadline) throw new Error("wallet not saved after 30 min");
       await new Promise((r) => setTimeout(r, 4000));
     }

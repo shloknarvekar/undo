@@ -39,6 +39,11 @@ export function PillLink({ tone = "ink", className, ...p }: ComponentProps<typeo
   return <Link {...p} className={cx(pillBase, PILL[tone], className)} />;
 }
 
+/** A pill for pages outside the Next.js app (the static /docs portal), so the browser does a full load. */
+export function PillAnchor({ tone = "ink", className, ...p }: ComponentProps<"a"> & { tone?: Tone }) {
+  return <a {...p} className={cx(pillBase, PILL[tone], className)} />;
+}
+
 export function PillButton({ tone = "ink", className, ...p }: ComponentProps<"button"> & { tone?: Tone }) {
   return <button type="button" {...p} className={cx(pillBase, PILL[tone], className)} />;
 }
@@ -69,11 +74,18 @@ export function SiteFooter() {
           <FooterLink href="/rogue">Rogue agents</FooterLink>
           <FooterLink href="/security">Threat model</FooterLink>
           <FooterLink href="/#how">How it works</FooterLink>
+          {/* The docs portal is static (public/docs), so a plain link: a client-side navigation would miss it. */}
+          <p>
+            <a className="band-hover inline-flex min-h-11 items-center transition-colors hover:text-ink" href="/docs">
+              API docs
+            </a>
+          </p>
         </div>
         <div className="space-y-2">
           <p className="font-medium text-ink">Built with</p>
-          <p>PayPal Orders · Payments · Disputes · Webhooks</p>
+          <p>PayPal Orders · Payments · Payouts · Vault · Disputes · Webhooks</p>
           <p>Channel3 · Gemini · Neon · Render</p>
+          <p>AG Grid · Bryntum · APIMatic</p>
         </div>
         <div className="space-y-2">
           <p className="font-medium text-ink">Status</p>

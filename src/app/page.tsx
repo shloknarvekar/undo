@@ -6,7 +6,7 @@ import { HeroToggle } from "@/components/hero-toggle";
 import { CountdownChip, CtrlZBand, HeroGrid, Reveal } from "@/components/motion";
 import { SiteNav } from "@/components/site-nav";
 import { ScrollTilt } from "@/components/ui/container-scroll-animation";
-import { Container, PillLink, SiteFooter } from "@/components/ui";
+import { Container, PillAnchor, PillLink, SiteFooter } from "@/components/ui";
 
 const STEPS = [
   {
@@ -330,6 +330,13 @@ export default function Home() {
                 <li className="flex gap-3"><ShieldX className="mt-1 size-4 shrink-0 text-field" aria-hidden /> Every cart goes through the guard. A wrong one is refused, with the reason.</li>
                 <li className="flex gap-3"><BadgeCheck className="mt-1 size-4 shrink-0 text-field" aria-hidden /> The mandate names the agent, so its mistakes are billed to its operator.</li>
               </ul>
+              <p className="max-w-lg text-body text-paper/80">
+                Building your own client instead? The same flow is a plain HTTP API, with typed SDKs for TypeScript and Python,
+                a tested Postman collection and full docs.
+              </p>
+              <PillAnchor href="/docs" tone="white">
+                Read the API docs <ArrowRight className="arrow size-4" aria-hidden />
+              </PillAnchor>
             </div>
             <ScrollTilt>
               <figure className="rounded-card bg-black/30 p-[27px] ring-1 ring-paper/10">
@@ -368,6 +375,10 @@ export default function Home() {
               <p className="max-w-lg text-subheading text-ink/80">
                 Every agent order arrives with its signed mandate and a verdict trail. Voids before capture keep PayPal fees
                 off your books. When an agent was at fault, its operator pays you back through PayPal Payouts, automatically.
+              </p>
+              <p className="max-w-lg text-body text-ink/75">
+                The console shows every undo window on a live timeline, streams each step as it happens, and scores every agent
+                on its record, so you can refuse risky ones or give their purchases longer to undo.
               </p>
               <PillLink href="/merchant" tone="ink">
                 Open the console <ArrowRight className="arrow size-4" aria-hidden />

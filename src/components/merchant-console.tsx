@@ -6,7 +6,7 @@ import { AlertTriangle, Download, ExternalLink, FastForward, Loader2, PackageChe
 import dynamic from "next/dynamic";
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { EVENT_LABEL } from "./order-app";
+import { EVENT_LABEL, certainty, plainFinding } from "./order-app";
 import { useFocusTrap } from "./use-focus-trap";
 import { Badge, Container, PillButton, StatusBadge, VERDICT, VerdictBadge, cx, money, shortHash } from "./ui";
 import { ActivityFeed } from "./activity-feed";
@@ -195,7 +195,7 @@ export function MerchantConsole() {
         field: "product",
         headerName: "Agent order",
         flex: 2,
-        minWidth: 260,
+        minWidth: 200,
         cellRendererSelector: (p) => (p.node.rowPinned ? undefined : { component: ProductCell }),
         cellClass: (p) => (p.node.rowPinned ? "font-medium" : ""),
       },
@@ -278,7 +278,7 @@ export function MerchantConsole() {
           </div>
           <dl className="mt-10 grid grid-cols-2 gap-x-6 gap-y-8 md:grid-cols-5">
             {[
-              ["Agent orders", kpis ? String(kpis.agentOrders) : "—"],
+              ["Paid agent orders", kpis ? String(kpis.agentOrders) : "—"],
               ["Held right now", kpis ? money(kpis.heldNow) : "—"],
               ["Fees avoided by voids", kpis ? money(kpis.feesAvoided) : "—", "est."],
               ["Billed to agent operators", kpis ? money(kpis.billedToAgents) : "—"],
@@ -361,6 +361,10 @@ export function MerchantConsole() {
                     const { columnOrder, columnSizing, columnVisibility, sort } = e.state;
                     localStorage.setItem(GRID_STATE_KEY, JSON.stringify({ columnOrder, columnSizing, columnVisibility, sort }));
                   } catch {}
+                }}
+                // A phone keeps what an order is, what it cost and where it stands; tapping a row opens the rest.
+                onGridReady={(e) => {
+                  if (window.innerWidth < 640) e.api.setColumnsVisible(["createdAt", "agentName", "verdict", "liability", "windowMinutesLeft", "request"], false);
                 }}
                 rowSelection={{ mode: "singleRow", checkboxes: false, enableClickSelection: true }}
                 onRowClicked={(e) => !e.node.rowPinned && e.data && setSelected(e.data)}
@@ -454,12 +458,12 @@ function OrderDrawer({ row, onClose, onChanged }: { row: Row; onClose: () => voi
           <section className="on-deep mt-8 rounded-card bg-deep p-6 text-paper" aria-label="Verdict">
             <div className="flex flex-wrap items-center gap-3">
               <VerdictBadge verdict={res.decision.verdict} />
-              <span className="font-mono text-body-sm text-paper/70">{res.decision.confidence.toFixed(2)}</span>
+              <span className="text-body-sm text-paper/70">{certainty(res.decision)}</span>
             </div>
-            <p className="mt-4 heading-type text-heading-sm">{VERDICT[res.decision.verdict]?.who}</p>
+            <p className="mt-4 heading-type text-heading-sm">{res.action.type === "VOID" ? "No one pays: the hold was released" : VERDICT[res.decision.verdict]?.who}</p>
             <ul className="mt-4 space-y-2 text-body-sm">
               {res.decision.evidence.map((e, i) => (
-                <li key={i}><span className="font-mono text-field">{e.source.replace("_", " ")}</span> <span className="text-paper/85">{e.finding}</span></li>
+                <li key={i}><span className="font-mono text-field">{e.source.replaceAll("_", " ")}</span> <span className="text-paper/85">{plainFinding(e.finding)}</span></li>
               ))}
             </ul>
             {res.evidencePack && <p className="mt-4 font-mono text-caption text-paper/60">Evidence pack {shortHash(res.evidencePack.digest, 16)}</p>}
@@ -504,7 +508,7 @@ function OrderDrawer({ row, onClose, onChanged }: { row: Row; onClose: () => voi
             </PillButton>
           )}
           <Link href={`/orders/${row.id}`} className="inline-flex min-h-11 items-center gap-2 self-start text-body underline underline-offset-4">
-            Open the shopper&apos;s view <ExternalLink className="size-4" aria-hidden />
+            Open the shopper’s view <ExternalLink className="size-4" aria-hidden />
           </Link>
         </div>
 

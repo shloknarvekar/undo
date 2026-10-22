@@ -1,6 +1,6 @@
 "use client";
 
-import { AlertTriangle, Camera, ChevronDown, Circle, CreditCard, FastForward, Fingerprint, Link2, Loader2, ShieldCheck, Sparkles, Undo2, UserRound, X } from "lucide-react";
+import { AlertTriangle, Camera, ChevronDown, Circle, CreditCard, Eye, FastForward, Fingerprint, Link2, Loader2, ShieldCheck, Sparkles, Undo2, UserRound, X } from "lucide-react";
 import { useParams } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { DeviceKeyUnsupported, getDeviceKey, sha256Hex, undoMessage } from "@/lib/device-key";
@@ -240,6 +240,18 @@ export function OrderApp() {
         </Container>
       </section>
 
+      {deviceKey !== null && !ownsMandate && (
+        <div className="border-b border-ink/10 bg-bone">
+          <Container className="flex items-start gap-3 py-4 text-body-sm">
+            <Eye className="mt-0.5 size-4 shrink-0" aria-hidden />
+            <p>
+              <span className="font-medium">You’re viewing someone else’s sandbox purchase.</span> Only the device that signed it can press Undo. Everything
+              below is the real record, and you can check the proof yourself.
+            </p>
+          </Container>
+        </div>
+      )}
+
       <Container className="grid gap-8 py-10 sm:py-14 lg:grid-cols-[1.25fr_1fr]">
         <div className="space-y-8">
           {resolved && <VerdictCard r={resolved} order={order} />}
@@ -422,9 +434,11 @@ function VerdictCard({ r, order }: { r: Resolution; order: OrderData["order"] })
     <article className="on-deep rounded-card bg-deep p-[27px] text-paper sm:p-10" aria-labelledby="verdict-title">
       <div className="flex flex-wrap items-center gap-3">
         <VerdictBadge verdict={r.decision.verdict} />
-        <span className="font-mono text-body-sm text-paper/70">confidence {r.decision.confidence.toFixed(2)}</span>
+        <span className="text-body-sm text-paper/70">{certainty(r.decision)}</span>
       </div>
-      <h2 id="verdict-title" className="mt-5 heading-type text-heading-sm sm:text-[30px]">{v?.who ?? "Decision made"}</h2>
+      <h2 id="verdict-title" className="mt-5 heading-type text-heading-sm sm:text-[30px]">
+        {r.action.type === "VOID" ? "No one pays: the hold was released" : (v?.who ?? "Decision made")}
+      </h2>
       <p className="mt-2 text-body text-paper/80">{r.action.reason}</p>
       <ul className="mt-6 space-y-3">
         {/* The shopper's words are a claim, shown as a quote; everything else is something Undo checked. */}
@@ -437,19 +451,19 @@ function VerdictCard({ r, order }: { r: Resolution; order: OrderData["order"] })
           ) : (
             <li key={i} className="flex flex-col gap-1 text-body-sm sm:flex-row sm:gap-3">
               <span className="shrink-0 font-mono text-field sm:w-32">{e.source.replaceAll("_", " ")}</span>
-              <span className="text-paper/90">{e.finding}</span>
+              <span className="text-paper/90">{plainFinding(e.finding)}</span>
             </li>
           ),
         )}
       </ul>
       <div className="mt-7 flex flex-wrap items-center justify-between gap-3 rounded-[20px] bg-paper/10 px-5 py-4">
-        <span className="text-body">{r.action.type.replaceAll("_", " ").toLowerCase().replace(/^./, (c) => c.toUpperCase())}</span>
+        <span className="text-body">{ACTION_LABEL[r.action.type] ?? r.action.type}</span>
         <span className="font-mono text-body-sm text-paper/70">PayPal {ref ? shortHash(ref, 14) : "—"}{r.evidencePack ? ` · pack ${shortHash(r.evidencePack.digest, 10)}` : ""}</span>
       </div>
       {r.settlement && (
         <p className="mt-3 text-body-sm text-paper/80">
           {r.settlement.status === "SUCCESS"
-            ? `${r.settlement.from} has paid the merchant back ${money(r.settlement.amount, r.settlement.currency)} through PayPal Payouts. The mistake cost the merchant nothing.`
+            ? `${r.settlement.from} has paid the merchant back ${money(r.settlement.amount, r.settlement.currency)} through PayPal Payouts, so the merchant isn't out the sale.`
             : r.settlement.status === "PENDING"
               ? `${r.settlement.from} is paying the merchant back ${money(r.settlement.amount, r.settlement.currency)}; PayPal is processing it.`
               : `${r.settlement.from} owes the merchant ${money(r.settlement.amount, r.settlement.currency)}. Your refund is not affected.`}
@@ -457,6 +471,30 @@ function VerdictCard({ r, order }: { r: Resolution; order: OrderData["order"] })
       )}
     </article>
   );
+}
+
+export const ACTION_LABEL: Record<string, string> = {
+  VOID: "Hold released (void)",
+  REFUND_FULL: "Full refund",
+  OPEN_CLAIM: "Claim sent to the merchant",
+  AUTHORIZE_RETURN: "Return approved",
+  REVIEW: "Sent to a person",
+  NONE: "No money moved",
+};
+
+/** Who decided and how sure, in words: a rule check is certain; an AI reading carries its confidence. */
+export function certainty(d: { confidence: number; evidence: { source: string }[] }) {
+  const ai = d.evidence.some((e) => e.source === "ai_judgement" || e.source === "delivered_photo");
+  if (!ai) return "Decided by the mandate check: certain";
+  return `Rules plus an AI reading: ${Math.round(d.confidence * 100)}% sure`;
+}
+
+/** "attribute:size: mandate required 10, agent bought 10.5" → "Size: the mandate says 10, the agent bought 10.5". */
+export function plainFinding(f: string) {
+  const m = f.match(/^(?:attribute:)?([a-z_ ]+): mandate required (.+), agent bought (.+)$/i);
+  if (!m) return f;
+  const what = m[1].replaceAll("_", " ");
+  return `${what[0].toUpperCase()}${what.slice(1)}: the mandate says ${m[2]}, the agent bought ${m[3]}`;
 }
 
 /** How a step was decided, as a chip: the icon and the word carry the meaning, never colour alone. */
@@ -491,7 +529,7 @@ function ProofSummaryLine({ proofs }: { proofs: Proof[] }) {
   if (!parts.length) return null;
   return (
     <p className="mt-4 rounded-[16px] bg-mist px-4 py-3 text-body-sm">
-      This purchase so far: {parts.map(([n, one, many]) => `${n} ${n === 1 ? one : many}`).join(" · ")}.
+      On the record: {parts.map(([n, one, many]) => `${n} ${n === 1 ? one : many}`).join(" · ")}.
     </p>
   );
 }

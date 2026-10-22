@@ -129,7 +129,7 @@ export default function Home() {
                 <Hourglass className="size-4" aria-hidden />
               </span>
               <span className="text-body-sm sm:text-body">
-                <span className="sr-only">Example: </span>$112.00 held · <CountdownChip />
+                <span className="sr-only">Example: </span>$116.97 held · <CountdownChip />
                 <span className="sr-only">about six hours</span> left to undo
               </span>
             </p>
@@ -145,7 +145,7 @@ export default function Home() {
             <div className="space-y-6 text-subheading text-ink/85 sm:text-heading-sm sm:leading-[1.45]">
               <p>
                 <Figure>132M</Figure> US adults have already let AI make a retail purchase, yet only <Figure>24%</Figure> trust an
-                agent with routine buying. The gap isn&apos;t the checkout. It&apos;s what happens when the agent gets it wrong.
+                agent with routine buying. The gap isn’t the checkout. It’s what happens when the agent gets it wrong.
               </p>
               <p>
                 Card networks have <Figure>0</Figure> dispute codes for &ldquo;the agent misunderstood me&rdquo;, so the mistake
@@ -167,7 +167,7 @@ export default function Home() {
               />
               <p className="max-w-md text-subheading text-paper/80">
                 Undo checks the signed mandate against what was bought and what arrived, then routes the money through the
-                matching PayPal rail. It doesn&apos;t take anyone&apos;s word for it: not the shopper&apos;s, not the agent&apos;s.
+                matching PayPal rail. It doesn’t take anyone’s word for it: not the shopper’s, not the agent’s.
               </p>
               <PillLink href="/shop" tone="white">
                 See it decide <ArrowRight className="arrow size-4" aria-hidden />
@@ -264,8 +264,8 @@ export default function Home() {
                 Eight ways an agent goes rogue. Not one gets through.
               </h2>
               <p className="max-w-md text-subheading text-ink/80">
-                One shopper signs &ldquo;a black hoodie, size M, under $80&rdquo;. Nine agents try to use it on live products, one of them a real AI hijacked by a note hidden in a listing.
-                Undo&apos;s guard decides each one before PayPal ever sees a cart.
+                One shopper signs &ldquo;a black hoodie, size M, under $80&rdquo;. Nine agents try to use it on live products: one honest, and eight that cheat, including a real AI hijacked by a note hidden in a listing.
+                Undo’s guard decides each one before PayPal ever sees a cart.
               </p>
               <div className="flex flex-wrap items-center gap-x-6 gap-y-2">
                 <PillLink href="/rogue" tone="solid">
@@ -326,7 +326,7 @@ export default function Home() {
                 https://undo-1c56.onrender.com/api/mcp
               </p>
               <ul className="space-y-3 text-body text-paper/85">
-                <li className="flex gap-3"><Fingerprint className="mt-1 size-4 shrink-0 text-field" aria-hidden /> The agent never holds the shopper&apos;s key. Only their device can sign or undo.</li>
+                <li className="flex gap-3"><Fingerprint className="mt-1 size-4 shrink-0 text-field" aria-hidden /> The agent never holds the shopper’s key. Only their device can sign or undo.</li>
                 <li className="flex gap-3"><ShieldX className="mt-1 size-4 shrink-0 text-field" aria-hidden /> Every cart goes through the guard. A wrong one is refused, with the reason.</li>
                 <li className="flex gap-3"><BadgeCheck className="mt-1 size-4 shrink-0 text-field" aria-hidden /> The mandate names the agent, so its mistakes are billed to its operator.</li>
               </ul>
@@ -340,7 +340,7 @@ export default function Home() {
             </div>
             <ScrollTilt>
               <figure className="rounded-card bg-black/30 p-[27px] ring-1 ring-paper/10">
-                <figcaption className="text-body-sm text-paper/70">An agent shopping through Undo&apos;s MCP tools (abridged)</figcaption>
+                <figcaption className="text-body-sm text-paper/70">An agent shopping through Undo’s MCP tools (abridged)</figcaption>
                 <ol className="mt-5 space-y-3">
                   {MCP_EXCHANGE.map((m, i) => (
                     <li key={i} className={m.who === "shopper" ? "flex justify-end" : "flex"}>
@@ -392,16 +392,19 @@ export default function Home() {
               </figcaption>
               <div className="mt-8 grid gap-8 sm:grid-cols-2">
                 <div>
-                  <p className="text-body-sm text-paper/70">Without Undo</p>
+                  <p className="text-body-sm text-paper/70">Without Undo, you lose at least</p>
                   <p className="mt-2 display-type text-[45px] leading-none tabular text-paper/60 line-through decoration-2">$121.54</p>
                   <p className="mt-3 text-body-sm text-paper/80">
-                    Captured, then charged back: the sale plus <span className="font-mono">$4.57</span> in fees, lost by you.
+                    Charged back: the <span className="font-mono">$116.97</span> sale and its <span className="font-mono">$4.57</span> processing fee,
+                    before PayPal&rsquo;s chargeback fee.
                   </p>
                 </div>
                 <div>
-                  <p className="text-body-sm text-paper/70">With Undo</p>
-                  <p className="mt-2 display-type text-[45px] leading-none tabular text-field">$0.00</p>
-                  <p className="mt-3 text-body-sm text-paper/80">The shopper was refunded in full, then the agent&apos;s operator paid you back $116.97 through PayPal Payouts.</p>
+                  <p className="text-body-sm text-paper/70">With Undo, you get back</p>
+                  <p className="mt-2 display-type text-[45px] leading-none tabular text-field">$116.97</p>
+                  <p className="mt-3 text-body-sm text-paper/80">
+                    The shopper was refunded in full, then the agent&rsquo;s operator paid you the whole sale back through PayPal Payouts. No dispute.
+                  </p>
                   <p className="mt-3 break-all font-mono text-caption text-paper/60">Payouts transaction 3JU78306XG5327728</p>
                 </div>
               </div>
@@ -413,7 +416,7 @@ export default function Home() {
         {/* Hot field — close */}
         <section className="section-flow bg-field">
           <Container className="flex flex-col items-start justify-between gap-8 py-16 sm:py-20 md:flex-row md:items-center">
-            <p className="display-type text-[48px] leading-none sm:text-heading-lg">Undo doesn&apos;t believe anyone.<br />It checks.</p>
+            <p className="display-type text-[48px] leading-none sm:text-heading-lg">Undo doesn’t believe anyone.<br />It checks.</p>
             <PillLink href="/shop" tone="ink" className="shrink-0">
               Run the demo in the sandbox <ArrowRight className="arrow size-4" aria-hidden />
             </PillLink>

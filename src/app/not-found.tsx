@@ -26,7 +26,7 @@ export default function NotFound() {
               Nothing here to <span className="text-field">undo.</span>
             </h1>
             <p className="mt-6 max-w-lg text-subheading text-paper/80">
-              This address doesn&apos;t exist, or the link was cut short. Everything Undo does is one click away.
+              This address doesn’t exist, or the link was cut short. Everything Undo does is one click away.
             </p>
             <div className="mt-10 flex flex-col gap-3 sm:flex-row">
               <PillLink href="/" tone="lime">

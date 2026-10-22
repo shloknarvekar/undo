@@ -1,6 +1,6 @@
 "use client";
 
-import { AlertTriangle, BadgeCheck, Check, Fingerprint, Loader2, ShieldAlert } from "lucide-react";
+import { AlertTriangle, BadgeCheck, Check, Clock, Fingerprint, Loader2, ShieldAlert } from "lucide-react";
 import { useParams } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
 import { AutopayOption } from "./autopay-option";
@@ -102,8 +102,14 @@ export function SignApp() {
   if (missing)
     return (
       <Container className="py-20">
-        <h1 className="display-type text-[45px] leading-none">This link doesn&apos;t exist</h1>
-        <p className="mt-4 text-subheading text-muted">Ask your agent for a new one.</p>
+        <h1 className="display-type text-[45px] leading-none">This link doesn’t exist</h1>
+        <p className="mt-4 max-w-xl text-subheading text-muted">
+          It may be mistyped or from an old request. Ask your agent for a new one, or try Undo with its own agent.
+        </p>
+        <div className="mt-8 flex flex-wrap gap-3">
+          <PillLink href="/shop" tone="solid">Try the demo</PillLink>
+          <PillLink href="/" tone="ink">Back to home</PillLink>
+        </div>
       </Container>
     );
   if (!data)
@@ -203,16 +209,22 @@ export function SignApp() {
       </section>
 
       <div className="on-deep rounded-card bg-deep p-[27px] text-paper sm:p-10">
-        <h2 className="heading-type text-heading-sm">What you&apos;re agreeing to</h2>
+        <h2 className="heading-type text-heading-sm">What you’re agreeing to</h2>
         <ul className="mt-6 space-y-4 text-body text-paper/85">
           <li className="flex gap-3"><Fingerprint className="mt-0.5 size-5 shrink-0 text-field" aria-hidden /> Only {agent.name} may buy, and only within these limits. Your key never leaves this device.</li>
           <li className="flex gap-3"><BadgeCheck className="mt-0.5 size-5 shrink-0 text-field" aria-hidden /> Undo checks every cart before PayPal sees it. Anything outside the limits is refused.</li>
-          <li className="flex gap-3"><Check className="mt-0.5 size-5 shrink-0 text-field" aria-hidden /> You still approve the payment in PayPal. It&apos;s held, not taken, and you can undo it from this device.</li>
+          <li className="flex gap-3">
+            <Check className="mt-0.5 size-5 shrink-0 text-field" aria-hidden />
+            {autopay && walletSaved
+              ? `${agent.name} pays with your saved PayPal wallet, with no click from you. The money is only held, and you can undo it from this device.`
+              : "You approve the payment in PayPal. It’s held, not taken, and you can undo it from this device."}
+          </li>
+          <li className="flex gap-3"><Clock className="mt-0.5 size-5 shrink-0 text-field" aria-hidden /> Valid for 14 days, one purchase at a time. The undo window is set at checkout from price and risk, up to 48 hours.</li>
         </ul>
         <p className="mt-8 text-body-sm text-paper/70">Sandbox only. No real money moves.</p>
         {signed && (
           <PillLink href="/shop" tone="white" className="mt-8">
-            Or shop with Undo&apos;s own agent
+            Or shop with Undo’s own agent
           </PillLink>
         )}
       </div>

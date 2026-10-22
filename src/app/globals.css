@@ -62,6 +62,8 @@
     -webkit-text-size-adjust: 100%;
     /* Keep focused/anchored content clear of the sticky 72–88px header (WCAG 2.4.11 focus not obscured). */
     scroll-padding-top: 104px;
+    /* Pages with and without a scrollbar keep the same width, so the nav and layout do not jump between routes. */
+    scrollbar-gutter: stable;
   }
   body {
     background: var(--color-paper);
@@ -219,7 +221,7 @@
 
 @layer components {
   .stamp-in {
-    animation: undo-stamp 760ms cubic-bezier(0.16, 1, 0.3, 1) 80ms both;
+    animation: undo-stamp 560ms cubic-bezier(0.16, 1, 0.3, 1) both;
   }
   .marquee {
     animation: undo-marquee 28s linear infinite;

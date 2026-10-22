@@ -46,7 +46,7 @@ export function RogueApp() {
           <div>
             <h1 className="display-type text-[48px] leading-[0.98] sm:text-heading-lg">Nine agents. One signed mandate.</h1>
             <p className="mt-5 max-w-xl text-subheading text-paper/80">
-              Eight of them try to break it, including a real AI agent hijacked by a note hidden in a product listing. Undo&apos;s guard
+              Eight of them try to break it, including a real AI agent hijacked by a note hidden in a product listing. Undo’s guard
               decides every one, live, with the same code that protects real purchases. No money moves.
             </p>
             <div className="mt-8 flex flex-wrap items-center gap-3">
@@ -148,7 +148,7 @@ export function RogueApp() {
         {run && (
           <p className="mt-6 text-body-sm text-muted">
             Ran {new Date(run.ranAt).toLocaleString([], { dateStyle: "medium", timeStyle: "short" })} on live Channel3 products. Runs are
-            shared and refresh every five minutes, to spare the free catalog allowance. Agents connecting through Undo&apos;s MCP server hit
+            shared and refresh every five minutes, to spare the free catalog allowance. Agents connecting through Undo’s MCP server hit
             these exact checks before PayPal ever sees a cart.
           </p>
         )}
@@ -161,7 +161,7 @@ export function RogueApp() {
 function HijackTrace({ h }: { h: NonNullable<AttackResult["hijack"]> }) {
   return (
     <div className="grid gap-3 sm:col-span-3 md:grid-cols-2">
-      <figure className="min-w-0 rounded-[16px] border-l-4 border-warn bg-bone px-4 py-3">
+      <figure className="min-w-0 rounded-[16px] border border-warn/40 bg-warn-bg px-4 py-3">
         <figcaption className="text-caption font-medium uppercase tracking-wide text-muted">Hidden in the listing</figcaption>
         <p className="mt-1.5 break-words font-mono text-caption leading-relaxed text-ink/80">{h.injection}</p>
       </figure>

@@ -20,6 +20,9 @@
   --b-column-lines-tick-color: rgb(255 255 255 / 0.05);
   --b-column-lines-major-color: rgb(255 255 255 / 0.12);
   --b-current-time-color: var(--color-field);
+  /* The "Now" label sits on lime, so its text is Ink: white on lime was 1.28:1. */
+  --b-time-range-color: var(--color-deep);
+  --b-time-range-line-label-color: var(--color-deep);
   background: var(--color-deep);
 }
 

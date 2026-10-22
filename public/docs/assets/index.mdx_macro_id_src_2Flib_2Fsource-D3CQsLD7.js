@@ -1,4 +1,4 @@
-import{r as e}from"./rolldown-runtime-XKyaHtl9.js";import{t}from"./jsx-runtime-LKYXHABd.js";var n=e(t()),r={title:`Undo API`,description:`Ctrl+Z for AI agent purchases, built on PayPal.`},i=`
+import{r as e}from"./rolldown-runtime-XKyaHtl9.js";import{t}from"./jsx-runtime-LKYXHABd.js";var n=e(t()),r={title:`Overview`,description:`Ctrl+Z for AI agent purchases, built on PayPal.`},i=`
 
 AI agents can already buy things for people. Undo makes those purchases reversible and makes it clear who pays when one goes wrong.
 

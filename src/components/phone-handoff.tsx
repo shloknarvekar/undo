@@ -78,7 +78,7 @@ export function PhoneHandoff({ orderId, onPhoto }: { orderId: string; onPhoto: (
           className="inline-flex min-h-11 cursor-pointer items-center gap-2 rounded-full border border-ink/25 px-5 text-body-sm transition-colors hover:border-ink disabled:cursor-not-allowed disabled:opacity-50"
         >
           {state === "starting" ? <Loader2 className="size-4 animate-spin" aria-hidden /> : <Smartphone className="size-4" aria-hidden />}
-          Use my phone&apos;s camera
+          Use my phone’s camera
         </button>
         {message && <p role="alert" className="w-full text-body-sm text-bad">{message}</p>}
       </>

@@ -1,7 +1,7 @@
 # Docs
 
 - Overview
-  - [Undo API](/docs/): Ctrl+Z for AI agent purchases, built on PayPal.
+  - [Overview](/docs/): Ctrl+Z for AI agent purchases, built on PayPal.
 - Guides
   - [Quickstart](/docs/guides/quickstart): Read a real finished order in one call.
   - [How Undo works](/docs/guides/how-undo-works): From a signed mandate to a held payment, an undo window, a verdict and a payout.

@@ -47,7 +47,7 @@ export function VerifyPanel({ orderId, label }: { orderId: string; label: (type:
     <section className="on-deep rounded-card bg-deep p-[27px] text-paper sm:p-8" aria-labelledby="verify-title">
       <h2 id="verify-title" className="heading-type text-heading-sm">Verify it yourself</h2>
       <p className="mt-2 text-body-sm text-paper/80">
-        Don&apos;t take Undo&apos;s word for it. Your browser downloads the raw history and re-checks every hash and signature with
+        Don’t take Undo’s word for it. Your browser downloads the raw history and re-checks every hash and signature with
         its own cryptography.
       </p>
 
@@ -121,13 +121,13 @@ export function VerifyPanel({ orderId, label }: { orderId: string; label: (type:
               ))
             ) : (
               <li className="text-paper/70">
-                This browser can&apos;t check Ed25519 signatures yet, so only the hashes were checked. Try a current Chrome, Edge, Firefox or
+                This browser can’t check Ed25519 signatures yet, so only the hashes were checked. Try a current Chrome, Edge, Firefox or
                 Safari.
               </li>
             )}
           </ul>
           <p className="font-mono text-caption text-paper/60">
-            Checked in {r.ms} ms by your browser&apos;s WebCrypto: SHA-256 for each link, Ed25519 for each signature.
+            Checked in {r.ms} ms by your browser’s WebCrypto: SHA-256 for each link, Ed25519 for each signature.
           </p>
 
           {/* Try to cheat: a local copy is changed, then checked again */}
@@ -181,7 +181,7 @@ export function VerifyPanel({ orderId, label }: { orderId: string; label: (type:
           <summary className="flex min-h-11 cursor-pointer items-center text-paper [&::-webkit-details-marker]:hidden">How the check works</summary>
           <ul className="mt-1 space-y-2 break-words font-mono text-caption leading-relaxed text-paper/75">
             <li>hash = sha256(prevHash + canonicalJSON(subjectId, seq, type, payload, createdAt)); the first prevHash is 64 zeros.</li>
-            <li>mandate: sha256(canonicalJSON(mandate)) must equal the signed digest, and the shopper&apos;s Ed25519 key must verify &quot;undo-intent-mandate-v1:&lt;digest&gt;&quot;.</li>
+            <li>mandate: sha256(canonicalJSON(mandate)) must equal the signed digest, and the shopper’s Ed25519 key must verify &quot;undo-intent-mandate-v1:&lt;digest&gt;&quot;.</li>
             <li>undo: the same key must verify &quot;undo-request-v1:&lt;orderId&gt;:&lt;sha256(reason)&gt;:&lt;photoSha256 or -&gt;:&lt;requestedAt&gt;&quot;.</li>
           </ul>
         </details>

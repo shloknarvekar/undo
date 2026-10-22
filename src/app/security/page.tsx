@@ -174,8 +174,7 @@ export default function SecurityPage() {
         <section className="on-deep bg-deep text-paper">
           <Container className="grid gap-10 py-16 sm:py-24 lg:grid-cols-[1.4fr_1fr] lg:items-end">
             <div>
-              <p className="font-mono text-body-sm text-paper/70">Threat model</p>
-              <h1 className="mt-4 display-type text-[48px] leading-[0.95] sm:text-[80px]">
+              <h1 className="display-type text-[48px] leading-[0.95] sm:text-[80px]">
                 What can go wrong, and what <span className="text-field">stops it.</span>
               </h1>
               <p className="mt-6 max-w-xl text-subheading text-paper/80">
@@ -236,7 +235,7 @@ export default function SecurityPage() {
 
         <section aria-labelledby="limits-title" className="bg-paper">
           <Container className="grid gap-10 py-16 sm:py-20 lg:grid-cols-[13rem_1fr] lg:gap-10">
-            <h2 id="limits-title" className="heading-type text-heading-sm sm:text-[30px]">What it doesn&apos;t cover yet</h2>
+            <h2 id="limits-title" className="heading-type text-heading-sm sm:text-[30px]">What it doesn’t cover yet</h2>
             <ul className="grid gap-x-10 gap-y-8 md:grid-cols-2">
               {LIMITS.map((l) => (
                 <li key={l.name} className="border-t-2 border-ink pt-4">
@@ -250,7 +249,7 @@ export default function SecurityPage() {
 
         <section className="bg-field">
           <Container className="flex flex-col items-start justify-between gap-6 py-14 md:flex-row md:items-center">
-            <p className="display-type text-[40px] leading-none sm:text-[56px]">Don&apos;t take this page&apos;s word for it.</p>
+            <p className="display-type text-[40px] leading-none sm:text-[56px]">Don’t take this page’s word for it.</p>
             <PillLink href="/rogue" tone="ink" className="shrink-0">
               Watch the agents try <ArrowRight className="arrow size-4" aria-hidden />
             </PillLink>

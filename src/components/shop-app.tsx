@@ -215,17 +215,17 @@ export function ShopApp() {
             />
             <div className="mt-3 flex flex-wrap gap-2" aria-label="Examples">
               {EXAMPLES.map((ex) => (
-                <button key={ex} type="button" onClick={() => setRequest(ex)} className="min-h-11 cursor-pointer rounded-full border border-ink/20 px-4 text-body-sm transition-colors hover:border-ink">
+                <button key={ex} type="button" onClick={() => setRequest(ex)} className="min-h-11 cursor-pointer rounded-[22px] border border-ink/20 px-4 py-2 text-left text-body-sm transition-colors hover:border-ink">
                   {ex}
                 </button>
               ))}
             </div>
             <div className="mt-8 flex flex-col-reverse items-start gap-4 sm:flex-row sm:items-center sm:justify-between">
               <label className="flex min-h-11 cursor-pointer items-center gap-3 text-body-sm text-muted">
-                <input type="checkbox" checked={careless} onChange={(e) => setCareless(e.target.checked)} className="size-5 accent-ink" />
-                Demo: use a careless agent that skips Undo&apos;s checks
+                <input type="checkbox" checked={careless} onChange={(e) => setCareless(e.target.checked)} className="size-5 shrink-0 accent-ink" />
+                Demo: use a careless agent that skips Undo’s checks
               </label>
-              <PillButton type="submit" tone="solid" disabled={busy || request.trim().length < 3}>
+              <PillButton type="submit" tone="solid" className="whitespace-nowrap" disabled={busy || request.trim().length < 3}>
                 {busy ? <Loader2 className="size-4 animate-spin" aria-hidden /> : <Sparkles className="size-4" aria-hidden />}
                 {busy ? "Reading your request…" : "Draft my mandate"}
               </PillButton>
@@ -310,12 +310,34 @@ export function ShopApp() {
             </div>
           </div>
           <div className="rounded-card border border-ink/15 bg-paper p-[27px] sm:p-10">
-            <h2 className="heading-type text-heading-sm">The agent can&apos;t buy anything you didn&apos;t sign.</h2>
-            <p className="mt-3 text-body text-muted">
-              Undo re-checks every cart against this exact mandate. If anything about it is changed later — even the budget —
-              the signature stops verifying and the purchase is refused.
+            <h2 className="heading-type text-heading-sm">What you’re signing</h2>
+            {/* Everything here is inside the signed bytes or decided by fixed rules, so the shopper sees all of it before signing. */}
+            <dl className="mt-6 space-y-4 text-body">
+              <div>
+                <dt className="text-body-sm text-muted">Who may buy</dt>
+                <dd>{careless ? "A careless demo agent, standing in for an outside one that skips Undo’s checks" : "Undo’s shopping agent, and no one else"}</dd>
+              </div>
+              <div>
+                <dt className="text-body-sm text-muted">Valid for</dt>
+                <dd>14 days from signing, one purchase at a time</dd>
+              </div>
+              <div>
+                <dt className="text-body-sm text-muted">How it pays</dt>
+                <dd>{autopay && walletSaved ? "Your saved PayPal wallet, with no click from you. The money is still only held." : "You approve in PayPal. The money is only held at first."}</dd>
+              </div>
+              <div>
+                <dt className="text-body-sm text-muted">Undo window</dt>
+                <dd>
+                  Set at checkout from price and risk: 1 hour from $20, 6 hours from $100, a day from $300, more for anything
+                  uncertain, up to 48 hours. Undo inside it is a free void.
+                </dd>
+              </div>
+            </dl>
+            <p className="mt-6 border-t border-ink/10 pt-5 text-body-sm text-muted">
+              Undo re-checks every cart against these exact terms. Change one byte later, even the budget, and the signature stops
+              verifying, so the purchase is refused.
             </p>
-            {careless && <Badge tone="warn" className="mt-6" icon={<AlertTriangle className="size-3.5" aria-hidden />}>Careless agent on: it will skip the checks</Badge>}
+            {careless && <Badge tone="warn" className="mt-5" icon={<AlertTriangle className="size-3.5" aria-hidden />}>Careless agent on: it will skip the checks</Badge>}
           </div>
         </section>
       )}
@@ -335,7 +357,7 @@ export function ShopApp() {
       {stage === "nomatch" && (
         <section className="mt-8 rounded-card bg-paper p-[27px] sm:p-10" aria-labelledby="nomatch-title">
           <h1 id="nomatch-title" tabIndex={-1} className="display-type text-[45px] leading-none">Nothing fits your mandate</h1>
-          <p className="mt-4 text-subheading text-muted">The agent refused to buy rather than break your rules. Here&apos;s what it checked:</p>
+          <p className="mt-4 text-subheading text-muted">The agent refused to buy rather than break your rules. Here’s what it checked:</p>
           <ConsideredList items={considered} />
           <PillButton tone="ink" className="mt-8" onClick={() => setStage("review")}>Adjust the mandate</PillButton>
         </section>
@@ -396,14 +418,14 @@ function CartView({ r, careless }: { r: ShopResult; careless: boolean }) {
           </div>
         </div>
         <div className="mt-8 rounded-[24px] bg-bone p-5">
-          <p className="text-body-sm font-medium">Agent&apos;s reasoning</p>
+          <p className="text-body-sm font-medium">Agent’s reasoning</p>
           <p className="mt-2 text-body">{agent.reasoning}</p>
           <div className="mt-4 flex flex-wrap items-center gap-2">
             <Badge tone={agent.confidence >= 0.8 ? "ok" : "warn"}>Confidence {Math.round(agent.confidence * 100)}%</Badge>
             {agent.guard.bypassed ? (
               <Badge tone="bad" icon={<AlertTriangle className="size-3.5" aria-hidden />}>Checks skipped</Badge>
             ) : (
-              <Badge tone="ok" icon={<ShieldCheck className="size-3.5" aria-hidden />}>Passed Undo&apos;s checks</Badge>
+              <Badge tone="ok" icon={<ShieldCheck className="size-3.5" aria-hidden />}>Passed Undo’s checks</Badge>
             )}
             {agent.unverified.map((u) => (
               <Badge key={u} tone="warn">Unverified: {u}</Badge>
@@ -460,7 +482,7 @@ function CartView({ r, careless }: { r: ShopResult; careless: boolean }) {
               Approve in PayPal <ArrowRight className="arrow size-4" aria-hidden />
             </PillLink>
             <p className="mt-4 text-body-sm text-paper/60">
-              You&apos;ll log in with your PayPal sandbox buyer and come straight back here.{careless ? " This purchase came from the careless demo agent." : ""}
+              You’ll log in with your PayPal sandbox buyer and come straight back here.{careless ? " This purchase came from the careless demo agent." : ""}
               {r.walletNote === "no_saved_wallet" ? " No saved wallet was found on this device, so it needs your approval this time." : ""}
             </p>
           </>

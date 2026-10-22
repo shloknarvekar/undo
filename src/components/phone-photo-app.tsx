@@ -90,7 +90,7 @@ export function PhonePhotoApp() {
           </span>
           <h1 className="mt-6 display-type text-[44px] leading-[0.95]">Sent.</h1>
           <p className="mt-4 text-subheading text-ink/80">
-            The photo is on your computer now. Finish the undo there: it&apos;s signed by your computer&apos;s key, not this phone.
+            The photo is on your computer now. Finish the undo there: it’s signed by your computer’s key, not this phone.
           </p>
           <p className="mt-6 inline-flex items-center gap-2 text-body-sm text-muted">
             <MonitorSmartphone className="size-4" aria-hidden /> You can close this page.

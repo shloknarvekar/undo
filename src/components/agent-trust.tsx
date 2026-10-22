@@ -56,7 +56,7 @@ export function AgentTrust({ refreshKey }: { refreshKey: number }) {
     <section className="mt-12" aria-labelledby="trust-title">
       <div className="flex flex-col justify-between gap-2 sm:flex-row sm:items-end">
         <h2 id="trust-title" className="display-type text-[36px] leading-none sm:text-[45px]">Agent trust</h2>
-        <p className="max-w-md text-body-sm text-muted">Scores come from each agent&apos;s record at this store. Your rules are lines on that score.</p>
+        <p className="max-w-md text-body-sm text-muted">Scores come from each agent’s record at this store. Your rules are lines on that score.</p>
       </div>
 
       {/* Side by side only when the scale still gets real width; otherwise the ledger leads and the rules follow. */}
@@ -69,14 +69,14 @@ export function AgentTrust({ refreshKey }: { refreshKey: number }) {
           <h3 id="rules-title" className="flex items-center gap-2 heading-type text-heading-sm">
             <ShieldCheck className="size-5 text-field" aria-hidden /> Store rules
           </h3>
-          <p className="mt-2 text-body-sm text-paper/75">Applied at checkout to Undo&apos;s own agent and to every agent connecting over MCP.</p>
+          <p className="mt-2 text-body-sm text-paper/75">Applied at checkout to Undo’s own agent and to every agent connecting over MCP. This is a shared demo store, so anyone trying the demo sees the rules you save.</p>
           {draft ? (
             <div className="mt-6 space-y-5 text-body-sm">
               <fieldset className="space-y-2">
                 <legend className="font-medium text-paper">Longer undo window for low-trust agents</legend>
                 <label className="flex min-h-11 items-center gap-2">
                   <input type="checkbox" checked={draft.extendBelow !== null} onChange={(e) => set({ extendBelow: e.target.checked ? 50 : null })} className="size-5 accent-field" />
-                  On
+                  Use this rule
                 </label>
                 <div className={cx("flex flex-wrap items-center gap-2", draft.extendBelow === null && "opacity-50")}>
                   <span>Add</span>
@@ -109,7 +109,7 @@ export function AgentTrust({ refreshKey }: { refreshKey: number }) {
                 <legend className="font-medium text-paper">Block low-trust agents</legend>
                 <label className="flex min-h-11 items-center gap-2">
                   <input type="checkbox" checked={draft.blockBelow !== null} onChange={(e) => set({ blockBelow: e.target.checked ? 30 : null })} className="size-5 accent-field" />
-                  On
+                  Use this rule
                 </label>
                 <div className={cx("flex flex-wrap items-center gap-2", draft.blockBelow === null && "opacity-50")}>
                   <span>Refuse agents scoring below</span>
@@ -130,7 +130,7 @@ export function AgentTrust({ refreshKey }: { refreshKey: number }) {
                 <input type="checkbox" checked={draft.blockUnverified} onChange={(e) => set({ blockUnverified: e.target.checked })} className="mt-0.5 size-5 accent-field" />
                 <span>
                   <span className="block font-medium text-paper">Only registered agent operators</span>
-                  <span className="text-paper/70">Agents that didn&apos;t present an operator key are refused.</span>
+                  <span className="text-paper/70">Agents that didn’t present an operator key are refused.</span>
                 </span>
               </label>
 

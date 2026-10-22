@@ -111,8 +111,8 @@ export function ActivityFeed() {
           <p className="mt-2 max-w-xl text-body-sm text-muted">Every step Undo records at this store, from the hash-chained log. New events stream in as they happen.</p>
         </div>
         <div className="flex items-center gap-3">
-          <span className="inline-flex items-center gap-2 text-body-sm" aria-hidden>
-            <span className={cx("size-2.5 rounded-full", live ? "bg-ok motion-safe:animate-pulse" : "bg-ash")} />
+          <span className="inline-flex items-center gap-2 text-body-sm">
+            <span aria-hidden className={cx("size-2.5 rounded-full", live ? "bg-ok motion-safe:animate-pulse" : "bg-ash")} />
             {live ? "Live" : "Paused"}
           </span>
           <button

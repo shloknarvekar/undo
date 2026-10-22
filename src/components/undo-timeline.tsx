@@ -381,7 +381,7 @@ export function UndoTimeline({ orders, onOpen }: { orders: TimelineOrder[]; onOp
                 </div>
               ))
             ) : (
-              <p className="p-10 text-subheading">The timeline didn&apos;t load. Refresh to try again; the orders grid above has the same data.</p>
+              <p className="p-10 text-subheading">The timeline didn’t load. Refresh to try again; the orders grid above has the same data.</p>
             )}
           </div>
         )}

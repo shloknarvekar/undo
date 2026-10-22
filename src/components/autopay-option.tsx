@@ -155,7 +155,7 @@ export function AutopayOption({
               {busy === "save" ? <Loader2 className="size-4 animate-spin" aria-hidden /> : <Wallet className="size-4" aria-hidden />}
               Save my PayPal wallet (one time)
             </button>
-            <span className="text-muted">Until you do, you&apos;ll approve in PayPal as usual.</span>
+            <span className="text-muted">Until you do, you’ll approve in PayPal as usual.</span>
           </>
         )}
       </div>

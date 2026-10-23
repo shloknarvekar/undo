@@ -105,13 +105,14 @@ export const AUTOPAY_MINUTES = 2 * HOUR;
  */
 export function undoWindow(r: RiskInput): UndoWindow {
   const total = r.price * r.quantity;
+  const n = (k: number, one: string, many: string) => (k === 1 ? `1 ${one}` : `${k} ${many}`);
   const factors: UndoWindow["factors"] = [];
   const base = total < 20 ? 0 : total < 100 ? 1 * HOUR : total < 300 ? 6 * HOUR : 24 * HOUR;
   factors.push({ factor: `order total $${total.toFixed(2)}`, minutes: base });
-  if (r.approximate) factors.push({ factor: `${r.approximate} attribute(s) matched loosely`, minutes: 3 * HOUR });
-  if (r.unverifiable) factors.push({ factor: `${r.unverifiable} attribute(s) not verifiable from listing`, minutes: 6 * HOUR });
+  if (r.approximate) factors.push({ factor: `${n(r.approximate, "detail", "details")} matched loosely`, minutes: 3 * HOUR });
+  if (r.unverifiable) factors.push({ factor: `${n(r.unverifiable, "detail", "details")} the listing can’t confirm`, minutes: 6 * HOUR });
   if (r.confidence < 0.7) factors.push({ factor: `agent confidence ${r.confidence.toFixed(2)}`, minutes: 6 * HOUR });
-  if (r.relaxed) factors.push({ factor: `catalog substituted ${r.relaxed} requested option(s)`, minutes: 12 * HOUR });
+  if (r.relaxed) factors.push({ factor: `the store swapped ${n(r.relaxed, "requested option", "requested options")}`, minutes: 12 * HOUR });
   if (r.guardBypassed) factors.push({ factor: "agent bypassed Undo's pre-purchase check", minutes: 12 * HOUR });
   if (r.autopay) factors.push({ factor: "agent paid with your saved wallet, no click from you", minutes: AUTOPAY_MINUTES });
   const minutes = Math.min(MAX_WINDOW_MINUTES, factors.reduce((s, f) => s + f.minutes, 0));

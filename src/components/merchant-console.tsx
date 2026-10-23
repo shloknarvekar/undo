@@ -75,7 +75,7 @@ const FILTERS = {
   undone: { label: "Undone", test: (r: Row) => Boolean(r.verdict) },
 } as const;
 
-const LIABILITY: Record<string, string> = { agent_operator: "Agent operator", merchant: "You (merchant)", shopper: "Shopper — you're protected" };
+const LIABILITY: Record<string, string> = { agent_operator: "Agent operator", merchant: "You (merchant)", shopper: "Shopper (protected)" };
 
 function ProductCell({ data }: ICellRendererParams<Row>) {
   if (!data) return null;

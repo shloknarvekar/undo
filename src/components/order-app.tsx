@@ -439,7 +439,7 @@ function VerdictCard({ r, order }: { r: Resolution; order: OrderData["order"] })
       <h2 id="verdict-title" className="mt-5 heading-type text-heading-sm sm:text-[30px]">
         {r.action.type === "VOID" ? "No one pays: the hold was released" : (v?.who ?? "Decision made")}
       </h2>
-      <p className="mt-2 text-body text-paper/80">{r.action.reason}</p>
+      <p className="mt-2 text-body text-paper/80">{ACTION_REASON[r.action.type] ?? r.action.reason}</p>
       <ul className="mt-6 space-y-3">
         {/* The shopper's words are a claim, shown as a quote; everything else is something Undo checked. */}
         {r.decision.evidence.map((e, i) =>
@@ -480,6 +480,15 @@ export const ACTION_LABEL: Record<string, string> = {
   AUTHORIZE_RETURN: "Return approved",
   REVIEW: "Sent to a person",
   NONE: "No money moved",
+};
+
+/** The stored reason is a log line; this is the same decision in a sentence. */
+const ACTION_REASON: Record<string, string> = {
+  VOID: "The undo window was still open, so PayPal released the hold. No money moved and no fees were charged.",
+  REFUND_FULL: "The agent broke the signed mandate, so you get a full refund and the agent’s operator covers the cost.",
+  OPEN_CLAIM: "The wrong item arrived, so the merchant got a claim with the signed evidence.",
+  AUTHORIZE_RETURN: "The agent and the merchant both followed the mandate. The merchant is protected, and you get a refund on return, minus a restocking fee.",
+  REVIEW: "Undo isn’t sure enough to move money by itself, so a person will look at it.",
 };
 
 /** Who decided and how sure, in words: a rule check is certain; an AI reading carries its confidence. */

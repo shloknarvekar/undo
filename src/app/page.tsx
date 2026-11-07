@@ -300,7 +300,7 @@ export default function Home() {
               ))}
               <li className="flex flex-col gap-2 py-5 sm:flex-row sm:items-center sm:justify-between sm:gap-6">
                 <p className="min-w-0">
-                  <span className="heading-type text-subheading">Careful Claude</span>
+                  <span className="heading-type text-subheading">Careful Agent</span>
                   <span className="block text-body-sm text-muted">bought exactly what was signed</span>
                 </p>
                 <span className="inline-flex shrink-0 items-center gap-1.5 self-start rounded-tag bg-ok-bg px-2.5 py-1 text-body-sm font-medium text-ok sm:self-auto">

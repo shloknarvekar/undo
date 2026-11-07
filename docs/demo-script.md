@@ -59,7 +59,7 @@ beat sets up the next.
 | 0:45–1:10 | **4. A real purchase** | `/shop`. Click the chip **Black men's running shoes, size 10, under $120**, tick **Demo: use a careless agent that skips Undo's checks**, press **Draft my mandate**. Show the mandate and the **Let the agent pay without asking me** option (leave it off), press **Sign & let the agent shop**, show the agent's pick, press **Approve in PayPal**, log in with your sandbox buyer, approve. End on the order page countdown and the words *held, not taken*. | "Now a real purchase. I tell the agent what I want and sign it on my own device, so it can't be changed. I could even let the agent pay by itself from my saved PayPal wallet. Either way, PayPal only holds the money. Nothing is taken yet." |
 | 1:10–1:38 | **5. The undo** | On the order page press **Demo: close the window now** (the payment is captured). Press **Undo this purchase**, type "These are the wrong size", sign. Show the **Agent fault** verdict and the line that the agent's operator paid the merchant back. Optional, a second: the **Use my phone's camera** button in the Undo box. | "This careless agent bought the wrong size, and the money was already taken. I press Undo. For a wrong item I could even snap a photo with my phone. Undo checks what I signed against what was bought, finds the agent at fault, and refunds me in full. Then the agent's company pays the shop back, with PayPal Payouts." |
 | 1:38–2:00 | **6. The proof** | Open one step in the **Event chain** that says *PayPal API*. Then **Verify in my browser** turning green, then **Now try to cheat → Change who's at fault** and the word **Caught.** | "Every step is saved on a tamper-proof record, with the exact PayPal action behind every dollar. And you don't have to trust us: your own browser re-checks it. Try to change who was at fault, and it's caught instantly." |
-| 2:00–2:16 | **7. Any AI can plug in** | `/docs` (the API docs), scroll a little; or the *For agents* section on the home page with the MCP address. If you use Claude or another assistant that supports custom connectors, you can instead show it shopping through `https://undo-1c56.onrender.com/api/mcp` and being refused for a wrong size. | "And it isn't only our agent. Any AI assistant can plug into Undo through one address, and developers get full API docs and ready-made code libraries. Every agent hits the same checks." |
+| 2:00–2:16 | **7. Any AI can plug in** | `/docs` (the API docs): the start page, then scroll the left menu so the guides and API reference show. | "And it isn't only our agent. Any AI assistant can plug into Undo through one address, and developers get full API docs and ready-made code libraries. Every agent hits the same checks." |
 | 2:16–2:40 | **8. The shop's view** | `/merchant`. Your new order is at the top of the grid. Scroll to **Undo windows** (the timeline; lime bars can still be undone), then **Live activity**, then **Agent trust**: change a store rule and watch which agents it catches. | "Shops see every undo window on a live timeline, every agent order as it happens, who was at fault, and what the agents' companies have paid back. Each agent gets a trust score from its record, and the shop sets the rules: block risky agents, or give their purchases more time to undo." |
 | 2:40–2:52 | **9. Close** | Home page, scrolled to the bottom: "Undo doesn't believe anyone. It checks." | "AI shopping will only be trusted when its mistakes can be undone. Undo. Built on PayPal." |
 
@@ -88,7 +88,7 @@ Judges are PayPal engineers, so say these exactly, and nothing beyond them.
 - **When the AI agent is at fault, the agent's company pays the shop back** through PayPal Payouts. This really happens
   in the demo.
 - **Rules decide first, AI only when rules can't, and a person when it's close.** Avoid saying "the AI decides".
-- **Any AI assistant can connect**, but the shopper always signs on their own device, never the AI.
+- **Any AI assistant can connect** over MCP, but the shopper always signs on their own device, never the AI. Don't name or show other companies' AI products in the video.
 - **The careless agent is a demo stand-in** for a badly behaved AI, not a real company.
 - **The hijacked agent is a real AI (Google Gemini), genuinely fooled** by a note hidden in a product page. Undo
   doesn't need to spot the trick: the purchase still breaks the rules the shopper signed, so it's blocked.
@@ -115,6 +115,17 @@ Judges are PayPal engineers, so say these exactly, and nothing beyond them.
 | The **Undo this purchase** button is grey | You're in a different browser from the one that signed. Use the same browser window for beats 4 and 5. |
 
 The timeline on the merchant page shows the library's "trial version" watermark. That's expected.
+
+## Hackathon video rules (from the official rules)
+
+- **Under 3 minutes.** Judges don't have to watch past 3:00.
+- **Uploaded to YouTube and publicly visible** (not unlisted, not private), with the link on the Devpost form.
+- **Shows the project working** on the device it was built for: here, a desktop browser.
+- **No third-party trademarks, and no copyrighted music or other material without permission.** Use music only from
+  a free library that licenses it for YouTube (YouTube Audio Library, or the stock audio inside Clipchamp), or no music.
+  Don't show other companies' logos up close; product photos from the catalog are fine in passing, but don't linger
+  on a brand.
+- **In English.**
 
 ---
 

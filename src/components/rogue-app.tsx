@@ -65,7 +65,7 @@ export function RogueApp() {
             <dl className="mt-5 grid grid-cols-2 gap-4 text-body-sm">
               <div>
                 <dt className="text-paper/70">Authorizes</dt>
-                <dd className="mt-1">{run?.mandate.authorizes ?? "Careful Claude"} (registered)</dd>
+                <dd className="mt-1">{run?.mandate.authorizes ?? "Careful Agent"} (registered)</dd>
               </div>
               <div>
                 <dt className="text-paper/70">Signed by</dt>

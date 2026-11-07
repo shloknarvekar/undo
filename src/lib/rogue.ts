@@ -38,7 +38,7 @@ export type RogueRun = {
 
 const REQUEST = "A black hoodie, size M, under $80";
 const DRAFT: IntentDraft = { item: "hoodie", category: "hoodie", quantity: 1, maxPrice: 80, currency: "USD", attributes: { size: "M", color: "black" }, mustAsk: [] };
-const AUTHORIZED = { name: "Careful Claude", verified: true };
+const AUTHORIZED = { name: "Careful Agent", verified: true };
 
 const describe = (p: StoreProduct) =>
   `${p.title} · $${p.price.toFixed(2)}${Object.keys(p.variant).length ? ` · ${Object.entries(p.variant).map(([k, v]) => `${k} ${v}`).join(", ")}` : ""}`;

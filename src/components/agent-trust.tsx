@@ -197,12 +197,12 @@ function TrustLedger({ agents, rules, preview }: { agents: Agent[] | null; rules
       {/* Column heads, on the same grid as the rows: the scale, and where each rule line falls */}
       <div className={cx("mt-6 hidden gap-6 border-b border-ink/10 pb-3 text-caption text-muted sm:grid", GRID)} aria-hidden>
         <span className="self-end">Agent</span>
-        <div className="relative h-9">
-          {lines.map((l) => (
+        <div className={cx("relative", stacked ? "h-14" : "h-9")}>
+          {lines.map((l, k) => (
             <span
               key={l.label}
-              className={cx("absolute top-0 -translate-x-1/2 whitespace-nowrap font-medium", l.tone === "bad" ? "text-bad" : "text-warn")}
-              style={{ left: `${l.at}%` }}
+              className={cx("absolute -translate-x-1/2 whitespace-nowrap font-medium", l.tone === "bad" ? "text-bad" : "text-warn")}
+              style={{ left: `${l.at}%`, top: stacked && k === 1 ? "1.15rem" : 0 }}
             >
               {l.label}
             </span>

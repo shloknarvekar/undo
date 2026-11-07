@@ -180,6 +180,8 @@ function TrustLedger({ agents, rules, preview }: { agents: Agent[] | null; rules
     ...(rules.blockBelow !== null ? [{ at: rules.blockBelow, label: `Block under ${rules.blockBelow}`, tone: "bad" as const }] : []),
     ...(rules.extendBelow !== null ? [{ at: rules.extendBelow, label: `+${hours(rules.extendMinutes)} under ${rules.extendBelow}`, tone: "warn" as const }] : []),
   ];
+  // Two rule lines close together would print their labels on top of each other: put the second one on its own row.
+  const stacked = lines.length === 2 && Math.abs(lines[0].at - lines[1].at) < 30;
 
   return (
     <div className="rounded-card bg-paper p-5 sm:p-7">
